@@ -1,4 +1,5 @@
 local Event = require("engine.events.event")
+local EventPage = require("engine.events.event_page")
 local EventContext = require("engine.events.event_context")
 
 local CallCommand = require("engine.events.commands.call_command")
@@ -16,29 +17,35 @@ function love.load()
     local event = Event.new({
         id = "test_event",
 
-        commands = {
-            CallCommand.new(function(ctx)
-                add_message(
-                    "Evento iniciado por: " .. ctx.source.id
-                )
-            end),
+        pages = {
+            EventPage.new({
+                commands = {
+                    CallCommand.new(function()
+                        add_message("Página padrão.")
+                    end)
+                }
+            }),
 
-            WaitCommand.new(2),
+            EventPage.new({
+                condition = function(ctx)
+                    return ctx.variables.special == true
+                end,
 
-            CallCommand.new(function()
-                add_message("Passaram 2 segundos.")
-            end),
-
-            WaitCommand.new(1),
-
-            CallCommand.new(function()
-                add_message("Passou mais 1 segundo.")
-            end)
+                commands = {
+                    CallCommand.new(function()
+                        add_message("Página especial.")
+                    end)
+                }
+            })
         }
     })
 
     local context = EventContext.new({
-        source = event
+        source = event,
+
+        variables = {
+            special = false
+        }
     })
 
     runner = event:create_runner(context)

@@ -3,15 +3,20 @@ local EventCommand = require("engine.events.event_command")
 local EventRunner = {}
 EventRunner.__index = EventRunner
 
--- Creates a runner responsible for executing a specific event.
+-- Creates a runner for the active page of a specific event.
 function EventRunner.new(event, context)
     assert(event ~= nil, "event is required")
     assert(context ~= nil, "context is required")
 
+    local page = event:get_active_page(context)
+
+    assert(page ~= nil, "event has no active page")
+
     local self = setmetatable({}, EventRunner)
 
     self.event = event
-    self.commands = event.commands
+    self.page = page
+    self.commands = page.commands
     self.context = context
 
     self.current_index = 1
