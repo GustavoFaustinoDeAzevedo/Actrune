@@ -4,21 +4,24 @@ local EventPage = require(eventFolder .. "event_page")
 local EventCommand = require(eventFolder .. "event_command")
 local EventContext = require(eventFolder .. "event_context")
 local EventTrigger = require(eventFolder .. "event_trigger")
+local EventScheduler = require(eventFolder .. "event_scheduler")
 
 local commandFolder = "engine/events/commands/"
 local CallCommand = require(commandFolder .. "call_command")
 local WaitCommand = require(commandFolder .. "wait_command")
 
 
-local runner
+local scheduler
 local messages = {}
 
 local function add_message(message)
     table.insert(messages, message)
 end
 
--- Creates the test event and starts its execution.
+-- Creates the test event and schedules it when its trigger matches.
 function love.load()
+    scheduler = EventScheduler.new()
+
     local event = Event.new({
         id = "test_event",
 
@@ -28,7 +31,13 @@ function love.load()
 
                 commands = {
                     CallCommand.new(function()
-                        add_message("Evento executado.")
+                        add_message("Evento iniciado.")
+                    end),
+
+                    WaitCommand.new(2),
+
+                    CallCommand.new(function()
+                        add_message("Evento finalizado após a espera.")
                     end)
                 }
             })
@@ -36,14 +45,16 @@ function love.load()
     })
 
     local context = EventContext.new({
-        source = event,
-
-        variables = {
-            special = false
-        }
+        source = event
     })
 
-    runner = event:trigger("interact", context)
+    scheduler:add(
+        event:trigger("interact", context)
+    )
+
+    scheduler:add(
+        event:trigger("interact", context)
+    )
 end
 
 -- Adds a message to the debug message list.
@@ -51,14 +62,12 @@ local function add_message(message)
     table.insert(messages, message)
 end
 
--- Advances the active event runner every frame.
+-- Updates all event executions managed by the scheduler.
 function love.update(dt)
-    if runner then
-        runner:update(dt)
-    end
+    scheduler:update(dt)
 end
 
--- Draws the event execution state on the screen.
+-- Draws the test messages and the number of active event executions.
 function love.draw()
     love.graphics.print(
         table.concat(messages, "\n"),
@@ -66,11 +75,9 @@ function love.draw()
         20
     )
 
-    if runner and runner:is_finished() then
-        love.graphics.print(
-            "Evento finalizado.",
-            20,
-            120
-        )
-    end
+    love.graphics.print(
+        "Active runners: " .. scheduler:get_active_count(),
+        20,
+        100
+    )
 end
