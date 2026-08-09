@@ -1,10 +1,14 @@
-local Event = require("engine.events.event")
-local EventPage = require("engine.events.event_page")
-local EventContext = require("engine.events.event_context")
-local EventTrigger = require("engine.events.event_trigger")
+local eventFolder = "engine/events/"
+local Event = require(eventFolder .. "event")
+local EventPage = require(eventFolder .. "event_page")
+local EventCommand = require(eventFolder .. "event_command")
+local EventContext = require(eventFolder .. "event_context")
+local EventTrigger = require(eventFolder .. "event_trigger")
 
-local CallCommand = require("engine.events.commands.call_command")
-local WaitCommand = require("engine.events.commands.wait_command")
+local commandFolder = "engine/events/commands/"
+local CallCommand = require(commandFolder .. "call_command")
+local WaitCommand = require(commandFolder .. "wait_command")
+
 
 local runner
 local messages = {}
@@ -39,7 +43,7 @@ function love.load()
         }
     })
 
-    runner = event:trigger("touch", context)
+    runner = event:trigger("interact", context)
 end
 
 -- Adds a message to the debug message list.
