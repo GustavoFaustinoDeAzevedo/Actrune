@@ -1,6 +1,7 @@
 local Event = require("engine.events.event")
 local EventPage = require("engine.events.event_page")
 local EventContext = require("engine.events.event_context")
+local EventTrigger = require("engine.events.event_trigger")
 
 local CallCommand = require("engine.events.commands.call_command")
 local WaitCommand = require("engine.events.commands.wait_command")
@@ -19,21 +20,11 @@ function love.load()
 
         pages = {
             EventPage.new({
-                commands = {
-                    CallCommand.new(function()
-                        add_message("Página padrão.")
-                    end)
-                }
-            }),
-
-            EventPage.new({
-                condition = function(ctx)
-                    return ctx.variables.special == true
-                end,
+                trigger = EventTrigger.new("interact"),
 
                 commands = {
                     CallCommand.new(function()
-                        add_message("Página especial.")
+                        add_message("Evento executado.")
                     end)
                 }
             })
@@ -48,7 +39,7 @@ function love.load()
         }
     })
 
-    runner = event:create_runner(context)
+    runner = event:trigger("touch", context)
 end
 
 -- Adds a message to the debug message list.
@@ -58,7 +49,9 @@ end
 
 -- Advances the active event runner every frame.
 function love.update(dt)
-    runner:update(dt)
+    if runner then
+        runner:update(dt)
+    end
 end
 
 -- Draws the event execution state on the screen.
@@ -69,7 +62,7 @@ function love.draw()
         20
     )
 
-    if runner:is_finished() then
+    if runner and runner:is_finished() then
         love.graphics.print(
             "Evento finalizado.",
             20,

@@ -1,10 +1,11 @@
 local EventPage = {}
 EventPage.__index = EventPage
 
--- Creates a new event page with commands and an optional activation condition.
+-- Creates a new event page with commands, a trigger, and an optional activation condition.
 function EventPage.new(options)
     assert(type(options) == "table", "options must be a table")
     assert(type(options.commands) == "table", "commands must be a table")
+    assert(options.trigger ~= nil, "trigger is required")
 
     if options.condition ~= nil then
         assert(
@@ -16,6 +17,7 @@ function EventPage.new(options)
     local self = setmetatable({}, EventPage)
 
     self.commands = options.commands
+    self.trigger = options.trigger
     self.condition = options.condition
 
     return self
@@ -28,6 +30,11 @@ function EventPage:is_available(context)
     end
 
     return self.condition(context)
+end
+
+-- Checks whether this page accepts the requested trigger type.
+function EventPage:matches_trigger(trigger_type, context)
+    return self.trigger:matches(trigger_type, context)
 end
 
 return EventPage

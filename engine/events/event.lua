@@ -35,4 +35,19 @@ function Event:create_runner(context)
     return EventRunner.new(self, context)
 end
 
+-- Attempts to start this event using the requested trigger type.
+function Event:trigger(trigger_type, context)
+    local page = self:get_active_page(context)
+
+    if page == nil then
+        return nil
+    end
+
+    if not page:matches_trigger(trigger_type, context) then
+        return nil
+    end
+
+    return self:create_runner(context)
+end
+
 return Event
