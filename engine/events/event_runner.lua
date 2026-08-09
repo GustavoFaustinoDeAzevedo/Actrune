@@ -3,19 +3,21 @@ local EventCommand = require("engine.events.event_command")
 local EventRunner = {}
 EventRunner.__index = EventRunner
 
-function EventRunner.new(commands, context)
-    assert(type(commands) == "table", "commands must be a table")
+-- Creates a runner responsible for executing a specific event.
+function EventRunner.new(event, context)
+    assert(event ~= nil, "event is required")
     assert(context ~= nil, "context is required")
 
     local self = setmetatable({}, EventRunner)
 
-    self.commands = commands
+    self.event = event
+    self.commands = event.commands
     self.context = context
 
     self.current_index = 1
     self.current_state = nil
 
-    self.finished = #commands == 0
+    self.finished = #self.commands == 0
 
     return self
 end
