@@ -1,3 +1,5 @@
+local EventRunner = require("engine.events.event_runner")
+
 local Event = {}
 Event.__index = Event
 
@@ -13,6 +15,11 @@ function Event.new(options)
     self.commands = options.commands
 
     return self
+end
+
+-- Creates an independent runner for this event using the given context.
+function Event:create_runner(context)
+    return EventRunner.new(self, context)
 end
 
 return Event

@@ -1,9 +1,8 @@
+local Event = require("engine.events.event")
 local EventContext = require("engine.events.event_context")
-local EventRunner = require("engine.events.event_runner")
 
 local CallCommand = require("engine.events.commands.call_command")
 local WaitCommand = require("engine.events.commands.wait_command")
-local Event = require("engine.events.event")
 
 local runner
 local messages = {}
@@ -42,10 +41,7 @@ function love.load()
         source = event
     })
 
-    runner = EventRunner.new(
-        event,
-        context
-    )
+    runner = event:create_runner(context)
 end
 
 -- Adds a message to the debug message list.
