@@ -1,26 +1,27 @@
+local Actrune = require("engine.core.actrune")
+
 local eventFolder = "engine/events/"
 local Event = require(eventFolder .. "event")
 local EventPage = require(eventFolder .. "event_page")
-local EventCommand = require(eventFolder .. "event_command")
 local EventContext = require(eventFolder .. "event_context")
 local EventTrigger = require(eventFolder .. "event_trigger")
-local EventScheduler = require(eventFolder .. "event_scheduler")
 
 local commandFolder = "engine/events/commands/"
 local CallCommand = require(commandFolder .. "call_command")
 local WaitCommand = require(commandFolder .. "wait_command")
 
 
-local scheduler
+local runtime
 local messages = {}
 
+-- Adds a message to the test output.
 local function add_message(message)
     table.insert(messages, message)
 end
 
--- Creates the test event and schedules it when its trigger matches.
+-- Creates the Actrune runtime and starts the test event.
 function love.load()
-    scheduler = EventScheduler.new()
+    runtime = Actrune.new()
 
     local event = Event.new({
         id = "test_event",
@@ -37,7 +38,7 @@ function love.load()
                     WaitCommand.new(2),
 
                     CallCommand.new(function()
-                        add_message("Evento finalizado após a espera.")
+                        add_message("Evento finalizado.")
                     end)
                 }
             })
@@ -48,26 +49,19 @@ function love.load()
         source = event
     })
 
-    scheduler:add(
-        event:trigger("interact", context)
-    )
-
-    scheduler:add(
-        event:trigger("interact", context)
+    runtime:trigger_event(
+        event,
+        "interact",
+        context
     )
 end
 
--- Adds a message to the debug message list.
-local function add_message(message)
-    table.insert(messages, message)
-end
-
--- Updates all event executions managed by the scheduler.
+-- Updates the Actrune runtime every frame.
 function love.update(dt)
-    scheduler:update(dt)
+    runtime:update(dt)
 end
 
--- Draws the test messages and the number of active event executions.
+-- Draws the current event execution state for testing.
 function love.draw()
     love.graphics.print(
         table.concat(messages, "\n"),
@@ -76,7 +70,7 @@ function love.draw()
     )
 
     love.graphics.print(
-        "Active runners: " .. scheduler:get_active_count(),
+        "Active events: " .. runtime:get_active_event_count(),
         20,
         100
     )
