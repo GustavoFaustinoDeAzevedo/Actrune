@@ -12,6 +12,7 @@ function Entity.new(options)
 
     self.id = options.id
     self.shapes = options.shapes or {}
+    self.events = options.events or {}
 
     self.transform = Transform.new({
         x = options.x,
@@ -50,6 +51,29 @@ end
 -- Removes the spatial shape assigned to the given name.
 function Entity:remove_shape(name)
     self.shapes[name] = nil
+end
+
+-- Associates an event with this entity using the event identifier.
+function Entity:add_event(event)
+    assert(event ~= nil, "event is required")
+    assert(type(event.id) == "string", "event id must be a string")
+
+    self.events[event.id] = event
+end
+
+-- Returns the event associated with the given identifier.
+function Entity:get_event(id)
+    return self.events[id]
+end
+
+-- Removes the event associated with the given identifier.
+function Entity:remove_event(id)
+    self.events[id] = nil
+end
+
+-- Checks whether this entity has an event with the given identifier.
+function Entity:has_event(id)
+    return self.events[id] ~= nil
 end
 
 return Entity
