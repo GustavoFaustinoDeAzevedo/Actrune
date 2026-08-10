@@ -78,18 +78,18 @@ function love.load()
         x = 200,
         y = 150,
         rotation = math.rad(30),
-        scale_x = 1.5,
-        scale_y = 1,
 
-        shape = PolygonShape.new({
-            points = {
-                { x = -30, y = -20 },
-                { x = 30, y = -20 },
-                { x = 40, y = 20 },
-                { x = 0, y = 40 },
-                { x = -40, y = 20 }
-            }
-        })
+        shapes = {
+            interaction = PolygonShape.new({
+                points = {
+                    { x = -30, y = -20 },
+                    { x = 30, y = -20 },
+                    { x = 40, y = 20 },
+                    { x = 0, y = 40 },
+                    { x = -40, y = 20 }
+                }
+            })
+        }
     })
 end
 
@@ -113,7 +113,7 @@ function love.draw()
         100
     ) 
 
-    local shape = test_entity:get_shape()
+    local shape = test_entity:get_shape("interaction")
 
     if shape then
         local world_points =

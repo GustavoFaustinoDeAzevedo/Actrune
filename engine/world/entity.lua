@@ -3,7 +3,7 @@ local Transform = require("engine.world.transform")
 local Entity = {}
 Entity.__index = Entity
 
--- Creates a new entity with an identifier and spatial transform.
+-- Creates a new entity with an identifier, transform, and optional spatial shapes.
 function Entity.new(options)
     assert(type(options) == "table", "options must be a table")
     assert(type(options.id) == "string", "entity id must be a string")
@@ -11,7 +11,7 @@ function Entity.new(options)
     local self = setmetatable({}, Entity)
 
     self.id = options.id
-    self.shape = options.shape
+    self.shapes = options.shapes or {}
 
     self.transform = Transform.new({
         x = options.x,
@@ -34,14 +34,22 @@ function Entity:set_position(x, y)
     self.transform:set_position(x, y)
 end
 
--- Assigns a spatial shape to this entity.
-function Entity:set_shape(shape)
-    self.shape = shape
+-- Assigns a spatial shape to this entity under the given name.
+function Entity:set_shape(name, shape)
+    assert(type(name) == "string", "shape name must be a string")
+    assert(shape ~= nil, "shape is required")
+
+    self.shapes[name] = shape
 end
 
--- Returns the spatial shape currently assigned to this entity.
-function Entity:get_shape()
-    return self.shape
+-- Returns the spatial shape assigned to the given name.
+function Entity:get_shape(name)
+    return self.shapes[name]
+end
+
+-- Removes the spatial shape assigned to the given name.
+function Entity:remove_shape(name)
+    self.shapes[name] = nil
 end
 
 return Entity
