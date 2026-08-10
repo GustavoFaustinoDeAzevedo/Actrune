@@ -1,5 +1,7 @@
 local World = require("engine.world.world")
+local EventContext = require("engine.events.event_context")
 local EventScheduler = require("engine.events.event_scheduler")
+
 
 local Actrune = {}
 Actrune.__index = Actrune
@@ -26,6 +28,66 @@ function Actrune:trigger_event(event, trigger_type, context)
     self.event_scheduler:add(runner)
 
     return runner
+end
+
+-- Attempts to trigger all events associated with an entity.
+function Actrune:trigger_entity_events(entity, trigger_type, activator)
+    assert(entity ~= nil, "entity is required")
+
+    local runners = {}
+
+    for _, event in pairs(entity:get_events()) do
+        local context = EventContext.new({
+            source = event,
+            entity = entity,
+            activator = activator,
+            world = self.world
+        })
+
+        local runner = self:trigger_event(
+            event,
+            trigger_type,
+            context
+        )
+
+        if runner then
+            table.insert(runners, runner)
+        end
+    end
+
+    return runners
+end
+
+-- Finds entities at a world-space point and attempts to trigger their events.
+function Actrune:trigger_events_at_point(
+    x,
+    y,
+    shape_name,
+    trigger_type,
+    activator
+)
+    local entities = self.world:query_point(
+        x,
+        y,
+        shape_name
+    )
+
+    local runners = {}
+
+    for _, entity in ipairs(entities) do
+        local entity_runners =
+            self:trigger_entity_events(
+                entity,
+                trigger_type,
+                activator
+            )
+
+        for _, runner in ipairs(entity_runners) do
+            table.insert(runners, runner)
+        end
+    end
+
+    return runners
 end
 
 -- Returns the number of event executions currently active.

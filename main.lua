@@ -56,31 +56,16 @@ function love.load()
     runtime:add_entity(event_entity)
     runtime:add_entity(player_entity)
     
-    local targets =
-    runtime.world:query_point(
-        player_entity.transform.x,
-        player_entity.transform.y,
-        "interaction"
+    local player_x, player_y =
+    player_entity:get_position()
+
+    runtime:trigger_events_at_point(
+        player_x,
+        player_y,
+        "interaction",
+        "interact",
+        player_entity
     )
-
-    for _, target in ipairs(targets) do
-        local target_event = target:get_event("test_event")
-
-        if target_event then
-            local context = EventContext.new({
-                source = target_event,
-                entity = target,
-                activator = player_entity,
-                world = runtime.world
-            })
-
-            runtime:trigger_event(
-                target_event,
-                "interact",
-                context
-            )
-        end
-    end
 
     local entities =
     runtime.world:query_point(

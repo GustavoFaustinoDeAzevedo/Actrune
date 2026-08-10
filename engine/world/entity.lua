@@ -76,4 +76,9 @@ function Entity:has_event(id)
     return self.events[id] ~= nil
 end
 
+-- Returns all events currently associated with this entity.
+function Entity:get_events()
+    return self.events
+end
+
 return Entity
