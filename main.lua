@@ -5,6 +5,7 @@ local Event = require(eventFolder .. "event")
 local EventPage = require(eventFolder .. "event_page")
 local EventContext = require(eventFolder .. "event_context")
 local EventTrigger = require(eventFolder .. "event_trigger")
+local AreaTrigger = require(eventFolder .. "triggers.area_trigger")
 
 local commandFolder = "engine/events/commands/"
 local CallCommand = require(commandFolder .. "call_command")
@@ -13,6 +14,8 @@ local WaitCommand = require(commandFolder .. "wait_command")
 local Entity = require("engine.world.entity")
 local PolygonShape = require("engine.world.spatial.polygon_shape")
 
+local event_entity
+local player_entity
 local test_entity
 local runtime
 local messages = {}
@@ -26,12 +29,37 @@ end
 function love.load()
     runtime = Actrune.new() 
 
+    event_entity = Entity.new({
+        id = "door",
+        x = 200,
+        y = 150,
+
+        shapes = {
+            interaction = PolygonShape.new({
+                points = {
+                    { x = -50, y = -40 },
+                    { x = 50, y = -40 },
+                    { x = 50, y = 40 },
+                    { x = -50, y = 40 }
+                }
+            })
+        }
+    })
+
+    player_entity = Entity.new({
+        id = "player",
+        x = 200,
+        y = 150
+    })
     local event = Event.new({
         id = "test_event",
 
         pages = {
             EventPage.new({
-                trigger = EventTrigger.new("interact"),
+                trigger = AreaTrigger.new({
+                    type = "interact",
+                    shape = "interaction"
+                }),
 
                 commands = {
                     CallCommand.new(function()
@@ -49,7 +77,9 @@ function love.load()
     })
 
     local context = EventContext.new({
-        source = event
+        source = event,
+        entity = event_entity,
+        activator = player_entity
     })
 
     runtime:trigger_event(
