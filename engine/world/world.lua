@@ -36,4 +36,21 @@ function World:has_entity(id)
     return self.entities[id] ~= nil
 end
 
+-- Returns all entities whose named shape contains the given world-space point.
+function World:query_point(x, y, shape_name)
+    assert(type(shape_name) == "string", "shape name must be a string")
+
+    local results = {}
+
+    for _, entity in pairs(self.entities) do
+        local shape = entity:get_shape(shape_name)
+
+        if shape and shape:contains_point(x, y, entity.transform) then
+            table.insert(results, entity)
+        end
+    end
+
+    return results
+end
+
 return World

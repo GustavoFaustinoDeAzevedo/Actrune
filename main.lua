@@ -55,6 +55,17 @@ function love.load()
 
     runtime:add_entity(event_entity)
     runtime:add_entity(player_entity)
+
+    local entities =
+    runtime.world:query_point(
+        200,
+        150,
+        "interaction"
+    )
+
+    for _, entity in ipairs(entities) do
+        print("Found entity: " .. entity.id)
+    end
     
     local event = Event.new({
         id = "test_event",
