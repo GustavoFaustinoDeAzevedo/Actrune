@@ -28,4 +28,22 @@ function PolygonShape:get_side_count()
     return #self.points
 end
 
+-- Converts this polygon's local points into world-space coordinates.
+function PolygonShape:get_world_points(transform)
+    local world_points = {}
+
+    for _, point in ipairs(self.points) do
+        local local_x = point.x + self.offset_x
+        local local_y = point.y + self.offset_y
+
+        local world_x, world_y =
+            transform:transform_point(local_x, local_y)
+
+        table.insert(world_points, world_x)
+        table.insert(world_points, world_y)
+    end
+
+    return world_points
+end
+
 return PolygonShape

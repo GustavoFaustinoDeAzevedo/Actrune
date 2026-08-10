@@ -58,10 +58,28 @@ function love.load()
         context
     )
 
+    -- test_entity = Entity.new({
+    --     id = "test_entity",
+    --     x = 120,
+    --     y = 80,
+
+    --     shape = PolygonShape.new({
+    --         points = {
+    --             { x = -30, y = -20 },
+    --             { x = 30, y = -20 },
+    --             { x = 40, y = 20 },
+    --             { x = 0, y = 40 },
+    --             { x = -40, y = 20 }
+    --         }
+    --     })
+    -- })
     test_entity = Entity.new({
         id = "test_entity",
-        x = 120,
-        y = 80,
+        x = 200,
+        y = 150,
+        rotation = math.rad(30),
+        scale_x = 1.5,
+        scale_y = 1,
 
         shape = PolygonShape.new({
             points = {
@@ -95,11 +113,15 @@ function love.draw()
         100
     ) 
 
-    local x, y = test_entity:get_position()
-    love.graphics.circle(
-        "fill",
-        x,
-        y,
-        8
-    )
+    local shape = test_entity:get_shape()
+
+    if shape then
+        local world_points =
+            shape:get_world_points(test_entity.transform)
+
+        love.graphics.polygon(
+            "line",
+            world_points
+        )
+    end
 end

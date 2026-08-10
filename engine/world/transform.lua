@@ -34,4 +34,25 @@ function Transform:set_rotation(rotation)
     self.rotation = rotation
 end
 
+-- Converts a local-space point into world-space coordinates.
+function Transform:transform_point(x, y)
+    local scaled_x = x * self.scale_x
+    local scaled_y = y * self.scale_y
+
+    local cos_rotation = math.cos(self.rotation)
+    local sin_rotation = math.sin(self.rotation)
+
+    local rotated_x =
+        scaled_x * cos_rotation
+        - scaled_y * sin_rotation
+
+    local rotated_y =
+        scaled_x * sin_rotation
+        + scaled_y * cos_rotation
+
+    return
+        self.x + rotated_x,
+        self.y + rotated_y
+end
+
 return Transform
