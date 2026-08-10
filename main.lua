@@ -20,6 +20,7 @@ local test_entity
 local runtime
 local messages = {}
 
+
 -- Adds a message to the test output.
 local function add_message(message)
     table.insert(messages, message)
@@ -51,6 +52,10 @@ function love.load()
         x = 200,
         y = 150
     })
+
+    runtime:add_entity(event_entity)
+    runtime:add_entity(player_entity)
+    
     local event = Event.new({
         id = "test_event",
 
@@ -79,9 +84,10 @@ function love.load()
     local context = EventContext.new({
         source = event,
         entity = event_entity,
-        activator = player_entity
+        activator = player_entity,
+        world = runtime.world
     })
-
+    
     runtime:trigger_event(
         event,
         "interact",
@@ -103,6 +109,7 @@ function love.load()
     --         }
     --     })
     -- })
+    print(runtime:get_entity("player").id)
     test_entity = Entity.new({
         id = "test_entity",
         x = 200,
@@ -121,6 +128,7 @@ function love.load()
             })
         }
     })
+    
 end
 
 -- Updates the Actrune runtime every frame.

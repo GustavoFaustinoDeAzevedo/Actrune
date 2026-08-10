@@ -8,7 +8,7 @@
       "name": "Launch LOVE",
       "type": "lua",
       "request": "launch",
-      "runtimeExecutable": "C:/LOVE/love.exe",
+      "runtimeExecutable": "C:/LOVE/lovec.exe",
       "runtimeArgs": ["${workspaceFolder}", "--console"],
       "stopOnEntry": false
     }

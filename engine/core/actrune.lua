@@ -1,12 +1,14 @@
+local World = require("engine.world.world")
 local EventScheduler = require("engine.events.event_scheduler")
 
 local Actrune = {}
 Actrune.__index = Actrune
 
--- Creates a new Actrune runtime with its event scheduler.
+-- Creates a new Actrune runtime with its world and event scheduler.
 function Actrune.new()
     local self = setmetatable({}, Actrune)
 
+    self.world = World.new()
     self.event_scheduler = EventScheduler.new()
 
     return self
@@ -29,6 +31,16 @@ end
 -- Returns the number of event executions currently active.
 function Actrune:get_active_event_count()
     return self.event_scheduler:get_active_count()
+end
+
+-- Adds an entity to the world managed by this runtime.
+function Actrune:add_entity(entity)
+    self.world:add_entity(entity)
+end
+
+-- Returns an entity from the world by its identifier.
+function Actrune:get_entity(id)
+    return self.world:get_entity(id)
 end
 
 return Actrune
