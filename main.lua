@@ -11,6 +11,7 @@ local CallCommand = require(commandFolder .. "call_command")
 local WaitCommand = require(commandFolder .. "wait_command")
 
 local Entity = require("engine.world.entity")
+local PolygonShape = require("engine.world.spatial.polygon_shape")
 
 local test_entity
 local runtime
@@ -60,7 +61,17 @@ function love.load()
     test_entity = Entity.new({
         id = "test_entity",
         x = 120,
-        y = 80
+        y = 80,
+
+        shape = PolygonShape.new({
+            points = {
+                { x = -30, y = -20 },
+                { x = 30, y = -20 },
+                { x = 40, y = 20 },
+                { x = 0, y = 40 },
+                { x = -40, y = 20 }
+            }
+        })
     })
 end
 

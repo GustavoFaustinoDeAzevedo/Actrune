@@ -11,6 +11,7 @@ function Entity.new(options)
     local self = setmetatable({}, Entity)
 
     self.id = options.id
+    self.shape = options.shape
 
     self.transform = Transform.new({
         x = options.x,
@@ -31,6 +32,16 @@ end
 -- Changes the entity position in world space.
 function Entity:set_position(x, y)
     self.transform:set_position(x, y)
+end
+
+-- Assigns a spatial shape to this entity.
+function Entity:set_shape(shape)
+    self.shape = shape
+end
+
+-- Returns the spatial shape currently assigned to this entity.
+function Entity:get_shape()
+    return self.shape
 end
 
 return Entity
