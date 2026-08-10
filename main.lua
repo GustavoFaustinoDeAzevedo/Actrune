@@ -123,5 +123,25 @@ function love.draw()
             "line",
             world_points
         )
+
+        local mouse_x, mouse_y = love.mouse.getPosition()
+
+        if shape:contains_point(
+            mouse_x,
+            mouse_y,
+            test_entity.transform
+        ) then
+            love.graphics.print(
+                "Mouse inside shape",
+                20,
+                140
+            )
+        else
+            love.graphics.print(
+                "Mouse outside shape",
+                20,
+                140
+            )
+        end
     end
 end

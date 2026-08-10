@@ -46,4 +46,41 @@ function PolygonShape:get_world_points(transform)
     return world_points
 end
 
+-- Checks whether a world-space point lies inside this polygon.
+function PolygonShape:contains_point(x, y, transform)
+    local local_x, local_y =
+        transform:inverse_transform_point(x, y)
+
+    local_x = local_x - self.offset_x
+    local_y = local_y - self.offset_y
+
+    local inside = false
+    local previous = #self.points
+
+    for current = 1, #self.points do
+        local current_point = self.points[current]
+        local previous_point = self.points[previous]
+
+        local crosses_vertical_range =
+            (current_point.y > local_y)
+            ~= (previous_point.y > local_y)
+
+        if crosses_vertical_range then
+            local intersection_x =
+                (previous_point.x - current_point.x)
+                * (local_y - current_point.y)
+                / (previous_point.y - current_point.y)
+                + current_point.x
+
+            if local_x < intersection_x then
+                inside = not inside
+            end
+        end
+
+        previous = current
+    end
+
+    return inside
+end
+
 return PolygonShape

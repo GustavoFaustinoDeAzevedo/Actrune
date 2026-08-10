@@ -55,4 +55,25 @@ function Transform:transform_point(x, y)
         self.y + rotated_y
 end
 
+-- Converts a world-space point into coordinates local to this transform.
+function Transform:inverse_transform_point(x, y)
+    local translated_x = x - self.x
+    local translated_y = y - self.y
+
+    local cos_rotation = math.cos(-self.rotation)
+    local sin_rotation = math.sin(-self.rotation)
+
+    local rotated_x =
+        translated_x * cos_rotation
+        - translated_y * sin_rotation
+
+    local rotated_y =
+        translated_x * sin_rotation
+        + translated_y * cos_rotation
+
+    return
+        rotated_x / self.scale_x,
+        rotated_y / self.scale_y
+end
+
 return Transform
