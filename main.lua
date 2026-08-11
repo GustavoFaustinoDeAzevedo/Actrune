@@ -74,15 +74,11 @@ function love.load()
     print("Player X min:", player_points[1])
     print("Player X max:", player_points[3])
     
-    local player_x, player_y =
-    player_entity:get_position()
-
-    runtime:trigger_events_at_point(
-        player_x,
-        player_y,
+    runtime:trigger_events_with_shape(
+        player_entity,
+        "collision",
         "interaction",
-        "interact",
-        player_entity
+        "interact"
     )
 
     local entities =

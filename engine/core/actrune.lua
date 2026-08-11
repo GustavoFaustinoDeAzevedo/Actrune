@@ -90,6 +90,56 @@ function Actrune:trigger_events_at_point(
     return runners
 end
 
+-- Finds entities overlapping an activator shape and attempts to trigger their events.
+function Actrune:trigger_events_with_shape(
+    activator,
+    activator_shape_name,
+    target_shape_name,
+    trigger_type
+)
+    assert(activator ~= nil, "activator is required")
+    assert(
+        type(activator_shape_name) == "string",
+        "activator shape name must be a string"
+    )
+    assert(
+        type(target_shape_name) == "string",
+        "target shape name must be a string"
+    )
+
+    local activator_shape =
+        activator:get_shape(activator_shape_name)
+
+    if activator_shape == nil then
+        return {}
+    end
+
+    local entities = self.world:query_shape(
+        activator_shape,
+        activator.transform,
+        target_shape_name
+    )
+
+    local runners = {}
+
+    for _, entity in ipairs(entities) do
+        if entity ~= activator then
+            local entity_runners =
+                self:trigger_entity_events(
+                    entity,
+                    trigger_type,
+                    activator
+                )
+
+            for _, runner in ipairs(entity_runners) do
+                table.insert(runners, runner)
+            end
+        end
+    end
+
+    return runners
+end
+
 -- Returns the number of event executions currently active.
 function Actrune:get_active_event_count()
     return self.event_scheduler:get_active_count()
@@ -104,5 +154,7 @@ end
 function Actrune:get_entity(id)
     return self.world:get_entity(id)
 end
+
+
 
 return Actrune
