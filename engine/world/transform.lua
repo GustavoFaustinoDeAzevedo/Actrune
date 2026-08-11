@@ -76,4 +76,9 @@ function Transform:inverse_transform_point(x, y)
         rotated_y / self.scale_y
 end
 
+-- Returns the normalized forward direction based on this transform's rotation.
+function Transform:get_forward()
+    return math.cos(self.rotation), math.sin(self.rotation)
+end
+
 return Transform

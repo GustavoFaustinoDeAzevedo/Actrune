@@ -5,7 +5,7 @@ local Event = require(eventFolder .. "event")
 local EventPage = require(eventFolder .. "event_page")
 local EventContext = require(eventFolder .. "event_context")
 local EventTrigger = require(eventFolder .. "event_trigger")
-local AreaTrigger = require(eventFolder .. "triggers.area_trigger")
+local DirectionalAreaTrigger = require("engine.events.triggers.directional_area_trigger")
 
 local commandFolder = "engine/events/commands/"
 local CallCommand = require(commandFolder .. "call_command")
@@ -51,7 +51,7 @@ function love.load()
         id = "player",
         x = 260,
         y = 150,
-
+        rotation = math.rad(180),
         shapes = {
             collision = PolygonShape.new({
                 points = {
@@ -97,10 +97,11 @@ function love.load()
 
         pages = {
             EventPage.new({
-                trigger = AreaTrigger.new({
+                trigger = DirectionalAreaTrigger.new({
                     type = "interact",
                     shape = "interaction",
-                    activator_shape = "collision"
+                    activator_shape = "collision",
+                    max_angle = math.rad(60)
                 }),
 
                 commands = {
