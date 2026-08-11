@@ -1,3 +1,4 @@
+local SpatialQuery = require("engine.world.spatial.spatial_query")
 local World = {}
 World.__index = World
 
@@ -47,6 +48,35 @@ function World:query_point(x, y, shape_name)
 
         if shape and shape:contains_point(x, y, entity.transform) then
             table.insert(results, entity)
+        end
+    end
+
+    return results
+end
+
+-- Returns all entities whose named polygon shape overlaps the given polygon shape.
+function World:query_shape(shape, transform, shape_name)
+    assert(shape ~= nil, "shape is required")
+    assert(transform ~= nil, "transform is required")
+    assert(type(shape_name) == "string", "shape name must be a string")
+
+    local results = {}
+
+    for _, entity in pairs(self.entities) do
+        local target_shape = entity:get_shape(shape_name)
+
+        if target_shape then
+            local intersects =
+                SpatialQuery.polygons_intersect(
+                    shape,
+                    transform,
+                    target_shape,
+                    entity.transform
+                )
+
+            if intersects then
+                table.insert(results, entity)
+            end
         end
     end
 
