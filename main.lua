@@ -49,12 +49,30 @@ function love.load()
 
     player_entity = Entity.new({
         id = "player",
-        x = 200,
-        y = 150
+        x = 260,
+        y = 150,
+
+        shapes = {
+            collision = PolygonShape.new({
+                points = {
+                    { x = -15, y = -15 },
+                    { x = 15, y = -15 },
+                    { x = 15, y = 15 },
+                    { x = -15, y = 15 }
+                }
+            })
+        }
     })
 
     runtime:add_entity(event_entity)
     runtime:add_entity(player_entity)
+
+    local player_shape = player_entity:get_shape("collision")
+    local player_points =
+        player_shape:get_world_points(player_entity.transform)
+
+    print("Player X min:", player_points[1])
+    print("Player X max:", player_points[3])
     
     local player_x, player_y =
     player_entity:get_position()
@@ -85,7 +103,8 @@ function love.load()
             EventPage.new({
                 trigger = AreaTrigger.new({
                     type = "interact",
-                    shape = "interaction"
+                    shape = "interaction",
+                    activator_shape = "collision"
                 }),
 
                 commands = {
@@ -198,7 +217,7 @@ function love.draw()
             )
         else
             love.graphics.print(
-                "Mouse outside shape",
+                "" ,
                 20,
                 140
             )
