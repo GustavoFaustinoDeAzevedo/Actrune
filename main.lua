@@ -14,7 +14,6 @@ local PolygonShape = require("engine.world.spatial.polygon_shape")
 
 local event_entity
 local player_entity
-local test_entity
 local runtime
 local messages = {}
 
@@ -22,6 +21,23 @@ local messages = {}
 -- Adds a message to the test output.
 local function add_message(message)
     table.insert(messages, message)
+end
+
+-- Draws a named polygon shape belonging to an entity for debugging purposes.
+local function draw_shape(entity, shape_name)
+    local shape = entity:get_shape(shape_name)
+
+    if shape == nil then
+        return
+    end
+
+    local world_points =
+        shape:get_world_points(entity.transform)
+
+    love.graphics.polygon(
+        "line",
+        world_points
+    )
 end
 
 -- Creates the Actrune runtime and sets up the test entities and event.
@@ -99,42 +115,7 @@ function love.load()
         }
     })
 
-    event_entity:add_event(event)
-
-    -- test_entity = Entity.new({
-    --     id = "test_entity",
-    --     x = 120,
-    --     y = 80,
-
-    --     shape = PolygonShape.new({
-    --         points = {
-    --             { x = -30, y = -20 },
-    --             { x = 30, y = -20 },
-    --             { x = 40, y = 20 },
-    --             { x = 0, y = 40 },
-    --             { x = -40, y = 20 }
-    --         }
-    --     })
-    -- })
-    print(runtime:get_entity("player").id)
-    test_entity = Entity.new({
-        id = "test_entity",
-        x = 200,
-        y = 150,
-        rotation = math.rad(30),
-
-        shapes = {
-            interaction = PolygonShape.new({
-                points = {
-                    { x = -30, y = -20 },
-                    { x = 30, y = -20 },
-                    { x = 40, y = 20 },
-                    { x = 0, y = 40 },
-                    { x = -40, y = 20 }
-                }
-            })
-        }
-    })    
+    event_entity:add_event(event) 
 end
 
 -- Processes game actions and updates the Actrune runtime every frame.
@@ -151,7 +132,6 @@ end
 
 -- Draws the current event execution state for testing.
 function love.draw()
-
     love.graphics.print(
         table.concat(messages, "\n"),
         20,
@@ -164,37 +144,8 @@ function love.draw()
         100
     ) 
 
-    local shape = test_entity:get_shape("interaction")
-
-    if shape then
-        local world_points =
-            shape:get_world_points(test_entity.transform)
-
-        love.graphics.polygon(
-            "line",
-            world_points
-        )
-
-        local mouse_x, mouse_y = love.mouse.getPosition()
-
-        if shape:contains_point(
-            mouse_x,
-            mouse_y,
-            test_entity.transform
-        ) then
-            love.graphics.print(
-                "Mouse inside shape",
-                20,
-                140
-            )
-        else
-            love.graphics.print(
-                "" ,
-                20,
-                140
-            )
-        end
-    end
+    draw_shape(event_entity, "interaction")
+    draw_shape(player_entity, "collision")
 end
 
 -- Forwards keyboard press events from LÖVE to the Actrune runtime.

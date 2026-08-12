@@ -5,6 +5,7 @@ local EventScheduler = require("engine.events.event_scheduler")
 
 local Actrune = {}
 Actrune.__index = Actrune
+Actrune.VERSION = "0.2.0"
 
 -- Creates a new Actrune runtime with its world, input manager, and event scheduler.
 function Actrune.new()
