@@ -17,9 +17,11 @@ function Actrune.new()
     return self
 end
 
--- Updates all systems currently managed by the Actrune runtime.
+-- Updates all runtime systems and clears transient input states after the frame.
 function Actrune:update(dt)
     self.event_scheduler:update(dt)
+
+    self.input:end_frame()
 end
 
 -- Attempts to trigger an event while respecting its execution mode.
@@ -163,6 +165,34 @@ function Actrune:get_entity(id)
     return self.world:get_entity(id)
 end
 
+-- Binds a keyboard key to an input action.
+function Actrune:bind_key(action, key)
+    self.input:bind_key(action, key)
+end
 
+-- Records a keyboard press in the input system.
+function Actrune:key_pressed(key)
+    self.input:key_pressed(key)
+end
+
+-- Records a keyboard release in the input system.
+function Actrune:key_released(key)
+    self.input:key_released(key)
+end
+
+-- Checks whether an input action was pressed during the current frame.
+function Actrune:is_action_pressed(action)
+    return self.input:is_action_pressed(action)
+end
+
+-- Checks whether an input action is currently being held down.
+function Actrune:is_action_down(action)
+    return self.input:is_action_down(action)
+end
+
+-- Checks whether an input action was released during the current frame.
+function Actrune:is_action_released(action)
+    return self.input:is_action_released(action)
+end
 
 return Actrune

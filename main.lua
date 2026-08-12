@@ -27,7 +27,7 @@ end
 -- Creates the Actrune runtime and sets up the test entities and event.
 function love.load()
     runtime = Actrune.new() 
-    runtime.input:bind_key("interact", "e")
+    runtime:bind_key("interact", "e")
     event_entity = Entity.new({
         id = "door",
         x = 200,
@@ -131,9 +131,9 @@ function love.load()
     })    
 end
 
--- Updates player actions and advances the Actrune runtime every frame.
+-- Processes game actions and updates the Actrune runtime every frame.
 function love.update(dt)
-    if runtime.input:is_action_pressed("interact") then
+    if runtime:is_action_pressed("interact") then
         runtime:trigger_events_with_shape(
             player_entity,
             "collision",
@@ -143,8 +143,6 @@ function love.update(dt)
     end
 
     runtime:update(dt)
-
-    runtime.input:end_frame()
 end
 
 -- Draws the current event execution state for testing.
@@ -195,12 +193,12 @@ function love.draw()
     end
 end
 
--- Forwards keyboard press events from LÖVE to the Actrune input manager.
+-- Forwards keyboard press events from LÖVE to the Actrune runtime.
 function love.keypressed(key)
-    runtime.input:key_pressed(key)
+    runtime:key_pressed(key)
 end
 
--- Forwards keyboard release events from LÖVE to the Actrune input manager.
+-- Forwards keyboard release events from LÖVE to the Actrune runtime.
 function love.keyreleased(key)
-    runtime.input:key_released(key)
+    runtime:key_released(key)
 end
