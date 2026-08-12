@@ -131,9 +131,20 @@ function love.load()
     })    
 end
 
--- Updates the Actrune runtime every frame.
+-- Updates player actions and advances the Actrune runtime every frame.
 function love.update(dt)
+    if runtime.input:is_action_pressed("interact") then
+        runtime:trigger_events_with_shape(
+            player_entity,
+            "collision",
+            "interaction",
+            "interact"
+        )
+    end
+
     runtime:update(dt)
+
+    runtime.input:end_frame()
 end
 
 -- Draws the current event execution state for testing.
@@ -184,16 +195,12 @@ function love.draw()
     end
 end
 
--- Handles key presses and triggers the interaction action when its binding matches.
+-- Forwards keyboard press events from LÖVE to the Actrune input manager.
 function love.keypressed(key)
-    if not runtime.input:is_key_for_action("interact", key) then
-        return
-    end
+    runtime.input:key_pressed(key)
+end
 
-    runtime:trigger_events_with_shape(
-        player_entity,
-        "collision",
-        "interaction",
-        "interact"
-    )
+-- Forwards keyboard release events from LÖVE to the Actrune input manager.
+function love.keyreleased(key)
+    runtime.input:key_released(key)
 end
