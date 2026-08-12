@@ -28,6 +28,12 @@ end
 function love.load()
     runtime = Actrune.new() 
     runtime:bind_key("interact", "e")
+    runtime:bind_spatial_action("interact", {
+    activator_shape = "collision",
+    target_shape = "interaction",
+    trigger = "interact"
+})
+
     event_entity = Entity.new({
         id = "door",
         x = 200,
@@ -134,11 +140,9 @@ end
 -- Processes game actions and updates the Actrune runtime every frame.
 function love.update(dt)
     if runtime:is_action_pressed("interact") then
-        runtime:trigger_events_with_shape(
-            player_entity,
-            "collision",
-            "interaction",
-            "interact"
+        runtime:trigger_spatial_action(
+            "interact",
+            player_entity
         )
     end
 

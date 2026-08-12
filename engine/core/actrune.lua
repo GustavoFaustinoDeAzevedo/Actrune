@@ -13,6 +13,7 @@ function Actrune.new()
     self.world = World.new()
     self.input = Input.new()
     self.event_scheduler = EventScheduler.new()
+    self.spatial_actions = {}
 
     return self
 end
@@ -193,6 +194,46 @@ end
 -- Checks whether an input action was released during the current frame.
 function Actrune:is_action_released(action)
     return self.input:is_action_released(action)
+end
+
+-- Registers a reusable spatial event action with its shape and trigger configuration.
+function Actrune:bind_spatial_action(action, options)
+    assert(type(action) == "string", "action must be a string")
+    assert(type(options) == "table", "options must be a table")
+    assert(
+        type(options.activator_shape) == "string",
+        "activator shape must be a string"
+    )
+    assert(
+        type(options.target_shape) == "string",
+        "target shape must be a string"
+    )
+    assert(
+        type(options.trigger) == "string",
+        "trigger must be a string"
+    )
+
+    self.spatial_actions[action] = {
+        activator_shape = options.activator_shape,
+        target_shape = options.target_shape,
+        trigger = options.trigger
+    }
+end
+
+-- Triggers a registered spatial action using the given entity as its activator.
+function Actrune:trigger_spatial_action(action, activator)
+    local spatial_action = self.spatial_actions[action]
+
+    if spatial_action == nil then
+        return {}
+    end
+
+    return self:trigger_events_with_shape(
+        activator,
+        spatial_action.activator_shape,
+        spatial_action.target_shape,
+        spatial_action.trigger
+    )
 end
 
 return Actrune
