@@ -27,7 +27,7 @@ end
 -- Creates the Actrune runtime and sets up the test entities and event.
 function love.load()
     runtime = Actrune.new() 
-
+    runtime.input:bind_key("interact", "e")
     event_entity = Entity.new({
         id = "door",
         x = 200,
@@ -184,12 +184,12 @@ function love.draw()
     end
 end
 
--- Handles key presses and attempts interaction when the configured key is pressed.
+-- Handles key presses and triggers the interaction action when its binding matches.
 function love.keypressed(key)
-    if key ~= "e" then
+    if not runtime.input:is_key_for_action("interact", key) then
         return
     end
-    
+
     runtime:trigger_events_with_shape(
         player_entity,
         "collision",

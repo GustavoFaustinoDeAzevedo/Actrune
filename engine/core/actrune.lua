@@ -1,16 +1,17 @@
 local World = require("engine.world.world")
+local Input = require("engine.core.input")
 local EventContext = require("engine.events.event_context")
 local EventScheduler = require("engine.events.event_scheduler")
-
 
 local Actrune = {}
 Actrune.__index = Actrune
 
--- Creates a new Actrune runtime with its world and event scheduler.
+-- Creates a new Actrune runtime with its world, input manager, and event scheduler.
 function Actrune.new()
     local self = setmetatable({}, Actrune)
 
     self.world = World.new()
+    self.input = Input.new()
     self.event_scheduler = EventScheduler.new()
 
     return self
