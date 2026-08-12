@@ -37,4 +37,15 @@ function EventScheduler:get_active_count()
     return #self.runners
 end
 
+-- Checks whether the given event currently has an active runner.
+function EventScheduler:is_event_running(event)
+    for _, runner in ipairs(self.runners) do
+        if runner.event == event then
+            return true
+        end
+    end
+
+    return false
+end
+
 return EventScheduler

@@ -3,16 +3,25 @@ local EventRunner = require("engine.events.event_runner")
 local Event = {}
 Event.__index = Event
 
--- Creates a new event definition with an identifier and event pages.
+-- Creates a new event definition with an identifier, event pages, and execution mode.
 function Event.new(options)
     assert(type(options) == "table", "options must be a table")
     assert(type(options.id) == "string", "event id must be a string")
     assert(type(options.pages) == "table", "pages must be a table")
 
+    local execution_mode = options.execution_mode or "parallel"
+
+    assert(
+        execution_mode == "parallel"
+        or execution_mode == "single",
+        "invalid event execution mode: " .. execution_mode
+    )
+
     local self = setmetatable({}, Event)
 
     self.id = options.id
     self.pages = options.pages
+    self.execution_mode = execution_mode
 
     return self
 end

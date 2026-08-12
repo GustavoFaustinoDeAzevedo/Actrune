@@ -21,8 +21,15 @@ function Actrune:update(dt)
     self.event_scheduler:update(dt)
 end
 
--- Attempts to trigger an event and schedules its runner when successful.
+-- Attempts to trigger an event while respecting its execution mode.
 function Actrune:trigger_event(event, trigger_type, context)
+    if
+        event.execution_mode == "single"
+        and self.event_scheduler:is_event_running(event)
+    then
+        return nil
+    end
+
     local runner = event:trigger(trigger_type, context)
 
     self.event_scheduler:add(runner)

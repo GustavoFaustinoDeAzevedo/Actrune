@@ -3,8 +3,6 @@ local Actrune = require("engine.core.actrune")
 local eventFolder = "engine/events/"
 local Event = require(eventFolder .. "event")
 local EventPage = require(eventFolder .. "event_page")
-local EventContext = require(eventFolder .. "event_context")
-local EventTrigger = require(eventFolder .. "event_trigger")
 local DirectionalAreaTrigger = require("engine.events.triggers.directional_area_trigger")
 
 local commandFolder = "engine/events/commands/"
@@ -26,7 +24,7 @@ local function add_message(message)
     table.insert(messages, message)
 end
 
--- Creates the Actrune runtime and starts the test event.
+-- Creates the Actrune runtime and sets up the test entities and event.
 function love.load()
     runtime = Actrune.new() 
 
@@ -66,34 +64,10 @@ function love.load()
 
     runtime:add_entity(event_entity)
     runtime:add_entity(player_entity)
-
-    local player_shape = player_entity:get_shape("collision")
-    local player_points =
-        player_shape:get_world_points(player_entity.transform)
-
-    print("Player X min:", player_points[1])
-    print("Player X max:", player_points[3])
-    
-    runtime:trigger_events_with_shape(
-        player_entity,
-        "collision",
-        "interaction",
-        "interact"
-    )
-
-    local entities =
-    runtime.world:query_point(
-        200,
-        150,
-        "interaction"
-    )
-
-    for _, entity in ipairs(entities) do
-        print("Found entity: " .. entity.id)
-    end
     
     local event = Event.new({
         id = "test_event",
+        execution_mode = "single",
 
         pages = {
             EventPage.new({
@@ -119,18 +93,7 @@ function love.load()
         }
     })
 
-    local context = EventContext.new({
-        source = event,
-        entity = event_entity,
-        activator = player_entity,
-        world = runtime.world
-    })
-    
-    runtime:trigger_event(
-        event,
-        "interact",
-        context
-    )
+    event_entity:add_event(event)
 
     -- test_entity = Entity.new({
     --     id = "test_entity",
@@ -165,8 +128,7 @@ function love.load()
                 }
             })
         }
-    })
-    
+    })    
 end
 
 -- Updates the Actrune runtime every frame.
@@ -220,4 +182,18 @@ function love.draw()
             )
         end
     end
+end
+
+-- Handles key presses and attempts interaction when the configured key is pressed.
+function love.keypressed(key)
+    if key ~= "e" then
+        return
+    end
+    
+    runtime:trigger_events_with_shape(
+        player_entity,
+        "collision",
+        "interaction",
+        "interact"
+    )
 end
