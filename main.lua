@@ -12,18 +12,18 @@ local WaitCommand = require(commandFolder .. "wait_command")
 local engineFolder = "engine/world/"
 local Entity = require(engineFolder .. "entity")
 
-
-local movementFolder = "engine/world/movement/translation/"
-local ContinuousTranslation = require(movementFolder .. "continuous_translation")
-
 local spatialFolder = "engine/world/spatial/"
 local PolygonShape = require(spatialFolder .. "polygon_shape")
 local SpatialMover = require(spatialFolder .. "spatial_mover")
+
+local translationFolder = "engine/world/movement/translation/"
+local ContinuousTranslation = require(translationFolder .. "continuous_translation")
 
 local directionFolder = "engine/world/movement/direction/"
 local FacingDirection = require( directionFolder .. "facing_direction")
 
 local rotationFolder = "engine/world/movement/rotation/"
+local StepRotation = require(rotationFolder .. "step_rotation")
 local ContinuousRotation = require(rotationFolder .. "continuous_rotation")
 
 local event_entity
@@ -62,7 +62,7 @@ end
 function love.load()
     runtime = Actrune.new() 
     runtime:bind_key("interact", "e")
-    
+
     -- runtime:bind_key("move_up", "w")
     -- runtime:bind_key("move_left", "a")
     -- runtime:bind_key("move_down", "s")
@@ -130,10 +130,17 @@ function love.load()
 
     player_direction = FacingDirection.new({allow_strafe = false})
 
-    player_rotation = ContinuousRotation.new(
+    -- player_rotation = ContinuousRotation.new(
+    -- player_entity.transform,
+    --     {
+    --         speed = math.rad(180)
+    --     }
+    -- )
+
+    player_rotation = StepRotation.new(
     player_entity.transform,
         {
-            speed = math.rad(180)
+            step_angle = math.rad(90)
         }
     )
 
@@ -198,11 +205,19 @@ function love.update(dt)
         move_y = move_y + 1
     end
 
-    if runtime:is_action_down("turn_left") then
+    -- if runtime:is_action_down("turn_left") then
+    --     turn_direction = turn_direction - 1
+    -- end
+
+    -- if runtime:is_action_down("turn_right") then
+    --     turn_direction = turn_direction + 1
+    -- end
+
+    if runtime:is_action_pressed("turn_left") then
         turn_direction = turn_direction - 1
     end
 
-    if runtime:is_action_down("turn_right") then
+    if runtime:is_action_pressed("turn_right") then
         turn_direction = turn_direction + 1
     end
 
