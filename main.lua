@@ -149,31 +149,44 @@ end
 function love.update(dt)
     local speed = 120
 
+    local move_x = 0
+    local move_y = 0
+
     if runtime:is_action_down("move_left") then
-        player_mover:try_move(
-            -speed * dt,
-            0
-        )
+        move_x = move_x - 1
     end
 
     if runtime:is_action_down("move_right") then
-        player_mover:try_move(
-            speed * dt,
-            0
-        )
+        move_x = move_x + 1
     end
 
     if runtime:is_action_down("move_up") then
-        player_mover:try_move(
-            0,
-            -speed * dt
-        )
+        move_y = move_y - 1
     end
 
     if runtime:is_action_down("move_down") then
+        move_y = move_y + 1
+    end
+
+    local length = math.sqrt(
+        move_x * move_x
+        + move_y * move_y
+    )
+
+    if length > 0 then
+        move_x = move_x / length
+        move_y = move_y / length
+
+        local distance = speed * dt
+
+        player_mover:try_move(
+            move_x * distance,
+            0
+        )
+
         player_mover:try_move(
             0,
-            speed * dt
+            move_y * distance
         )
     end
 
