@@ -81,4 +81,9 @@ function Transform:get_forward()
     return math.cos(self.rotation), math.sin(self.rotation)
 end
 
+-- Rotates this transform by the given angle in radians.
+function Transform:rotate(angle)
+    self.rotation = self.rotation + angle
+end
+
 return Transform

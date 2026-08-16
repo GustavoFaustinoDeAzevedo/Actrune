@@ -23,11 +23,15 @@ local SpatialMover = require(spatialFolder .. "spatial_mover")
 local directionFolder = "engine/world/movement/direction/"
 local WorldDirection = require( directionFolder .. "world_direction")
 
+local rotationFolder = "engine/world/movement/rotation/"
+local ContinuousRotation = require(rotationFolder .. "continuous_rotation")
+
 local event_entity
 local player_entity
 local player_mover
 local player_translation
 local player_direction
+local player_rotation
 local runtime
 local messages = {}
 
@@ -62,6 +66,8 @@ function love.load()
     runtime:bind_key("move_left", "a")
     runtime:bind_key("move_down", "s")
     runtime:bind_key("move_right", "d")    
+    runtime:bind_key("turn_left", "left")
+runtime:bind_key("turn_right", "right")
     runtime:bind_spatial_action("interact", {
     activator_shape = "collision",
     target_shape = "interaction",
@@ -116,6 +122,13 @@ function love.load()
 
     player_direction = WorldDirection.new()
 
+    player_rotation = ContinuousRotation.new(
+    player_entity.transform,
+        {
+            speed = math.rad(180)
+        }
+    )
+
     player_mover = SpatialMover.new(
     runtime.world,
     player_entity,
@@ -167,6 +180,21 @@ end
 function love.update(dt)
     local move_x = 0
     local move_y = 0
+
+    local turn_direction = 0
+
+    if runtime:is_action_down("turn_left") then
+        turn_direction = turn_direction - 1
+    end
+
+    if runtime:is_action_down("turn_right") then
+        turn_direction = turn_direction + 1
+    end
+
+    player_rotation:turn(
+        turn_direction,
+        dt
+    )
 
     local direction_x, direction_y =
     player_direction:resolve(
