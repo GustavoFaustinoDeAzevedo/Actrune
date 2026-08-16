@@ -12,6 +12,10 @@ local WaitCommand = require(commandFolder .. "wait_command")
 local engineFolder = "engine/world/"
 local Entity = require(engineFolder .. "entity")
 
+
+local movementFolder = "engine/world/movement/"
+local FreeMovement = require( movementFolder .. "free_movement")
+
 local spatialFolder = "engine/world/spatial/"
 local PolygonShape = require(spatialFolder .. "polygon_shape")
 local SpatialMover = require(spatialFolder .. "spatial_mover")
@@ -19,6 +23,7 @@ local SpatialMover = require(spatialFolder .. "spatial_mover")
 local event_entity
 local player_entity
 local player_mover
+local player_movement
 local runtime
 local messages = {}
 
@@ -113,6 +118,13 @@ function love.load()
             target_shape = "collision"
         }
     )
+
+    player_movement = FreeMovement.new(
+    player_mover,
+        {
+            speed = 120
+        }
+    )
     
     local event = Event.new({
         id = "test_event",
@@ -147,8 +159,6 @@ end
 
 -- Processes player actions and updates the Actrune runtime every frame.
 function love.update(dt)
-    local speed = 120
-
     local move_x = 0
     local move_y = 0
 
@@ -168,27 +178,11 @@ function love.update(dt)
         move_y = move_y + 1
     end
 
-    local length = math.sqrt(
-        move_x * move_x
-        + move_y * move_y
+    player_movement:move(
+        move_x,
+        move_y,
+        dt
     )
-
-    if length > 0 then
-        move_x = move_x / length
-        move_y = move_y / length
-
-        local distance = speed * dt
-
-        player_mover:try_move(
-            move_x * distance,
-            0
-        )
-
-        player_mover:try_move(
-            0,
-            move_y * distance
-        )
-    end
 
     if runtime:is_action_pressed("interact") then
         runtime:trigger_spatial_action(
