@@ -21,7 +21,7 @@ local PolygonShape = require(spatialFolder .. "polygon_shape")
 local SpatialMover = require(spatialFolder .. "spatial_mover")
 
 local directionFolder = "engine/world/movement/direction/"
-local WorldDirection = require( directionFolder .. "world_direction")
+local FacingDirection = require( directionFolder .. "facing_direction")
 
 local rotationFolder = "engine/world/movement/rotation/"
 local ContinuousRotation = require(rotationFolder .. "continuous_rotation")
@@ -62,12 +62,20 @@ end
 function love.load()
     runtime = Actrune.new() 
     runtime:bind_key("interact", "e")
+    
+    -- runtime:bind_key("move_up", "w")
+    -- runtime:bind_key("move_left", "a")
+    -- runtime:bind_key("move_down", "s")
+    -- runtime:bind_key("move_right", "d")    
+    -- runtime:bind_key("turn_left", "left")
+    -- runtime:bind_key("turn_right", "right")
+
+    -- Tank controls test
     runtime:bind_key("move_up", "w")
-    runtime:bind_key("move_left", "a")
     runtime:bind_key("move_down", "s")
-    runtime:bind_key("move_right", "d")    
-    runtime:bind_key("turn_left", "left")
-runtime:bind_key("turn_right", "right")
+    runtime:bind_key("turn_left", "a")
+    runtime:bind_key("turn_right", "d")
+
     runtime:bind_spatial_action("interact", {
     activator_shape = "collision",
     target_shape = "interaction",
@@ -120,7 +128,7 @@ runtime:bind_key("turn_right", "right")
     runtime:add_entity(event_entity)
     runtime:add_entity(player_entity)
 
-    player_direction = WorldDirection.new()
+    player_direction = FacingDirection.new({allow_strafe = false})
 
     player_rotation = ContinuousRotation.new(
     player_entity.transform,
@@ -180,8 +188,15 @@ end
 function love.update(dt)
     local move_x = 0
     local move_y = 0
-
     local turn_direction = 0
+
+    if runtime:is_action_down("move_up") then
+        move_y = move_y - 1
+    end
+
+    if runtime:is_action_down("move_down") then
+        move_y = move_y + 1
+    end
 
     if runtime:is_action_down("turn_left") then
         turn_direction = turn_direction - 1
@@ -197,37 +212,15 @@ function love.update(dt)
     )
 
     local direction_x, direction_y =
-    player_direction:resolve(
-        move_x,
-        move_y,
-        player_entity.transform
-    )
+        player_direction:resolve(
+            move_x,
+            move_y,
+            player_entity.transform
+        )
 
     player_translation:move(
         direction_x,
         direction_y,
-        dt
-    )
-
-    if runtime:is_action_down("move_left") then
-        move_x = move_x - 1
-    end
-
-    if runtime:is_action_down("move_right") then
-        move_x = move_x + 1
-    end
-
-    if runtime:is_action_down("move_up") then
-        move_y = move_y - 1
-    end
-
-    if runtime:is_action_down("move_down") then
-        move_y = move_y + 1
-    end
-
-    player_translation:move(
-        move_x,
-        move_y,
         dt
     )
 
