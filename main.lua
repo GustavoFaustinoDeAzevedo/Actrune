@@ -13,8 +13,8 @@ local engineFolder = "engine/world/"
 local Entity = require(engineFolder .. "entity")
 
 
-local movementFolder = "engine/world/movement/"
-local FreeMovement = require( movementFolder .. "free_movement")
+local movementFolder = "engine/world/movement/translation/"
+local ContinuousTranslation = require(movementFolder .. "continuous_translation")
 
 local spatialFolder = "engine/world/spatial/"
 local PolygonShape = require(spatialFolder .. "polygon_shape")
@@ -23,7 +23,7 @@ local SpatialMover = require(spatialFolder .. "spatial_mover")
 local event_entity
 local player_entity
 local player_mover
-local player_movement
+local player_translation
 local runtime
 local messages = {}
 
@@ -119,8 +119,8 @@ function love.load()
         }
     )
 
-    player_movement = FreeMovement.new(
-    player_mover,
+    player_translation = ContinuousTranslation.new(
+        player_mover,
         {
             speed = 120
         }
@@ -178,7 +178,7 @@ function love.update(dt)
         move_y = move_y + 1
     end
 
-    player_movement:move(
+    player_translation:move(
         move_x,
         move_y,
         dt

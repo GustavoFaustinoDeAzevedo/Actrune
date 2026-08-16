@@ -1,13 +1,13 @@
-local FreeMovement = {}
-FreeMovement.__index = FreeMovement
+local ContinuousTranslation = {}
+ContinuousTranslation.__index = ContinuousTranslation
 
--- Creates a free-movement controller using a spatial mover and movement speed.
-function FreeMovement.new(spatial_mover, options)
+-- Creates a continuous translation component that moves through world space at a fixed speed.
+function ContinuousTranslation.new(spatial_mover, options)
     assert(spatial_mover ~= nil, "spatial mover is required")
 
     options = options or {}
 
-    local self = setmetatable({}, FreeMovement)
+    local self = setmetatable({}, ContinuousTranslation)
 
     self.spatial_mover = spatial_mover
     self.speed = options.speed or 120
@@ -15,8 +15,8 @@ function FreeMovement.new(spatial_mover, options)
     return self
 end
 
--- Moves the entity using a direction vector while preserving constant movement speed.
-function FreeMovement:move(direction_x, direction_y, dt)
+-- Translates the entity continuously along a world-space direction.
+function ContinuousTranslation:move(direction_x, direction_y, dt)
     local length = math.sqrt(
         direction_x * direction_x
         + direction_y * direction_y
@@ -42,4 +42,4 @@ function FreeMovement:move(direction_x, direction_y, dt)
     )
 end
 
-return FreeMovement
+return ContinuousTranslation
