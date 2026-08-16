@@ -9,11 +9,16 @@ local commandFolder = "engine/events/commands/"
 local CallCommand = require(commandFolder .. "call_command")
 local WaitCommand = require(commandFolder .. "wait_command")
 
-local Entity = require("engine.world.entity")
-local PolygonShape = require("engine.world.spatial.polygon_shape")
+local engineFolder = "engine/world/"
+local Entity = require(engineFolder .. "entity")
+
+local spatialFolder = "engine/world/spatial/"
+local PolygonShape = require(spatialFolder .. "polygon_shape")
+local SpatialMover = require(spatialFolder .. "spatial_mover")
 
 local event_entity
 local player_entity
+local player_mover
 local runtime
 local messages = {}
 
@@ -44,6 +49,10 @@ end
 function love.load()
     runtime = Actrune.new() 
     runtime:bind_key("interact", "e")
+    runtime:bind_key("move_up", "w")
+    runtime:bind_key("move_left", "a")
+    runtime:bind_key("move_down", "s")
+    runtime:bind_key("move_right", "d")    
     runtime:bind_spatial_action("interact", {
     activator_shape = "collision",
     target_shape = "interaction",
@@ -62,6 +71,15 @@ function love.load()
                     { x = 50, y = -40 },
                     { x = 50, y = 40 },
                     { x = -50, y = 40 }
+                }
+            }),
+
+            collision = PolygonShape.new({
+                points = {
+                    { x = -20, y = -40 },
+                    { x = 20, y = -40 },
+                    { x = 20, y = 40 },
+                    { x = -20, y = 40 }
                 }
             })
         }
@@ -86,6 +104,15 @@ function love.load()
 
     runtime:add_entity(event_entity)
     runtime:add_entity(player_entity)
+
+    player_mover = SpatialMover.new(
+    runtime.world,
+    player_entity,
+        {
+            source_shape = "collision",
+            target_shape = "collision"
+        }
+    )
     
     local event = Event.new({
         id = "test_event",
@@ -118,8 +145,38 @@ function love.load()
     event_entity:add_event(event) 
 end
 
--- Processes game actions and updates the Actrune runtime every frame.
+-- Processes player actions and updates the Actrune runtime every frame.
 function love.update(dt)
+    local speed = 120
+
+    if runtime:is_action_down("move_left") then
+        player_mover:try_move(
+            -speed * dt,
+            0
+        )
+    end
+
+    if runtime:is_action_down("move_right") then
+        player_mover:try_move(
+            speed * dt,
+            0
+        )
+    end
+
+    if runtime:is_action_down("move_up") then
+        player_mover:try_move(
+            0,
+            -speed * dt
+        )
+    end
+
+    if runtime:is_action_down("move_down") then
+        player_mover:try_move(
+            0,
+            speed * dt
+        )
+    end
+
     if runtime:is_action_pressed("interact") then
         runtime:trigger_spatial_action(
             "interact",
@@ -143,9 +200,11 @@ function love.draw()
         20,
         100
     ) 
-
+    
     draw_shape(event_entity, "interaction")
     draw_shape(player_entity, "collision")
+    draw_shape(event_entity, "collision")
+    
 end
 
 -- Forwards keyboard press events from LÖVE to the Actrune runtime.
