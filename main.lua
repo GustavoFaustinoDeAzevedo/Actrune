@@ -20,10 +20,14 @@ local spatialFolder = "engine/world/spatial/"
 local PolygonShape = require(spatialFolder .. "polygon_shape")
 local SpatialMover = require(spatialFolder .. "spatial_mover")
 
+local directionFolder = "engine/world/movement/direction/"
+local WorldDirection = require( directionFolder .. "world_direction")
+
 local event_entity
 local player_entity
 local player_mover
 local player_translation
+local player_direction
 local runtime
 local messages = {}
 
@@ -110,6 +114,8 @@ function love.load()
     runtime:add_entity(event_entity)
     runtime:add_entity(player_entity)
 
+    player_direction = WorldDirection.new()
+
     player_mover = SpatialMover.new(
     runtime.world,
     player_entity,
@@ -161,6 +167,19 @@ end
 function love.update(dt)
     local move_x = 0
     local move_y = 0
+
+    local direction_x, direction_y =
+    player_direction:resolve(
+        move_x,
+        move_y,
+        player_entity.transform
+    )
+
+    player_translation:move(
+        direction_x,
+        direction_y,
+        dt
+    )
 
     if runtime:is_action_down("move_left") then
         move_x = move_x - 1
