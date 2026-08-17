@@ -1,7 +1,7 @@
 local Translation = {}
 Translation.__index = Translation
 
--- Creates a translation component that delegates spatial movement to a spatial mover.
+-- Creates a translation component that delegates displacement to a spatial mover.
 function Translation.new(spatial_mover)
     assert(spatial_mover ~= nil, "spatial mover is required")
 
@@ -12,28 +12,20 @@ function Translation.new(spatial_mover)
     return self
 end
 
--- Translates the entity along a direction by the given distance.
-function Translation:move(direction_x, direction_y, distance)
-    local length = math.sqrt(
-        direction_x * direction_x
-        + direction_y * direction_y
-    )
-
-    if length == 0 or distance == 0 then
+-- Translates the entity by the given world-space displacement.
+function Translation:move(dx, dy)
+    if dx == 0 and dy == 0 then
         return
     end
 
-    direction_x = direction_x / length
-    direction_y = direction_y / length
-
     self.spatial_mover:try_move(
-        direction_x * distance,
+        dx,
         0
     )
 
     self.spatial_mover:try_move(
         0,
-        direction_y * distance
+        dy
     )
 end
 

@@ -44,4 +44,9 @@ function Velocity:clear()
   self.y = 0
 end
 
+-- Calculates the displacement produced by the current velocity over elapsed time.
+function Velocity:get_displacement(dt)
+  return self.x * dt, self.y * dt
+end
+
 return Velocity

@@ -47,7 +47,6 @@ local player_mover
 local player_translation
 local player_direction
 local player_rotation
-local player_movement_amount
 local player_rotation_amount
 local player_turn_axis
 local player_move_input
@@ -88,13 +87,13 @@ function love.load()
         x_axis = ActionAxis.new({
             negative_action = "move_left",
             positive_action = "move_right",
-            activation = ActionActivation.new("pressed")
+            activation = ActionActivation.new("down")
         }),
 
         y_axis = ActionAxis.new({
             negative_action = "move_up",
             positive_action = "move_down",
-            activation = ActionActivation.new("pressed")
+            activation = ActionActivation.new("down")
         })
     })
 
@@ -172,8 +171,6 @@ function love.load()
     runtime:add_entity(event_entity)
     runtime:add_entity(player_entity)
 
-    player_movement_amount = Value.new(32)
-
     player_rotation_amount = Value.new(math.rad(90))
 
     player_direction = FacingDirection.new()
@@ -228,9 +225,25 @@ end
 
 -- Processes player actions and updates the Actrune runtime every frame.
 function love.update(dt)
-    local move_x, move_y = player_move_input:resolve(runtime)
+    local move_x, move_y =
+        player_move_input:resolve(runtime)
 
-    local turn_direction = player_turn_axis:resolve(runtime)
+    local turn_direction =
+        player_turn_axis:resolve(runtime)
+
+    local value_context = {
+        dt = dt
+    }
+
+    local rotation_angle =
+        turn_direction
+        * player_rotation_amount:resolve(
+            value_context
+        )
+
+    player_rotation:turn(
+        rotation_angle
+    )
 
     local direction_x, direction_y =
         player_direction:resolve(
@@ -246,44 +259,12 @@ function love.update(dt)
         direction_y * movement_speed
     )
 
-    local value_context = {
-        dt = dt
-    }
-
-    local velocity_x, velocity_y =
-        player_velocity:get()
-
-    local speed =
-        player_velocity:get_speed()
-
-    local movement_distance =
-        speed * dt
+    local movement_x, movement_y =
+        player_velocity:get_displacement(dt)
 
     player_translation:move(
-        velocity_x,
-        velocity_y,
-        movement_distance
-    )
-
-    -- local movement_distance =
-    --     player_movement_amount:resolve(
-    --         value_context
-    --     )
-
-    local rotation_angle =
-        turn_direction
-        * player_rotation_amount:resolve(
-            value_context
-        )
-
-    player_rotation:turn(
-        rotation_angle
-    )
-
-    player_translation:move(
-        direction_x,
-        direction_y,
-        movement_distance
+        movement_x,
+        movement_y
     )
 
     if runtime:is_action_pressed("interact") then
