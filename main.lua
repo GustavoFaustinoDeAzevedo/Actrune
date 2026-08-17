@@ -47,6 +47,7 @@ local player_movement_amount
 local player_rotation_amount
 local player_move_axis
 local player_turn_axis
+local player_strafe_axis
 local runtime
 local messages = {}
 
@@ -76,7 +77,7 @@ end
 -- Creates the Actrune runtime and sets up the test entities and event.
 function love.load()
     runtime = Actrune.new()
-    runtime:bind_key("interact", "e")
+    runtime:bind_key("interact", "space")
 
     player_move_axis = ActionAxis.new({
         negative_action = "move_up",
@@ -87,6 +88,12 @@ function love.load()
     player_turn_axis = ActionAxis.new({
         negative_action = "turn_left",
         positive_action = "turn_right",
+        activation = ActionActivation.new("pressed")
+    })
+
+    player_strafe_axis = ActionAxis.new({
+        negative_action = "move_left",
+        positive_action = "move_right",
         activation = ActionActivation.new("pressed")
     })
 
@@ -102,6 +109,9 @@ function love.load()
     runtime:bind_key("move_down", "s")
     runtime:bind_key("turn_left", "a")
     runtime:bind_key("turn_right", "d")
+    runtime:bind_key("move_left", "q")
+    runtime:bind_key("move_right", "e")
+
 
     runtime:bind_spatial_action("interact", {
         activator_shape = "collision",
@@ -159,7 +169,7 @@ function love.load()
 
     player_rotation_amount = Value.new(math.rad(90))
 
-    player_direction = FacingDirection.new({ allow_strafe = false })
+    player_direction = FacingDirection.new({ allow_strafe = true })
 
     player_rotation = Rotation.new(
         player_entity.transform
@@ -211,7 +221,8 @@ end
 
 -- Processes player actions and updates the Actrune runtime every frame.
 function love.update(dt)
-    local move_x = 0
+    local move_x = player_strafe_axis:resolve(runtime)
+
     local move_y = player_move_axis:resolve(runtime)
 
     local turn_direction = player_turn_axis:resolve(runtime)
