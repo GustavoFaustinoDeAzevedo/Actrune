@@ -2,8 +2,12 @@ local love = require "love"
 
 local coreFolder = "engine/core/"
 local Actrune = require(coreFolder .. "actrune")
-local RateValue = require(coreFolder .. "values.rate_value")
 local ActionActivation = require(coreFolder .. "actions.actions_activation")
+
+local valueFolder = "engine/core/values/"
+local Value = require(coreFolder .. "values.value")
+local DeltaTimeValue = require(valueFolder .. "delta_time_value")
+local ProductValue = require(valueFolder .. "product_value")
 
 local eventFolder = "engine/events/"
 local Event = require(eventFolder .. "event")
@@ -36,8 +40,8 @@ local player_mover
 local player_translation
 local player_direction
 local player_rotation
-local player_movement_rate
-local player_rotation_rate
+local player_movement_amount
+local player_rotation_amount
 local movement_activation
 local rotation_activation
 local runtime
@@ -139,11 +143,8 @@ function love.load()
     runtime:add_entity(event_entity)
     runtime:add_entity(player_entity)
 
-    player_movement_rate = RateValue.new(120)
-
-    player_rotation_rate = RateValue.new(
-        math.rad(180)
-    )
+    player_movement_amount = ProductValue.new(Value.new(120), DeltaTimeValue.new())
+    player_rotation_amount = ProductValue.new(Value.new(math.rad(180)), DeltaTimeValue.new())
 
     player_direction = FacingDirection.new({ allow_strafe = false })
 
@@ -200,6 +201,8 @@ function love.update(dt)
     local move_x = 0
     local move_y = 0
     local turn_direction = 0
+    local value_context = { dt = dt }
+
 
     if movement_activation:is_active(runtime, "move_up") then
         move_y = move_y - 1
@@ -217,7 +220,7 @@ function love.update(dt)
         turn_direction = turn_direction + 1
     end
 
-    local rotation_angle = turn_direction * player_rotation_rate:resolve(dt)
+    local rotation_angle = turn_direction * player_rotation_amount:resolve(value_context)
     player_rotation:turn(rotation_angle)
 
     local direction_x, direction_y =
@@ -227,7 +230,7 @@ function love.update(dt)
             player_entity.transform
         )
 
-    local movement_distance = player_movement_rate:resolve(dt)
+    local movement_distance = player_movement_amount:resolve(value_context)
 
     player_translation:move(
         direction_x,
