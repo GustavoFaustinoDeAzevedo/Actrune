@@ -2,7 +2,10 @@ local love = require "love"
 
 local coreFolder = "engine/core/"
 local Actrune = require(coreFolder .. "actrune")
-local ActionActivation = require(coreFolder .. "actions.actions_activation")
+
+local actionFolder = "engine/core/actions/"
+local ActionAxis = require(actionFolder .. "action_axis")
+local ActionActivation = require(actionFolder .. "actions_activation")
 
 local valueFolder = "engine/core/values/"
 local Value = require(coreFolder .. "values.value")
@@ -42,8 +45,8 @@ local player_direction
 local player_rotation
 local player_movement_amount
 local player_rotation_amount
-local movement_activation
-local rotation_activation
+local player_move_axis
+local player_turn_axis
 local runtime
 local messages = {}
 
@@ -75,8 +78,17 @@ function love.load()
     runtime = Actrune.new()
     runtime:bind_key("interact", "e")
 
-    movement_activation = ActionActivation.new("pressed")
-    rotation_activation = ActionActivation.new("pressed")
+    player_move_axis = ActionAxis.new({
+        negative_action = "move_up",
+        positive_action = "move_down",
+        activation = ActionActivation.new("pressed")
+    })
+
+    player_turn_axis = ActionAxis.new({
+        negative_action = "turn_left",
+        positive_action = "turn_right",
+        activation = ActionActivation.new("pressed")
+    })
 
     -- runtime:bind_key("move_up", "w")
     -- runtime:bind_key("move_left", "a")
@@ -200,24 +212,9 @@ end
 -- Processes player actions and updates the Actrune runtime every frame.
 function love.update(dt)
     local move_x = 0
-    local move_y = 0
-    local turn_direction = 0
+    local move_y = player_move_axis:resolve(runtime)
 
-    if movement_activation:is_active(runtime, "move_up") then
-        move_y = move_y - 1
-    end
-
-    if movement_activation:is_active(runtime, "move_down") then
-        move_y = move_y + 1
-    end
-
-    if rotation_activation:is_active(runtime, "turn_left") then
-        turn_direction = turn_direction - 1
-    end
-
-    if rotation_activation:is_active(runtime, "turn_right") then
-        turn_direction = turn_direction + 1
-    end
+    local turn_direction = player_turn_axis:resolve(runtime)
 
     local direction_x, direction_y =
         player_direction:resolve(
@@ -226,18 +223,36 @@ function love.update(dt)
             player_entity.transform
         )
 
-    local value_context = { dt = dt }
+    local value_context = {
+        dt = dt
+    }
 
-    local movement_distance = player_movement_amount:resolve(value_context)
+    local movement_distance =
+        player_movement_amount:resolve(
+            value_context
+        )
 
-    local rotation_angle = turn_direction * player_rotation_amount:resolve(value_context)
+    local rotation_angle =
+        turn_direction
+        * player_rotation_amount:resolve(
+            value_context
+        )
 
-    player_rotation:turn(rotation_angle)
+    player_rotation:turn(
+        rotation_angle
+    )
 
-    player_translation:move(direction_x, direction_y, movement_distance)
+    player_translation:move(
+        direction_x,
+        direction_y,
+        movement_distance
+    )
 
     if runtime:is_action_pressed("interact") then
-        runtime:trigger_spatial_action("interact", player_entity)
+        runtime:trigger_spatial_action(
+            "interact",
+            player_entity
+        )
     end
 
     runtime:update(dt)
