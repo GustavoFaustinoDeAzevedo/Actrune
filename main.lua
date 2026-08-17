@@ -25,6 +25,9 @@ local WaitCommand = require(commandFolder .. "wait_command")
 local engineFolder = "engine/world/"
 local Entity = require(engineFolder .. "entity")
 
+local movementFolder = "engine/world/movement/"
+local Velocity = require(movementFolder .. "velocity")
+
 local spatialFolder = "engine/world/spatial/"
 local PolygonShape = require(spatialFolder .. "polygon_shape")
 local SpatialMover = require(spatialFolder .. "spatial_mover")
@@ -48,6 +51,7 @@ local player_movement_amount
 local player_rotation_amount
 local player_turn_axis
 local player_move_input
+local player_velocity
 local runtime
 local messages = {}
 
@@ -79,6 +83,7 @@ function love.load()
     runtime = Actrune.new()
     runtime:bind_key("interact", "space")
 
+    player_velocity = Velocity.new()
     player_move_input = ActionVector.new({
         x_axis = ActionAxis.new({
             negative_action = "move_left",
@@ -171,7 +176,7 @@ function love.load()
 
     player_rotation_amount = Value.new(math.rad(90))
 
-    player_direction = FacingDirection.new({ allow_strafe = true })
+    player_direction = FacingDirection.new()
 
     player_rotation = Rotation.new(
         player_entity.transform
@@ -234,14 +239,36 @@ function love.update(dt)
             player_entity.transform
         )
 
+    local movement_speed = 120
+
+    player_velocity:set(
+        direction_x * movement_speed,
+        direction_y * movement_speed
+    )
+
     local value_context = {
         dt = dt
     }
 
+    local velocity_x, velocity_y =
+        player_velocity:get()
+
+    local speed =
+        player_velocity:get_speed()
+
     local movement_distance =
-        player_movement_amount:resolve(
-            value_context
-        )
+        speed * dt
+
+    player_translation:move(
+        velocity_x,
+        velocity_y,
+        movement_distance
+    )
+
+    -- local movement_distance =
+    --     player_movement_amount:resolve(
+    --         value_context
+    --     )
 
     local rotation_angle =
         turn_direction
