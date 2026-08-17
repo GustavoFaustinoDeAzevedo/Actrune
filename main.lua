@@ -1,9 +1,11 @@
-local Actrune = require("engine.core.actrune")
+local coreFolder = "engine/core/"
+local Actrune = require( coreFolder .. "actrune")
+local RateValue = require(coreFolder .. "values.rate_value")
 
 local eventFolder = "engine/events/"
 local Event = require(eventFolder .. "event")
 local EventPage = require(eventFolder .. "event_page")
-local DirectionalAreaTrigger = require("engine.events.triggers.directional_area_trigger")
+local DirectionalAreaTrigger = require(eventFolder .. "triggers.directional_area_trigger")
 
 local commandFolder = "engine/events/commands/"
 local CallCommand = require(commandFolder .. "call_command")
@@ -31,6 +33,8 @@ local player_mover
 local player_translation
 local player_direction
 local player_rotation
+local player_movement_rate
+local player_rotation_rate
 local runtime
 local messages = {}
 
@@ -127,6 +131,12 @@ function love.load()
     runtime:add_entity(event_entity)
     runtime:add_entity(player_entity)
 
+    player_movement_rate = RateValue.new(120)
+
+    player_rotation_rate = RateValue.new(
+        math.rad(180)
+    )
+
     player_direction = FacingDirection.new({allow_strafe = false})
 
     player_rotation = Rotation.new(
@@ -199,10 +209,7 @@ function love.update(dt)
         turn_direction = turn_direction + 1
     end
 
-    local rotation_speed = math.rad(180)
-    local rotation_angle =
-        turn_direction * rotation_speed * dt
-
+    local rotation_angle = turn_direction * player_rotation_rate:resolve(dt)
     player_rotation:turn(rotation_angle)
 
     local direction_x, direction_y =
@@ -212,9 +219,7 @@ function love.update(dt)
             player_entity.transform
         )
 
-    local movement_speed = 120
-    local movement_distance =
-        movement_speed * dt
+    local movement_distance = player_movement_rate:resolve(dt)
 
     player_translation:move(
         direction_x,
