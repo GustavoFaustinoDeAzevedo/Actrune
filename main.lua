@@ -1,6 +1,9 @@
+local love = require "love"
+
 local coreFolder = "engine/core/"
-local Actrune = require( coreFolder .. "actrune")
+local Actrune = require(coreFolder .. "actrune")
 local RateValue = require(coreFolder .. "values.rate_value")
+local ActionActivation = require(coreFolder .. "actions.actions_activation")
 
 local eventFolder = "engine/events/"
 local Event = require(eventFolder .. "event")
@@ -22,7 +25,7 @@ local translationFolder = "engine/world/movement/translation/"
 local Translation = require(translationFolder .. "translation")
 
 local directionFolder = "engine/world/movement/direction/"
-local FacingDirection = require( directionFolder .. "facing_direction")
+local FacingDirection = require(directionFolder .. "facing_direction")
 
 local rotationFolder = "engine/world/movement/rotation/"
 local Rotation = require(rotationFolder .. "rotation")
@@ -35,6 +38,8 @@ local player_direction
 local player_rotation
 local player_movement_rate
 local player_rotation_rate
+local movement_activation
+local rotation_activation
 local runtime
 local messages = {}
 
@@ -63,13 +68,16 @@ end
 
 -- Creates the Actrune runtime and sets up the test entities and event.
 function love.load()
-    runtime = Actrune.new() 
+    runtime = Actrune.new()
     runtime:bind_key("interact", "e")
+
+    movement_activation = ActionActivation.new("down")
+    rotation_activation = ActionActivation.new("down")
 
     -- runtime:bind_key("move_up", "w")
     -- runtime:bind_key("move_left", "a")
     -- runtime:bind_key("move_down", "s")
-    -- runtime:bind_key("move_right", "d")    
+    -- runtime:bind_key("move_right", "d")
     -- runtime:bind_key("turn_left", "left")
     -- runtime:bind_key("turn_right", "right")
 
@@ -80,10 +88,10 @@ function love.load()
     runtime:bind_key("turn_right", "d")
 
     runtime:bind_spatial_action("interact", {
-    activator_shape = "collision",
-    target_shape = "interaction",
-    trigger = "interact"
-})
+        activator_shape = "collision",
+        target_shape = "interaction",
+        trigger = "interact"
+    })
 
     event_entity = Entity.new({
         id = "door",
@@ -94,8 +102,8 @@ function love.load()
             interaction = PolygonShape.new({
                 points = {
                     { x = -50, y = -40 },
-                    { x = 50, y = -40 },
-                    { x = 50, y = 40 },
+                    { x = 50,  y = -40 },
+                    { x = 50,  y = 40 },
                     { x = -50, y = 40 }
                 }
             }),
@@ -103,8 +111,8 @@ function love.load()
             collision = PolygonShape.new({
                 points = {
                     { x = -20, y = -40 },
-                    { x = 20, y = -40 },
-                    { x = 20, y = 40 },
+                    { x = 20,  y = -40 },
+                    { x = 20,  y = 40 },
                     { x = -20, y = 40 }
                 }
             })
@@ -120,8 +128,8 @@ function love.load()
             collision = PolygonShape.new({
                 points = {
                     { x = -15, y = -15 },
-                    { x = 15, y = -15 },
-                    { x = 15, y = 15 },
+                    { x = 15,  y = -15 },
+                    { x = 15,  y = 15 },
                     { x = -15, y = 15 }
                 }
             })
@@ -137,15 +145,15 @@ function love.load()
         math.rad(180)
     )
 
-    player_direction = FacingDirection.new({allow_strafe = false})
+    player_direction = FacingDirection.new({ allow_strafe = false })
 
     player_rotation = Rotation.new(
         player_entity.transform
     )
 
     player_mover = SpatialMover.new(
-    runtime.world,
-    player_entity,
+        runtime.world,
+        player_entity,
         {
             source_shape = "collision",
             target_shape = "collision"
@@ -155,7 +163,7 @@ function love.load()
     player_translation = Translation.new(
         player_mover
     )
-    
+
     local event = Event.new({
         id = "test_event",
         execution_mode = "single",
@@ -184,7 +192,7 @@ function love.load()
         }
     })
 
-    event_entity:add_event(event) 
+    event_entity:add_event(event)
 end
 
 -- Processes player actions and updates the Actrune runtime every frame.
@@ -193,19 +201,19 @@ function love.update(dt)
     local move_y = 0
     local turn_direction = 0
 
-    if runtime:is_action_down("move_up") then
+    if movement_activation:is_active(runtime, "move_up") then
         move_y = move_y - 1
     end
 
-    if runtime:is_action_down("move_down") then
+    if movement_activation:is_active(runtime, "move_down") then
         move_y = move_y + 1
     end
 
-    if runtime:is_action_down("turn_left") then
+    if rotation_activation:is_active(runtime, "turn_left") then
         turn_direction = turn_direction - 1
     end
 
-    if runtime:is_action_down("turn_right") then
+    if rotation_activation:is_active(runtime, "turn_right") then
         turn_direction = turn_direction + 1
     end
 
@@ -249,12 +257,11 @@ function love.draw()
         "Active events: " .. runtime:get_active_event_count(),
         20,
         100
-    ) 
-    
+    )
+
     draw_shape(event_entity, "interaction")
     draw_shape(player_entity, "collision")
     draw_shape(event_entity, "collision")
-    
 end
 
 -- Forwards keyboard press events from LÖVE to the Actrune runtime.
