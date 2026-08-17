@@ -75,8 +75,8 @@ function love.load()
     runtime = Actrune.new()
     runtime:bind_key("interact", "e")
 
-    movement_activation = ActionActivation.new("down")
-    rotation_activation = ActionActivation.new("down")
+    movement_activation = ActionActivation.new("pressed")
+    rotation_activation = ActionActivation.new("pressed")
 
     -- runtime:bind_key("move_up", "w")
     -- runtime:bind_key("move_left", "a")
@@ -143,8 +143,9 @@ function love.load()
     runtime:add_entity(event_entity)
     runtime:add_entity(player_entity)
 
-    player_movement_amount = ProductValue.new(Value.new(120), DeltaTimeValue.new())
-    player_rotation_amount = ProductValue.new(Value.new(math.rad(180)), DeltaTimeValue.new())
+    player_movement_amount = Value.new(32)
+
+    player_rotation_amount = Value.new(math.rad(90))
 
     player_direction = FacingDirection.new({ allow_strafe = false })
 
@@ -201,8 +202,6 @@ function love.update(dt)
     local move_x = 0
     local move_y = 0
     local turn_direction = 0
-    local value_context = { dt = dt }
-
 
     if movement_activation:is_active(runtime, "move_up") then
         move_y = move_y - 1
@@ -220,9 +219,6 @@ function love.update(dt)
         turn_direction = turn_direction + 1
     end
 
-    local rotation_angle = turn_direction * player_rotation_amount:resolve(value_context)
-    player_rotation:turn(rotation_angle)
-
     local direction_x, direction_y =
         player_direction:resolve(
             move_x,
@@ -230,19 +226,18 @@ function love.update(dt)
             player_entity.transform
         )
 
+    local value_context = { dt = dt }
+
     local movement_distance = player_movement_amount:resolve(value_context)
 
-    player_translation:move(
-        direction_x,
-        direction_y,
-        movement_distance
-    )
+    local rotation_angle = turn_direction * player_rotation_amount:resolve(value_context)
+
+    player_rotation:turn(rotation_angle)
+
+    player_translation:move(direction_x, direction_y, movement_distance)
 
     if runtime:is_action_pressed("interact") then
-        runtime:trigger_spatial_action(
-            "interact",
-            player_entity
-        )
+        runtime:trigger_spatial_action("interact", player_entity)
     end
 
     runtime:update(dt)
