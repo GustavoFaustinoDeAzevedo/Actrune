@@ -112,11 +112,11 @@ function love.load()
 
     -- Tank controls test
     runtime:bind_key("move_up", "w")
+    runtime:bind_key("move_left", "a")
     runtime:bind_key("move_down", "s")
-    runtime:bind_key("turn_left", "a")
-    runtime:bind_key("turn_right", "d")
-    runtime:bind_key("move_left", "q")
-    runtime:bind_key("move_right", "e")
+    runtime:bind_key("move_right", "d")
+    runtime:bind_key("turn_left", "q")
+    runtime:bind_key("turn_right", "e")
 
 
     runtime:bind_spatial_action("interact", {
@@ -155,7 +155,7 @@ function love.load()
         id = "player",
         x = 260,
         y = 150,
-        rotation = math.rad(180),
+        rotation = math.rad(315),
         shapes = {
             collision = PolygonShape.new({
                 points = {

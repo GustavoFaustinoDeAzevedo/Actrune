@@ -1,6 +1,8 @@
 local SpatialMover = {}
 SpatialMover.__index = SpatialMover
 
+local MotionResult = require("engine.world.spatial.motion_result")
+
 -- Creates a spatial mover that moves an entity while checking a named collision shape.
 function SpatialMover.new(world, entity, options)
     assert(world ~= nil, "world is required")
@@ -25,38 +27,62 @@ function SpatialMover.new(world, entity, options)
     return self
 end
 
--- Attempts to move the entity and restores its previous position when blocked.
+-- Attempts a spatial displacement and returns information about the resulting motion.
 function SpatialMover:try_move(dx, dy)
+    local result =
+        MotionResult.new(dx, dy)
+
     local source_shape =
-        self.entity:get_shape(self.source_shape_name)
+        self.entity:get_shape(
+            self.source_shape_name
+        )
 
     if source_shape == nil then
-        return false, nil
+        return result
     end
 
     local previous_x, previous_y =
         self.entity:get_position()
 
-    self.entity.transform:translate(dx, dy)
-
-    local collisions = self.world:query_shape(
-        source_shape,
-        self.entity.transform,
-        self.target_shape_name
+    self.entity.transform:translate(
+        dx,
+        dy
     )
 
-    for _, other in ipairs(collisions) do
-        if other ~= self.entity then
-            self.entity:set_position(
-                previous_x,
-                previous_y
-            )
+    local collisions =
+        self.world:query_shape(
+            source_shape,
+            self.entity.transform,
+            self.target_shape_name
+        )
 
-            return false, other
+    local blocked = false
+
+    for _, other_entity in ipairs(collisions) do
+        if other_entity ~= self.entity then
+            blocked = true
+
+            result:add_collision(
+                other_entity
+            )
         end
     end
 
-    return true, nil
+    if blocked then
+        self.entity:set_position(
+            previous_x,
+            previous_y
+        )
+
+        return result
+    end
+
+    result:add_applied(
+        dx,
+        dy
+    )
+
+    return result
 end
 
 return SpatialMover
