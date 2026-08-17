@@ -6,6 +6,7 @@ local Actrune = require(coreFolder .. "actrune")
 local actionFolder = "engine/core/actions/"
 local ActionAxis = require(actionFolder .. "action_axis")
 local ActionActivation = require(actionFolder .. "actions_activation")
+local ActionVector = require(actionFolder .. "action_vector")
 
 local valueFolder = "engine/core/values/"
 local Value = require(coreFolder .. "values.value")
@@ -45,9 +46,8 @@ local player_direction
 local player_rotation
 local player_movement_amount
 local player_rotation_amount
-local player_move_axis
 local player_turn_axis
-local player_strafe_axis
+local player_move_input
 local runtime
 local messages = {}
 
@@ -79,21 +79,23 @@ function love.load()
     runtime = Actrune.new()
     runtime:bind_key("interact", "space")
 
-    player_move_axis = ActionAxis.new({
-        negative_action = "move_up",
-        positive_action = "move_down",
-        activation = ActionActivation.new("pressed")
+    player_move_input = ActionVector.new({
+        x_axis = ActionAxis.new({
+            negative_action = "move_left",
+            positive_action = "move_right",
+            activation = ActionActivation.new("pressed")
+        }),
+
+        y_axis = ActionAxis.new({
+            negative_action = "move_up",
+            positive_action = "move_down",
+            activation = ActionActivation.new("pressed")
+        })
     })
 
     player_turn_axis = ActionAxis.new({
         negative_action = "turn_left",
         positive_action = "turn_right",
-        activation = ActionActivation.new("pressed")
-    })
-
-    player_strafe_axis = ActionAxis.new({
-        negative_action = "move_left",
-        positive_action = "move_right",
         activation = ActionActivation.new("pressed")
     })
 
@@ -221,9 +223,7 @@ end
 
 -- Processes player actions and updates the Actrune runtime every frame.
 function love.update(dt)
-    local move_x = player_strafe_axis:resolve(runtime)
-
-    local move_y = player_move_axis:resolve(runtime)
+    local move_x, move_y = player_move_input:resolve(runtime)
 
     local turn_direction = player_turn_axis:resolve(runtime)
 
