@@ -114,8 +114,11 @@ function SpatialMover:try_move(dx, dy)
                 hit.fraction
                 - collision_fraction
             ) <= MOTION_EPSILON then
-            result:add_collision(
-                hit.entity
+            result:add_contact(
+                hit.entity,
+                hit.normal_x,
+                hit.normal_y,
+                hit.fraction
             )
         end
     end
