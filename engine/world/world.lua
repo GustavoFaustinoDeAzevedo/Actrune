@@ -83,4 +83,57 @@ function World:query_shape(shape, transform, shape_name)
     return results
 end
 
+-- Finds entities and contact information intersected during a swept shape movement.
+function World:sweep_shape(
+    shape,
+    transform,
+    dx,
+    dy,
+    shape_name,
+    ignored_entity
+)
+    local hits = {}
+
+    for _, entity in pairs(self.entities) do
+        if entity ~= ignored_entity then
+            local target_shape =
+                entity:get_shape(shape_name)
+
+            if target_shape ~= nil then
+                local hit =
+                    SpatialQuery.sweep_polygons(
+                        shape,
+                        transform,
+                        dx,
+                        dy,
+                        target_shape,
+                        entity.transform
+                    )
+
+                if hit ~= nil then
+                    table.insert(
+                        hits,
+                        {
+                            entity = entity,
+                            fraction = hit.fraction,
+                            normal_x = hit.normal_x,
+                            normal_y = hit.normal_y
+                        }
+                    )
+                end
+            end
+        end
+    end
+
+    table.sort(
+        hits,
+        function(left, right)
+            return left.fraction
+                < right.fraction
+        end
+    )
+
+    return hits
+end
+
 return World

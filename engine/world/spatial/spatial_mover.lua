@@ -1,36 +1,40 @@
+local MotionResult =
+    require("engine.world.spatial.motion_result")
+
 local SpatialMover = {}
 SpatialMover.__index = SpatialMover
 
-local MotionResult = require("engine.world.spatial.motion_result")
+local MOTION_EPSILON = 0.00001
 
--- Creates a spatial mover that moves an entity while checking a named collision shape.
+-- Creates a spatial mover for an entity and its collision shapes.
 function SpatialMover.new(world, entity, options)
     assert(world ~= nil, "world is required")
     assert(entity ~= nil, "entity is required")
-    assert(type(options) == "table", "options must be a table")
-    assert(
-        type(options.source_shape) == "string",
-        "source shape must be a string"
-    )
-    assert(
-        type(options.target_shape) == "string",
-        "target shape must be a string"
-    )
+
+    options = options or {}
 
     local self = setmetatable({}, SpatialMover)
 
     self.world = world
     self.entity = entity
-    self.source_shape_name = options.source_shape
-    self.target_shape_name = options.target_shape
+
+    self.source_shape_name =
+        options.source_shape
+
+    self.target_shape_name =
+        options.target_shape
 
     return self
 end
 
--- Attempts a spatial displacement and returns information about the resulting motion.
+-- Attempts a displacement and moves up to the first spatial collision.
 function SpatialMover:try_move(dx, dy)
     local result =
         MotionResult.new(dx, dy)
+
+    if dx == 0 and dy == 0 then
+        return result
+    end
 
     local source_shape =
         self.entity:get_shape(
@@ -41,46 +45,80 @@ function SpatialMover:try_move(dx, dy)
         return result
     end
 
-    local previous_x, previous_y =
-        self.entity:get_position()
-
-    self.entity.transform:translate(
-        dx,
-        dy
-    )
-
-    local collisions =
-        self.world:query_shape(
+    local hits =
+        self.world:sweep_shape(
             source_shape,
             self.entity.transform,
-            self.target_shape_name
+            dx,
+            dy,
+            self.target_shape_name,
+            self.entity
         )
 
-    local blocked = false
+    if #hits == 0 then
+        self.entity.transform:translate(
+            dx,
+            dy
+        )
 
-    for _, other_entity in ipairs(collisions) do
-        if other_entity ~= self.entity then
-            blocked = true
-
-            result:add_collision(
-                other_entity
-            )
-        end
-    end
-
-    if blocked then
-        self.entity:set_position(
-            previous_x,
-            previous_y
+        result:add_applied(
+            dx,
+            dy
         )
 
         return result
     end
 
-    result:add_applied(
-        dx,
-        dy
+    local collision_fraction =
+        hits[1].fraction
+
+    local movement_length =
+        math.sqrt(
+            dx * dx
+            + dy * dy
+        )
+
+    local fraction_margin = 0
+
+    if movement_length > 0 then
+        fraction_margin =
+            MOTION_EPSILON
+            / movement_length
+    end
+
+    local safe_fraction =
+        math.max(
+            0,
+            collision_fraction
+            - fraction_margin
+        )
+
+    local applied_x =
+        dx * safe_fraction
+
+    local applied_y =
+        dy * safe_fraction
+
+    self.entity.transform:translate(
+        applied_x,
+        applied_y
     )
+
+    result:add_applied(
+        applied_x,
+        applied_y
+    )
+
+    for _, hit in ipairs(hits) do
+        if math.abs(
+                hit.fraction
+                - collision_fraction
+            ) <= MOTION_EPSILON then
+            result:add_collision(
+                hit.entity
+            )
+        end
+    end
 
     return result
 end

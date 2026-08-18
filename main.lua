@@ -155,7 +155,7 @@ function love.load()
         id = "player",
         x = 260,
         y = 150,
-        rotation = math.rad(315),
+        rotation = math.rad(270),
         shapes = {
             collision = PolygonShape.new({
                 points = {
