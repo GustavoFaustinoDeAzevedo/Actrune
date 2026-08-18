@@ -27,6 +27,7 @@ local Entity = require(engineFolder .. "entity")
 
 local movementFolder = "engine/world/movement/"
 local Velocity = require(movementFolder .. "velocity")
+local VelocityResponse = require(movementFolder .. "velocity_response")
 
 local spatialFolder = "engine/world/spatial/"
 local PolygonShape = require(spatialFolder .. "polygon_shape")
@@ -51,6 +52,10 @@ local player_rotation_amount
 local player_turn_axis
 local player_move_input
 local player_velocity
+local bounce_ball
+local bounce_velocity
+local bounce_mover
+local bounce_walls = {}
 local runtime
 local messages = {}
 
@@ -75,6 +80,47 @@ local function draw_shape(entity, shape_name)
         "line",
         world_points
     )
+end
+
+-- Creates a rectangular entity used as a collision wall for physics tests.
+local function create_bounce_wall(
+    id,
+    x,
+    y,
+    width,
+    height
+)
+    local half_width = width / 2
+    local half_height = height / 2
+
+    return Entity.new({
+        id = id,
+        x = x,
+        y = y,
+
+        shapes = {
+            bounce = PolygonShape.new({
+                points = {
+                    {
+                        x = -half_width,
+                        y = -half_height
+                    },
+                    {
+                        x = half_width,
+                        y = -half_height
+                    },
+                    {
+                        x = half_width,
+                        y = half_height
+                    },
+                    {
+                        x = -half_width,
+                        y = half_height
+                    }
+                }
+            })
+        }
+    })
 end
 
 -- Creates the Actrune runtime and sets up the test entities and event.
@@ -151,6 +197,45 @@ function love.load()
         }
     })
 
+    bounce_ball = Entity.new({
+        id = "bounce_ball",
+        x = 320,
+        y = 350,
+
+        shapes = {
+            bounce = PolygonShape.new({
+                points = {
+                    { x = 0,   y = -10 },
+                    { x = 7,   y = -7 },
+                    { x = 10,  y = 0 },
+                    { x = 7,   y = 7 },
+                    { x = 0,   y = 10 },
+                    { x = -7,  y = 7 },
+                    { x = -10, y = 0 },
+                    { x = -7,  y = -7 }
+                }
+            })
+        }
+    })
+
+    runtime:add_entity(
+        bounce_ball
+    )
+
+    bounce_velocity = Velocity.new({
+        x = 170,
+        y = 110
+    })
+
+    bounce_mover = SpatialMover.new(
+        runtime.world,
+        bounce_ball,
+        {
+            source_shape = "bounce",
+            target_shape = "bounce"
+        }
+    )
+
     player_entity = Entity.new({
         id = "player",
         x = 260,
@@ -221,6 +306,44 @@ function love.load()
     })
 
     event_entity:add_event(event)
+
+    bounce_walls = {
+        create_bounce_wall(
+            "bounce_left",
+            80,
+            350,
+            20,
+            300
+        ),
+
+        create_bounce_wall(
+            "bounce_right",
+            560,
+            350,
+            20,
+            300
+        ),
+
+        create_bounce_wall(
+            "bounce_top",
+            320,
+            200,
+            500,
+            20
+        ),
+
+        create_bounce_wall(
+            "bounce_bottom",
+            320,
+            500,
+            500,
+            20
+        )
+    }
+
+    for _, wall in ipairs(bounce_walls) do
+        runtime:add_entity(wall)
+    end
 end
 
 -- Processes player actions and updates the Actrune runtime every frame.
@@ -274,6 +397,26 @@ function love.update(dt)
         )
     end
 
+    local bounce_x, bounce_y =
+        bounce_velocity:get_displacement(dt)
+
+    local bounce_result =
+        bounce_mover:try_move(
+            bounce_x,
+            bounce_y
+        )
+
+    for _, contact in ipairs(
+        bounce_result.contacts
+    ) do
+        VelocityResponse.reflect(
+            bounce_velocity,
+            contact.normal_x,
+            contact.normal_y,
+            0.7
+        )
+    end
+
     runtime:update(dt)
 end
 
@@ -290,6 +433,12 @@ function love.draw()
         20,
         100
     )
+
+    draw_shape(bounce_ball, "bounce")
+
+    for _, wall in ipairs(bounce_walls) do
+        draw_shape(wall, "bounce")
+    end
 
     draw_shape(event_entity, "interaction")
     draw_shape(player_entity, "collision")
