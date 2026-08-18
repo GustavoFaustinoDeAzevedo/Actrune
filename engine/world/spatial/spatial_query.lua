@@ -1,74 +1,13 @@
+local Geometry = require("engine.world.spatial.geometry")
+
+
+local vector_dot = Geometry.dot
+local point_on_segment = Geometry.point_on_segment
+local segments_intersect = Geometry.segments_intersect
+local segments_properly_intersect = Geometry.segments_properly_intersect
+local segment_intersection_fraction = Geometry.moving_point_segment_fraction
+local EPSILON = Geometry.EPSILON
 local SpatialQuery = {}
-
-local EPSILON = 0.000001
-
--- Returns the signed cross product used to determine point orientation.
-local function cross(ax, ay, bx, by, cx, cy)
-    return
-        (bx - ax) * (cy - ay)
-        - (by - ay) * (cx - ax)
-end
-
--- Checks whether a point lies on a line segment.
-local function point_on_segment(px, py, ax, ay, bx, by)
-    if math.abs(cross(ax, ay, bx, by, px, py)) > EPSILON then
-        return false
-    end
-
-    return
-        px >= math.min(ax, bx) - EPSILON
-        and px <= math.max(ax, bx) + EPSILON
-        and py >= math.min(ay, by) - EPSILON
-        and py <= math.max(ay, by) + EPSILON
-end
-
--- Checks whether two line segments intersect.
-local function segments_intersect(
-    ax, ay,
-    bx, by,
-    cx, cy,
-    dx, dy
-)
-    local ab_c = cross(ax, ay, bx, by, cx, cy)
-    local ab_d = cross(ax, ay, bx, by, dx, dy)
-
-    local cd_a = cross(cx, cy, dx, dy, ax, ay)
-    local cd_b = cross(cx, cy, dx, dy, bx, by)
-
-    if
-        ((ab_c > 0 and ab_d < 0) or (ab_c < 0 and ab_d > 0))
-        and
-        ((cd_a > 0 and cd_b < 0) or (cd_a < 0 and cd_b > 0))
-    then
-        return true
-    end
-
-    if math.abs(ab_c) <= EPSILON
-        and point_on_segment(cx, cy, ax, ay, bx, by)
-    then
-        return true
-    end
-
-    if math.abs(ab_d) <= EPSILON
-        and point_on_segment(dx, dy, ax, ay, bx, by)
-    then
-        return true
-    end
-
-    if math.abs(cd_a) <= EPSILON
-        and point_on_segment(ax, ay, cx, cy, dx, dy)
-    then
-        return true
-    end
-
-    if math.abs(cd_b) <= EPSILON
-        and point_on_segment(bx, by, cx, cy, dx, dy)
-    then
-        return true
-    end
-
-    return false
-end
 
 -- Checks whether two polygon shapes overlap in world space.
 function SpatialQuery.polygons_intersect(
@@ -131,24 +70,6 @@ function SpatialQuery.polygons_intersect(
     return false
 end
 
--- Calculates the cross product between two vectors.
-local function vector_cross(ax, ay, bx, by)
-    return ax * by - ay * bx
-end
-
--- Calculates the dot product between two vectors.
-local function vector_dot(ax, ay, bx, by)
-    return ax * bx + ay * by
-end
-
--- Clamps a numeric value between minimum and maximum bounds.
-local function clamp_value(value, minimum, maximum)
-    return math.max(
-        minimum,
-        math.min(maximum, value)
-    )
-end
-
 -- Calculates the signed area of a polygon represented by flat world-space points.
 local function polygon_signed_area(points)
     local area = 0
@@ -200,74 +121,6 @@ local function outward_edge_normal(
         edge_x / length
 end
 
--- Finds where a moving point crosses a static line segment.
-local function segment_intersection_fraction(
-    point_x,
-    point_y,
-    move_x,
-    move_y,
-    start_x,
-    start_y,
-    end_x,
-    end_y
-)
-    local segment_x =
-        end_x - start_x
-
-    local segment_y =
-        end_y - start_y
-
-    local relative_x =
-        start_x - point_x
-
-    local relative_y =
-        start_y - point_y
-
-    local denominator =
-        vector_cross(
-            move_x,
-            move_y,
-            segment_x,
-            segment_y
-        )
-
-    if math.abs(denominator) <= EPSILON then
-        return nil
-    end
-
-    local movement_fraction =
-        vector_cross(
-            relative_x,
-            relative_y,
-            segment_x,
-            segment_y
-        )
-        / denominator
-
-    local segment_fraction =
-        vector_cross(
-            relative_x,
-            relative_y,
-            move_x,
-            move_y
-        )
-        / denominator
-
-    if movement_fraction < -EPSILON
-        or movement_fraction > 1 + EPSILON
-        or segment_fraction < -EPSILON
-        or segment_fraction > 1 + EPSILON
-    then
-        return nil
-    end
-
-    return clamp_value(
-        movement_fraction,
-        0,
-        1
-    )
-end
-
 -- Keeps the earliest collision hit found during a polygon sweep.
 local function keep_earliest_hit(
     current_hit,
@@ -290,82 +143,6 @@ local function keep_earliest_hit(
     end
 
     return current_hit
-end
-
--- Returns whether two segments cross through their interiors rather than only touching.
-local function segments_properly_intersect(
-    ax,
-    ay,
-    bx,
-    by,
-    cx,
-    cy,
-    dx,
-    dy
-)
-    local ab_c =
-        cross(
-            ax,
-            ay,
-            bx,
-            by,
-            cx,
-            cy
-        )
-
-    local ab_d =
-        cross(
-            ax,
-            ay,
-            bx,
-            by,
-            dx,
-            dy
-        )
-
-    local cd_a =
-        cross(
-            cx,
-            cy,
-            dx,
-            dy,
-            ax,
-            ay
-        )
-
-    local cd_b =
-        cross(
-            cx,
-            cy,
-            dx,
-            dy,
-            bx,
-            by
-        )
-
-    local crosses_ab =
-        (
-            ab_c > EPSILON
-            and ab_d < -EPSILON
-        )
-        or
-        (
-            ab_c < -EPSILON
-            and ab_d > EPSILON
-        )
-
-    local crosses_cd =
-        (
-            cd_a > EPSILON
-            and cd_b < -EPSILON
-        )
-        or
-        (
-            cd_a < -EPSILON
-            and cd_b > EPSILON
-        )
-
-    return crosses_ab and crosses_cd
 end
 
 -- Returns whether a point lies strictly inside a polygon rather than on its boundary.
