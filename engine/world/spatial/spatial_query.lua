@@ -1,13 +1,62 @@
 local Geometry = require("engine.world.spatial.geometry")
+local PolygonGeometry = require("engine.world.spatial.polygon_geometry")
 
 
 local vector_dot = Geometry.dot
-local point_on_segment = Geometry.point_on_segment
 local segments_intersect = Geometry.segments_intersect
-local segments_properly_intersect = Geometry.segments_properly_intersect
 local segment_intersection_fraction = Geometry.moving_point_segment_fraction
+local polygon_signed_area = PolygonGeometry.signed_area
+local outward_edge_normal = PolygonGeometry.outward_edge_normal
+local polygons_overlap_strict = PolygonGeometry.overlaps_strict
+local translate_points = PolygonGeometry.translate_points
 local EPSILON = Geometry.EPSILON
 local SpatialQuery = {}
+
+
+-- Keeps the earliest collision hit found during a polygon sweep.
+local function keep_earliest_hit(
+    current_hit,
+    fraction,
+    normal_x,
+    normal_y
+)
+    if fraction == nil then
+        return current_hit
+    end
+
+    if current_hit == nil
+        or fraction < current_hit.fraction
+    then
+        return {
+            fraction = fraction,
+            normal_x = normal_x,
+            normal_y = normal_y
+        }
+    end
+
+    return current_hit
+end
+
+-- Adds a possible polygon sweep contact to a candidate list.
+local function add_sweep_candidate(
+    candidates,
+    fraction,
+    normal_x,
+    normal_y
+)
+    if fraction == nil then
+        return
+    end
+
+    table.insert(
+        candidates,
+        {
+            fraction = fraction,
+            normal_x = normal_x,
+            normal_y = normal_y
+        }
+    )
+end
 
 -- Checks whether two polygon shapes overlap in world space.
 function SpatialQuery.polygons_intersect(
@@ -68,246 +117,6 @@ function SpatialQuery.polygons_intersect(
     end
 
     return false
-end
-
--- Calculates the signed area of a polygon represented by flat world-space points.
-local function polygon_signed_area(points)
-    local area = 0
-
-    for index = 1, #points, 2 do
-        local next_index = index + 2
-
-        if next_index > #points then
-            next_index = 1
-        end
-
-        area = area
-            + points[index]
-            * points[next_index + 1]
-            - points[next_index]
-            * points[index + 1]
-    end
-
-    return area * 0.5
-end
-
--- Calculates the outward unit normal of a polygon edge.
-local function outward_edge_normal(
-    start_x,
-    start_y,
-    end_x,
-    end_y,
-    winding
-)
-    local edge_x = end_x - start_x
-    local edge_y = end_y - start_y
-
-    local length =
-        math.sqrt(
-            edge_x * edge_x
-            + edge_y * edge_y
-        )
-
-    if length <= EPSILON then
-        return nil, nil
-    end
-
-    if winding >= 0 then
-        return edge_y / length,
-            -edge_x / length
-    end
-
-    return -edge_y / length,
-        edge_x / length
-end
-
--- Keeps the earliest collision hit found during a polygon sweep.
-local function keep_earliest_hit(
-    current_hit,
-    fraction,
-    normal_x,
-    normal_y
-)
-    if fraction == nil then
-        return current_hit
-    end
-
-    if current_hit == nil
-        or fraction < current_hit.fraction
-    then
-        return {
-            fraction = fraction,
-            normal_x = normal_x,
-            normal_y = normal_y
-        }
-    end
-
-    return current_hit
-end
-
--- Returns whether a point lies strictly inside a polygon rather than on its boundary.
-local function point_strictly_inside_polygon(
-    point_x,
-    point_y,
-    points
-)
-    local inside = false
-
-    for index = 1, #points, 2 do
-        local next_index =
-            index + 2
-
-        if next_index > #points then
-            next_index = 1
-        end
-
-        local start_x =
-            points[index]
-
-        local start_y =
-            points[index + 1]
-
-        local end_x =
-            points[next_index]
-
-        local end_y =
-            points[next_index + 1]
-
-        if point_on_segment(
-                point_x,
-                point_y,
-                start_x,
-                start_y,
-                end_x,
-                end_y
-            ) then
-            return false
-        end
-
-        local crosses_y =
-            (start_y > point_y)
-            ~= (end_y > point_y)
-
-        if crosses_y then
-            local intersection_x =
-                (end_x - start_x)
-                * (point_y - start_y)
-                / (end_y - start_y)
-                + start_x
-
-            if point_x < intersection_x then
-                inside = not inside
-            end
-        end
-    end
-
-    return inside
-end
-
--- Returns whether two polygons have overlapping interior areas.
-local function polygons_overlap_strict(
-    points_a,
-    points_b
-)
-    for index_a = 1, #points_a, 2 do
-        local next_a =
-            index_a + 2
-
-        if next_a > #points_a then
-            next_a = 1
-        end
-
-        for index_b = 1, #points_b, 2 do
-            local next_b =
-                index_b + 2
-
-            if next_b > #points_b then
-                next_b = 1
-            end
-
-            if segments_properly_intersect(
-                    points_a[index_a],
-                    points_a[index_a + 1],
-                    points_a[next_a],
-                    points_a[next_a + 1],
-                    points_b[index_b],
-                    points_b[index_b + 1],
-                    points_b[next_b],
-                    points_b[next_b + 1]
-                ) then
-                return true
-            end
-        end
-    end
-
-    for index = 1, #points_a, 2 do
-        if point_strictly_inside_polygon(
-                points_a[index],
-                points_a[index + 1],
-                points_b
-            ) then
-            return true
-        end
-    end
-
-    for index = 1, #points_b, 2 do
-        if point_strictly_inside_polygon(
-                points_b[index],
-                points_b[index + 1],
-                points_a
-            ) then
-            return true
-        end
-    end
-
-    return false
-end
-
--- Returns polygon points translated by a fraction of a displacement.
-local function translate_points(
-    points,
-    dx,
-    dy,
-    fraction
-)
-    local translated = {}
-
-    for index = 1, #points, 2 do
-        table.insert(
-            translated,
-            points[index]
-            + dx * fraction
-        )
-
-        table.insert(
-            translated,
-            points[index + 1]
-            + dy * fraction
-        )
-    end
-
-    return translated
-end
-
--- Adds a possible polygon sweep contact to a candidate list.
-local function add_sweep_candidate(
-    candidates,
-    fraction,
-    normal_x,
-    normal_y
-)
-    if fraction == nil then
-        return
-    end
-
-    table.insert(
-        candidates,
-        {
-            fraction = fraction,
-            normal_x = normal_x,
-            normal_y = normal_y
-        }
-    )
 end
 
 -- Finds the earliest entering contact while translating one polygon against another.
