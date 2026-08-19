@@ -80,7 +80,7 @@ local function add_message(message)
     table.insert(messages, message)
 end
 
--- Resolves the test body's contacts using material properties and physical impulses.
+-- Resolves contact impulses using the dynamic state of both contacting entities.
 local function resolve_bounce_contacts(
     velocity,
     result
@@ -92,9 +92,21 @@ local function resolve_bounce_contacts(
                 contact.target_material
             )
 
-        ContactImpulse.apply(
+        local target_velocity =
+            contact.entity:get_component(
+                "velocity"
+            )
+
+        local target_mass =
+            contact.entity:get_component(
+                "mass"
+            )
+
+        ContactImpulse.apply_pair(
             velocity,
             bounce_mass,
+            target_velocity,
+            target_mass,
             contact.normal_x,
             contact.normal_y,
             properties
@@ -316,6 +328,16 @@ function love.load()
             source_shape = "bounce",
             target_shape = "bounce"
         }
+    )
+
+    bounce_ball:set_component(
+        "velocity",
+        bounce_velocity
+    )
+
+    bounce_ball:set_component(
+        "mass",
+        bounce_mass
     )
 
     player_entity = Entity.new({

@@ -13,6 +13,7 @@ function Entity.new(options)
     self.id = options.id
     self.shapes = options.shapes or {}
     self.events = options.events or {}
+    self.components = options.components or {}
 
     self.transform = Transform.new({
         x = options.x,
@@ -79,6 +80,34 @@ end
 -- Returns all events currently associated with this entity.
 function Entity:get_events()
     return self.events
+end
+
+-- Associates a named component with this entity.
+function Entity:set_component(name, component)
+    assert(name ~= nil, "component name is required")
+    assert(component ~= nil, "component is required")
+
+    self.components[name] = component
+end
+
+-- Returns a named component associated with this entity.
+function Entity:get_component(name)
+    return self.components[name]
+end
+
+-- Returns whether this entity has a named component.
+function Entity:has_component(name)
+    return self.components[name] ~= nil
+end
+
+-- Removes a named component from this entity.
+function Entity:remove_component(name)
+    local component =
+        self.components[name]
+
+    self.components[name] = nil
+
+    return component
 end
 
 return Entity
