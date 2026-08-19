@@ -25,6 +25,10 @@ local WaitCommand = require(commandFolder .. "wait_command")
 local engineFolder = "engine/world/"
 local Entity = require(engineFolder .. "entity")
 
+
+local physicsFolder = "engine/world/physics/"
+local PhysicalMaterial = require(physicsFolder .. "physical_material")
+
 local movementFolder = "engine/world/movement/"
 local Velocity = require(movementFolder .. "velocity")
 local Acceleration = require(movementFolder .. "acceleration")
@@ -58,6 +62,7 @@ local bounce_ball
 local bounce_velocity
 local bounce_mover
 local bounce_acceleration
+local bounce_wall_material
 local bounce_walls = {}
 local runtime
 local messages = {}
@@ -68,7 +73,7 @@ local function add_message(message)
     table.insert(messages, message)
 end
 
--- Reflects the test velocity against every simultaneous collision contact.
+-- Reflects the test velocity using the configured physical material.
 local function reflect_bounce_contacts(
     velocity,
     result
@@ -80,7 +85,7 @@ local function reflect_bounce_contacts(
             velocity,
             contact.normal_x,
             contact.normal_y,
-            0.5
+            bounce_wall_material:get_restitution()
         )
     end
 end
@@ -118,13 +123,14 @@ local function draw_shape(entity, shape_name)
     )
 end
 
--- Creates a rectangular entity used as a collision wall for physics tests.
+-- Creates a rectangular collision wall with an optional physical material.
 local function create_bounce_wall(
     id,
     x,
     y,
     width,
-    height
+    height,
+    material
 )
     local half_width = width / 2
     local half_height = height / 2
@@ -136,6 +142,8 @@ local function create_bounce_wall(
 
         shapes = {
             bounce = PolygonShape.new({
+                material = material,
+
                 points = {
                     {
                         x = -half_width,
@@ -163,6 +171,8 @@ end
 function love.load()
     runtime = Actrune.new()
     runtime:bind_key("interact", "space")
+
+    bounce_wall_material = PhysicalMaterial.new({ restitution = 0.8 })
 
     player_velocity = Velocity.new()
     player_move_input = ActionVector.new({
