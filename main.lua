@@ -76,14 +76,14 @@ local function add_message(message)
     table.insert(messages, message)
 end
 
--- Reflects the velocity using restitution resolved from the contacting materials.
+-- Reflects velocity using the effective properties of each material contact.
 local function reflect_bounce_contacts(
     velocity,
     result
 )
     for _, contact in ipairs(result.contacts) do
-        local restitution =
-            bounce_material_resolver:resolve_restitution(
+        local properties =
+            bounce_material_resolver:resolve(
                 contact.source_material,
                 contact.target_material
             )
@@ -92,7 +92,7 @@ local function reflect_bounce_contacts(
             velocity,
             contact.normal_x,
             contact.normal_y,
-            restitution
+            properties.restitution
         )
     end
 end
@@ -180,13 +180,38 @@ function love.load()
     runtime = Actrune.new()
     runtime:bind_key("interact", "space")
 
-    bounce_ball_material = PhysicalMaterial.new({ restitution = 0.9 })
+    bounce_ball_material =
+        PhysicalMaterial.new({
+            restitution = 0.8,
+            static_friction = 0.6,
+            dynamic_friction = 0.4
+        })
 
-    bounce_wall_material = PhysicalMaterial.new({ restitution = 0.6 })
+    bounce_wall_material =
+        PhysicalMaterial.new({
+            restitution = 0.8,
+            static_friction = 0.8,
+            dynamic_friction = 0.8
+        })
 
-    bounce_material_resolver = ContactMaterialResolver.new({
-        restitution_combiner = math.min, default_restitution = 0
-    })
+    bounce_material_resolver =
+        ContactMaterialResolver.new({
+            restitution_combiner = math.min,
+
+            static_friction_combiner =
+                function(a, b)
+                    return math.sqrt(a * b)
+                end,
+
+            dynamic_friction_combiner =
+                function(a, b)
+                    return math.sqrt(a * b)
+                end,
+
+            default_restitution = 0,
+            default_static_friction = 0,
+            default_dynamic_friction = 0
+        })
 
     player_velocity = Velocity.new()
     player_move_input = ActionVector.new({
