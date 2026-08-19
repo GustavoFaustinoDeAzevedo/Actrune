@@ -118,7 +118,9 @@ function SpatialMover:try_move(dx, dy)
                 hit.entity,
                 hit.normal_x,
                 hit.normal_y,
-                hit.fraction
+                hit.fraction,
+                hit.source_shape,
+                hit.target_shape
             )
         end
     end

@@ -115,6 +115,10 @@ function World:sweep_shape(
                         hits,
                         {
                             entity = entity,
+
+                            source_shape = shape,
+                            target_shape = target_shape,
+
                             fraction = hit.fraction,
                             normal_x = hit.normal_x,
                             normal_y = hit.normal_y

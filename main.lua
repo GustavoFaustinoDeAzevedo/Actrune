@@ -101,7 +101,8 @@ local function remove_inward_contacts(
         VelocityResponse.remove_inward_component(
             velocity,
             contact.normal_x,
-            contact.normal_y
+            contact.normal_y,
+            
         )
     end
 end
@@ -269,13 +270,13 @@ function love.load()
     )
 
     bounce_velocity = Velocity.new({
-        x = 700,
-        y = -400
+        x = 0,
+        y = 0
     })
 
     bounce_acceleration = Acceleration.new({
-        x = 0,
-        y = 500
+        x = 980,
+        y = 0
     })
 
     bounce_mover = SpatialMover.new(

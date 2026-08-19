@@ -44,21 +44,44 @@ function MotionResult:add_collision(entity)
   )
 end
 
--- Adds geometric contact information produced by a collision.
+-- Adds geometric and material contact information produced by a collision.
 function MotionResult:add_contact(
     entity,
     normal_x,
     normal_y,
-    fraction
+    fraction,
+    source_shape,
+    target_shape
 )
   self:add_collision(entity)
+
+  local source_material = nil
+  local target_material = nil
+
+  if source_shape ~= nil then
+    source_material =
+        source_shape:get_material()
+  end
+
+  if target_shape ~= nil then
+    target_material =
+        target_shape:get_material()
+  end
 
   table.insert(
     self.contacts,
     {
       entity = entity,
+
+      source_shape = source_shape,
+      target_shape = target_shape,
+
+      source_material = source_material,
+      target_material = target_material,
+
       normal_x = normal_x,
       normal_y = normal_y,
+
       fraction = fraction
     }
   )
@@ -84,7 +107,9 @@ function MotionResult:absorb(other)
       contact.entity,
       contact.normal_x,
       contact.normal_y,
-      contact.fraction
+      contact.fraction,
+      contact.source_shape,
+      contact.target_shape
     )
   end
 end
