@@ -28,6 +28,7 @@ local Entity = require(engineFolder .. "entity")
 
 local physicsFolder = "engine/world/physics/"
 local PhysicalMaterial = require(physicsFolder .. "physical_material")
+local ContactMaterialResolver = require(physicsFolder .. "contact_material_resolver")
 
 local movementFolder = "engine/world/movement/"
 local Velocity = require(movementFolder .. "velocity")
@@ -62,7 +63,9 @@ local bounce_ball
 local bounce_velocity
 local bounce_mover
 local bounce_acceleration
+local bounce_ball_material
 local bounce_wall_material
+local bounce_material_resolver
 local bounce_walls = {}
 local runtime
 local messages = {}
@@ -73,19 +76,23 @@ local function add_message(message)
     table.insert(messages, message)
 end
 
--- Reflects the test velocity using the configured physical material.
+-- Reflects the velocity using restitution resolved from the contacting materials.
 local function reflect_bounce_contacts(
     velocity,
     result
 )
-    for _, contact in ipairs(
-        result.contacts
-    ) do
+    for _, contact in ipairs(result.contacts) do
+        local restitution =
+            bounce_material_resolver:resolve_restitution(
+                contact.source_material,
+                contact.target_material
+            )
+
         VelocityResponse.reflect(
             velocity,
             contact.normal_x,
             contact.normal_y,
-            bounce_wall_material:get_restitution()
+            restitution
         )
     end
 end
@@ -101,8 +108,8 @@ local function remove_inward_contacts(
         VelocityResponse.remove_inward_component(
             velocity,
             contact.normal_x,
-            contact.normal_y,
-            
+            contact.normal_y
+
         )
     end
 end
@@ -173,7 +180,13 @@ function love.load()
     runtime = Actrune.new()
     runtime:bind_key("interact", "space")
 
-    bounce_wall_material = PhysicalMaterial.new({ restitution = 0.8 })
+    bounce_ball_material = PhysicalMaterial.new({ restitution = 0.9 })
+
+    bounce_wall_material = PhysicalMaterial.new({ restitution = 0.6 })
+
+    bounce_material_resolver = ContactMaterialResolver.new({
+        restitution_combiner = math.min, default_restitution = 0
+    })
 
     player_velocity = Velocity.new()
     player_move_input = ActionVector.new({
@@ -251,6 +264,8 @@ function love.load()
 
         shapes = {
             bounce = PolygonShape.new({
+                material = bounce_ball_material,
+
                 points = {
                     { x = 0,   y = -10 },
                     { x = 7,   y = -7 },
@@ -270,13 +285,13 @@ function love.load()
     )
 
     bounce_velocity = Velocity.new({
-        x = 0,
-        y = 0
+        x = -2000,
+        y = -1000
     })
 
     bounce_acceleration = Acceleration.new({
-        x = 980,
-        y = 0
+        x = 0,
+        y = 980
     })
 
     bounce_mover = SpatialMover.new(
@@ -365,7 +380,8 @@ function love.load()
             80,
             350,
             20,
-            300
+            300,
+            bounce_wall_material
         ),
 
         create_bounce_wall(
@@ -373,7 +389,8 @@ function love.load()
             560,
             350,
             20,
-            300
+            300,
+            bounce_wall_material
         ),
 
         create_bounce_wall(
@@ -381,7 +398,8 @@ function love.load()
             320,
             200,
             500,
-            20
+            20,
+            bounce_wall_material
         ),
 
         create_bounce_wall(
@@ -389,7 +407,8 @@ function love.load()
             320,
             500,
             500,
-            20
+            20,
+            bounce_wall_material
         )
     }
 
@@ -468,7 +487,7 @@ function love.update(dt)
         bounce_mover,
         bounce_velocity,
         dt,
-        remove_inward_contacts
+        reflect_bounce_contacts
     )
 
     runtime:update(dt)
