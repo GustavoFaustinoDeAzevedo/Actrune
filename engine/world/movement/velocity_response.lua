@@ -58,4 +58,50 @@ function VelocityResponse.reflect(
   return true
 end
 
+-- Removes only the velocity component moving into a surface.
+function VelocityResponse.remove_inward_component(
+    velocity,
+    normal_x,
+    normal_y
+)
+  assert(velocity ~= nil, "velocity is required")
+
+  local normal_length =
+      math.sqrt(
+        normal_x * normal_x
+        + normal_y * normal_y
+      )
+
+  if normal_length == 0 then
+    return false
+  end
+
+  normal_x =
+      normal_x / normal_length
+
+  normal_y =
+      normal_y / normal_length
+
+  local velocity_x, velocity_y =
+      velocity:get()
+
+  local normal_velocity =
+      velocity_x * normal_x
+      + velocity_y * normal_y
+
+  if normal_velocity >= 0 then
+    return false
+  end
+
+  velocity:set(
+    velocity_x
+    - normal_velocity * normal_x,
+
+    velocity_y
+    - normal_velocity * normal_y
+  )
+
+  return true
+end
+
 return VelocityResponse

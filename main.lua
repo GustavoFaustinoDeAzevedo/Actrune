@@ -85,6 +85,22 @@ local function reflect_bounce_contacts(
     end
 end
 
+-- Removes velocity entering any contacted surface during the test.
+local function remove_inward_contacts(
+    velocity,
+    result
+)
+    for _, contact in ipairs(
+        result.contacts
+    ) do
+        VelocityResponse.remove_inward_component(
+            velocity,
+            contact.normal_x,
+            contact.normal_y
+        )
+    end
+end
+
 -- Draws a named polygon shape belonging to an entity for debugging purposes.
 local function draw_shape(entity, shape_name)
     local shape = entity:get_shape(shape_name)
@@ -244,7 +260,7 @@ function love.load()
 
     bounce_velocity = Velocity.new({
         x = 700,
-        y = 430
+        y = -400
     })
 
     bounce_acceleration = Acceleration.new({
@@ -430,11 +446,18 @@ function love.update(dt)
         velocity_change_y
     )
 
+    -- VelocityMotion.advance(
+    --     bounce_mover,
+    --     bounce_velocity,
+    --     dt,
+    --     reflect_bounce_contacts
+    -- )
+
     VelocityMotion.advance(
         bounce_mover,
         bounce_velocity,
         dt,
-        reflect_bounce_contacts
+        remove_inward_contacts
     )
 
     runtime:update(dt)
