@@ -146,7 +146,84 @@ local function collect_target_vertex_contacts(
   end
 end
 
--- Finds the earliest candidate that would cause actual polygon penetration.
+-- Returns whether a nearly identical contact normal is already stored.
+local function contains_similar_normal(
+    normals,
+    normal_x,
+    normal_y
+)
+  for _, normal in ipairs(normals) do
+    local similarity =
+        Geometry.dot(
+          normal.x,
+          normal.y,
+          normal_x,
+          normal_y
+        )
+
+    if similarity
+        >= 1 - Geometry.EPSILON
+    then
+      return true
+    end
+  end
+
+  return false
+end
+
+-- Combines unique normals produced at the same collision fraction.
+local function combine_contact_normals(
+    candidates,
+    fraction
+)
+  local normals = {}
+
+  local combined_x = 0
+  local combined_y = 0
+
+  local fallback = nil
+
+  for _, candidate in ipairs(candidates) do
+    if math.abs(candidate.fraction - fraction) <= Geometry.EPSILON
+    then
+      fallback = fallback or candidate
+
+      if not contains_similar_normal(
+            normals,
+            candidate.normal_x,
+            candidate.normal_y
+          )
+      then
+        table.insert(
+          normals,
+          {
+            x = candidate.normal_x,
+            y = candidate.normal_y
+          }
+        )
+
+        combined_x = combined_x + candidate.normal_x
+
+        combined_y = combined_y + candidate.normal_y
+      end
+    end
+  end
+
+  local combined_length = math.sqrt(
+    combined_x * combined_x
+    + combined_y * combined_y
+  )
+
+  if fallback and combined_length <= Geometry.EPSILON
+  then
+    return fallback.normal_x, fallback.normal_y
+  end
+
+  return combined_x / combined_length,
+      combined_y / combined_length
+end
+
+-- Finds the earliest penetrating contact and combines its simultaneous surface normals.
 local function find_blocking_candidate(
     candidates,
     moving_points,
@@ -157,13 +234,15 @@ local function find_blocking_candidate(
   table.sort(
     candidates,
     function(left, right)
-      return left.fraction < right.fraction
+      return left.fraction
+          < right.fraction
     end
   )
 
   local movement_length = math.sqrt(move_x * move_x + move_y * move_y)
 
-  if movement_length <= Geometry.EPSILON then
+  if movement_length <= Geometry.EPSILON
+  then
     return nil
   end
 
@@ -171,9 +250,10 @@ local function find_blocking_candidate(
       CONTACT_PROBE_DISTANCE
       / movement_length
 
+  local blocking_fraction = nil
+
   for _, candidate in ipairs(candidates) do
     local after_contact = candidate.fraction + probe_fraction
-
     local probe_points =
         PolygonGeometry.translate_points(
           moving_points,
@@ -182,15 +262,28 @@ local function find_blocking_candidate(
           after_contact
         )
 
-    if PolygonGeometry.overlaps_strict(
-          probe_points,
-          target_points
-        ) then
-      return candidate
+    if PolygonGeometry.overlaps_strict(probe_points, target_points) then
+      blocking_fraction = candidate.fraction
+
+      break
     end
   end
 
-  return nil
+  if blocking_fraction == nil then
+    return nil
+  end
+
+  local normal_x, normal_y =
+      combine_contact_normals(
+        candidates,
+        blocking_fraction
+      )
+
+  return {
+    fraction = blocking_fraction,
+    normal_x = normal_x,
+    normal_y = normal_y
+  }
 end
 
 -- Finds the earliest blocking contact while translating one polygon against another.

@@ -29,6 +29,7 @@ local Entity = require(engineFolder .. "entity")
 local physicsFolder = "engine/world/physics/"
 local PhysicalMaterial = require(physicsFolder .. "physical_material")
 local ContactMaterialResolver = require(physicsFolder .. "contact_material_resolver")
+local PhysicsWorld = require(physicsFolder .. "physics_world")
 local Mass = require(physicsFolder .. "mass")
 
 local ContactImpulse = require(physicsFolder .. "contact_impulse")
@@ -64,54 +65,41 @@ local player_move_input
 local player_velocity
 local bounce_ball
 local bounce_velocity
-local bounce_mover
 local bounce_acceleration
 local bounce_ball_material
 local bounce_wall_material
 local bounce_material_resolver
 local bounce_mass
+local bounce_ball_b
+local bounce_velocity_b
+local bounce_mass_b
 local bounce_walls = {}
+local physics_world
 local runtime
 local messages = {}
+local ball_points = {
+    { x = 0,   y = -10 },
+    { x = 4,   y = -9 },
+    { x = 7,   y = -7 },
+    { x = 9,   y = -4 },
+    { x = 10,  y = 0 },
+    { x = 9,   y = 4 },
+    { x = 7,   y = 7 },
+    { x = 4,   y = 9 },
+    { x = 0,   y = 10 },
+    { x = -4,  y = 9 },
+    { x = -7,  y = 7 },
+    { x = -9,  y = 4 },
+    { x = -10, y = 0 },
+    { x = -9,  y = -4 },
+    { x = -7,  y = -7 },
+    { x = -4,  y = -9 }
+}
 
 
 -- Adds a message to the test output.
 local function add_message(message)
     table.insert(messages, message)
-end
-
--- Resolves contact impulses using the dynamic state of both contacting entities.
-local function resolve_bounce_contacts(
-    velocity,
-    result
-)
-    for _, contact in ipairs(result.contacts) do
-        local properties =
-            bounce_material_resolver:resolve(
-                contact.source_material,
-                contact.target_material
-            )
-
-        local target_velocity =
-            contact.entity:get_component(
-                "velocity"
-            )
-
-        local target_mass =
-            contact.entity:get_component(
-                "mass"
-            )
-
-        ContactImpulse.apply_pair(
-            velocity,
-            bounce_mass,
-            target_velocity,
-            target_mass,
-            contact.normal_x,
-            contact.normal_y,
-            properties
-        )
-    end
 end
 
 -- Draws a named polygon shape belonging to an entity for debugging purposes.
@@ -184,16 +172,16 @@ function love.load()
 
     bounce_ball_material =
         PhysicalMaterial.new({
-            restitution = 0.8,
-            static_friction = 0.1,
-            dynamic_friction = 0.1
+            restitution = 1,
+            static_friction = 0,
+            dynamic_friction = 0
         })
 
     bounce_wall_material =
         PhysicalMaterial.new({
-            restitution = 0.65,
-            static_friction = 0.1,
-            dynamic_friction = 0.1
+            restitution = 0.5,
+            static_friction = 0.9,
+            dynamic_friction = 0.8
         })
 
     bounce_material_resolver =
@@ -293,40 +281,21 @@ function love.load()
             bounce = PolygonShape.new({
                 material = bounce_ball_material,
 
-                points = {
-                    { x = 0,   y = -10 },
-                    { x = 7,   y = -7 },
-                    { x = 10,  y = 0 },
-                    { x = 7,   y = 7 },
-                    { x = 0,   y = 10 },
-                    { x = -7,  y = 7 },
-                    { x = -10, y = 0 },
-                    { x = -7,  y = -7 }
-                }
+                points = ball_points
             })
         }
     })
 
-    runtime:add_entity(
-        bounce_ball
-    )
 
     bounce_velocity = Velocity.new({
-        x = -500,
-        y = -400
+        x = 200,
+        y = 0
     })
 
-    bounce_acceleration = Acceleration.new({
-        x = 0,
-        y = 980
-    })
-
-    bounce_mover = SpatialMover.new(
-        runtime.world,
-        bounce_ball,
+    bounce_acceleration = Acceleration.new(
         {
-            source_shape = "bounce",
-            target_shape = "bounce"
+            x = 0,
+            y = 980
         }
     )
 
@@ -339,6 +308,45 @@ function love.load()
         "mass",
         bounce_mass
     )
+
+    -- bounce_ball:set_component(
+    --     "acceleration",
+    --     bounce_acceleration
+    -- )
+
+    bounce_ball_b = Entity.new({
+        id = "bounce_ball_b",
+        x = 420,
+        y = 350,
+
+        shapes = {
+            bounce = PolygonShape.new({
+                material = bounce_ball_material,
+
+                points = ball_points
+            })
+        }
+    })
+
+    bounce_velocity_b = Velocity.new({
+        x = -50,
+        y = 0
+    })
+
+    bounce_mass_b = Mass.new(1)
+
+    bounce_ball_b:set_component(
+        "velocity",
+        bounce_velocity_b
+    )
+
+    bounce_ball_b:set_component(
+        "mass",
+        bounce_mass_b
+    )
+
+    runtime:add_entity(bounce_ball)
+    runtime:add_entity(bounce_ball_b)
 
     player_entity = Entity.new({
         id = "player",
@@ -449,8 +457,32 @@ function love.load()
         )
     }
 
+    physics_world = PhysicsWorld.new(
+        runtime.world,
+        bounce_material_resolver
+    )
+
+    physics_world:add_entity(
+        bounce_ball,
+        {
+            shape = "bounce"
+        }
+    )
+
+    physics_world:add_entity(
+        bounce_ball_b,
+        {
+            shape = "bounce"
+        }
+    )
+
     for _, wall in ipairs(bounce_walls) do
-        runtime:add_entity(wall)
+        physics_world:add_entity(
+            wall,
+            {
+                shape = "bounce"
+            }
+        )
     end
 end
 
@@ -512,14 +544,11 @@ function love.update(dt)
         velocity_change_x,
         velocity_change_y
     )
-
-    VelocityMotion.advance(
-        bounce_mover,
-        bounce_velocity,
-        dt,
-        resolve_bounce_contacts
+    bounce_velocity_b:add(
+        velocity_change_x,
+        velocity_change_y
     )
-
+    physics_world:update(dt)
     runtime:update(dt)
 end
 
@@ -537,7 +566,32 @@ function love.draw()
         100
     )
 
+    local velocity_a_x, velocity_a_y = bounce_velocity:get()
+
+    local velocity_b_x, velocity_b_y = bounce_velocity_b:get()
+
+    love.graphics.print(
+        string.format(
+            "Ball A velocity: %.2f, %.2f",
+            velocity_a_x,
+            velocity_a_y
+        ),
+        20,
+        130
+    )
+
+    love.graphics.print(
+        string.format(
+            "Ball B velocity: %.2f, %.2f",
+            velocity_b_x,
+            velocity_b_y
+        ),
+        20,
+        150
+    )
+
     draw_shape(bounce_ball, "bounce")
+    draw_shape(bounce_ball_b, "bounce")
 
     for _, wall in ipairs(bounce_walls) do
         draw_shape(wall, "bounce")
