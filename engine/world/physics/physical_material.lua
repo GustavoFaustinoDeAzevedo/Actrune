@@ -7,15 +7,11 @@ function PhysicalMaterial.new(options)
 
   local self = setmetatable({}, PhysicalMaterial)
 
-  self.restitution =
-      options.restitution or 0
+  self.restitution = options.restitution or 0
 
-  self.static_friction =
-      options.static_friction or 0
+  self.static_friction = options.static_friction or 0
 
-  self.dynamic_friction =
-      options.dynamic_friction
-      or self.static_friction
+  self.dynamic_friction = options.dynamic_friction or self.static_friction
 
   return self
 end

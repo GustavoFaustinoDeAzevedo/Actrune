@@ -26,24 +26,17 @@ function VelocityMotion.advance(
 
   options = options or {}
 
-  local max_collisions =
-      options.max_collisions
-      or DEFAULT_MAX_COLLISIONS
+  local max_collisions = options.max_collisions or DEFAULT_MAX_COLLISIONS
 
   local remaining_time = dt
   local collision_count = 0
   local results = {}
 
   while remaining_time > MIN_REMAINING_TIME do
-    local displacement_x, displacement_y =
-        velocity:get_displacement(
-          remaining_time
-        )
+    local displacement_x, displacement_y = velocity:get_displacement(remaining_time)
 
-    if math.abs(displacement_x)
-        <= Geometry.EPSILON
-        and math.abs(displacement_y)
-        <= Geometry.EPSILON
+    if math.abs(displacement_x) <= Geometry.EPSILON
+        and math.abs(displacement_y) <= Geometry.EPSILON
     then
       break
     end
@@ -54,35 +47,23 @@ function VelocityMotion.advance(
           displacement_y
         )
 
-    table.insert(
-      results,
-      result
-    )
+    table.insert(results, result)
 
     if not result:has_collision() then
       break
     end
 
-    local contact_fraction =
-        result:get_first_contact_fraction()
+    local contact_fraction = result:get_first_contact_fraction()
 
     if contact_fraction == nil then
       break
     end
 
-    contact_fraction =
-        Geometry.clamp(
-          contact_fraction,
-          0,
-          1
-        )
+    contact_fraction = Geometry.clamp(contact_fraction, 0, 1)
 
-    remaining_time =
-        remaining_time
-        * (1 - contact_fraction)
+    remaining_time = remaining_time * (1 - contact_fraction)
 
-    collision_count =
-        collision_count + 1
+    collision_count = collision_count + 1
 
     if contact_response ~= nil then
       contact_response(

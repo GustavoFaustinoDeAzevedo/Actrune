@@ -16,8 +16,7 @@ end
 
 -- Resolves both value sources and multiplies their results.
 function ProductValue:resolve(context)
-  return self.left:resolve(context)
-      * self.right:resolve(context)
+  return self.left:resolve(context) * self.right:resolve(context)
 end
 
 return ProductValue

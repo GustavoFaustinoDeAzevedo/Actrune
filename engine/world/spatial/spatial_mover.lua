@@ -18,28 +18,22 @@ function SpatialMover.new(world, entity, options)
     self.world = world
     self.entity = entity
 
-    self.source_shape_name =
-        options.source_shape
+    self.source_shape_name = options.source_shape
 
-    self.target_shape_name =
-        options.target_shape
+    self.target_shape_name = options.target_shape
 
     return self
 end
 
 -- Attempts a displacement and moves up to the first spatial collision.
 function SpatialMover:try_move(dx, dy)
-    local result =
-        MotionResult.new(dx, dy)
+    local result = MotionResult.new(dx, dy)
 
     if dx == 0 and dy == 0 then
         return result
     end
 
-    local source_shape =
-        self.entity:get_shape(
-            self.source_shape_name
-        )
+    local source_shape = self.entity:get_shape(self.source_shape_name)
 
     if source_shape == nil then
         return result
@@ -56,15 +50,9 @@ function SpatialMover:try_move(dx, dy)
         )
 
     if #hits == 0 then
-        self.entity.transform:translate(
-            dx,
-            dy
-        )
+        self.entity.transform:translate(dx, dy)
 
-        result:add_applied(
-            dx,
-            dy
-        )
+        result:add_applied(dx, dy)
 
         return result
     end
@@ -73,31 +61,20 @@ function SpatialMover:try_move(dx, dy)
         hits[1].fraction
 
     local movement_length =
-        math.sqrt(
-            dx * dx
-            + dy * dy
-        )
+        math.sqrt(dx * dx + dy * dy)
 
     local fraction_margin = 0
 
     if movement_length > 0 then
-        fraction_margin =
-            MOTION_EPSILON
-            / movement_length
+        fraction_margin = MOTION_EPSILON / movement_length
     end
 
     local safe_fraction =
-        math.max(
-            0,
-            collision_fraction
-            - fraction_margin
-        )
+        math.max(0, collision_fraction - fraction_margin)
 
-    local applied_x =
-        dx * safe_fraction
+    local applied_x = dx * safe_fraction
 
-    local applied_y =
-        dy * safe_fraction
+    local applied_y = dy * safe_fraction
 
     self.entity.transform:translate(
         applied_x,

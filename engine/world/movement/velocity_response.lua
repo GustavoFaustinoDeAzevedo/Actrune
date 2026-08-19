@@ -26,33 +26,23 @@ function VelocityResponse.reflect(
     return false
   end
 
-  normal_x =
-      normal_x / normal_length
+  normal_x = normal_x / normal_length
 
-  normal_y =
-      normal_y / normal_length
+  normal_y = normal_y / normal_length
 
-  local velocity_x, velocity_y =
-      velocity:get()
+  local velocity_x, velocity_y = velocity:get()
 
-  local normal_velocity =
-      velocity_x * normal_x
-      + velocity_y * normal_y
+  local normal_velocity = velocity_x * normal_x + velocity_y * normal_y
 
   if normal_velocity >= 0 then
     return false
   end
 
-  local response =
-      (1 + restitution)
-      * normal_velocity
+  local response = (1 + restitution) * normal_velocity
 
   velocity:set(
-    velocity_x
-    - response * normal_x,
-
-    velocity_y
-    - response * normal_y
+    velocity_x - response * normal_x,
+    velocity_y - response * normal_y
   )
 
   return true
@@ -76,14 +66,11 @@ function VelocityResponse.remove_inward_component(
     return false
   end
 
-  normal_x =
-      normal_x / normal_length
+  normal_x = normal_x / normal_length
 
-  normal_y =
-      normal_y / normal_length
+  normal_y = normal_y / normal_length
 
-  local velocity_x, velocity_y =
-      velocity:get()
+  local velocity_x, velocity_y = velocity:get()
 
   local normal_velocity =
       velocity_x * normal_x
@@ -94,11 +81,8 @@ function VelocityResponse.remove_inward_component(
   end
 
   velocity:set(
-    velocity_x
-    - normal_velocity * normal_x,
-
-    velocity_y
-    - normal_velocity * normal_y
+    velocity_x - normal_velocity * normal_x,
+    velocity_y - normal_velocity * normal_y
   )
 
   return true

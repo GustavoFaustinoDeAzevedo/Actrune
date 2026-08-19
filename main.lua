@@ -29,6 +29,9 @@ local Entity = require(engineFolder .. "entity")
 local physicsFolder = "engine/world/physics/"
 local PhysicalMaterial = require(physicsFolder .. "physical_material")
 local ContactMaterialResolver = require(physicsFolder .. "contact_material_resolver")
+local Mass = require(physicsFolder .. "mass")
+
+local ContactImpulse = require(physicsFolder .. "contact_impulse")
 
 local movementFolder = "engine/world/movement/"
 local Velocity = require(movementFolder .. "velocity")
@@ -66,6 +69,7 @@ local bounce_acceleration
 local bounce_ball_material
 local bounce_wall_material
 local bounce_material_resolver
+local bounce_mass
 local bounce_walls = {}
 local runtime
 local messages = {}
@@ -76,8 +80,8 @@ local function add_message(message)
     table.insert(messages, message)
 end
 
--- Reflects velocity using the effective properties of each material contact.
-local function reflect_bounce_contacts(
+-- Resolves the test body's contacts using material properties and physical impulses.
+local function resolve_bounce_contacts(
     velocity,
     result
 )
@@ -88,28 +92,12 @@ local function reflect_bounce_contacts(
                 contact.target_material
             )
 
-        VelocityResponse.reflect(
+        ContactImpulse.apply(
             velocity,
+            bounce_mass,
             contact.normal_x,
             contact.normal_y,
-            properties.restitution
-        )
-    end
-end
-
--- Removes velocity entering any contacted surface during the test.
-local function remove_inward_contacts(
-    velocity,
-    result
-)
-    for _, contact in ipairs(
-        result.contacts
-    ) do
-        VelocityResponse.remove_inward_component(
-            velocity,
-            contact.normal_x,
-            contact.normal_y
-
+            properties
         )
     end
 end
@@ -180,18 +168,20 @@ function love.load()
     runtime = Actrune.new()
     runtime:bind_key("interact", "space")
 
+    bounce_mass = Mass.new(1)
+
     bounce_ball_material =
         PhysicalMaterial.new({
             restitution = 0.8,
-            static_friction = 0.6,
-            dynamic_friction = 0.4
+            static_friction = 0.1,
+            dynamic_friction = 0.1
         })
 
     bounce_wall_material =
         PhysicalMaterial.new({
-            restitution = 0.8,
-            static_friction = 0.8,
-            dynamic_friction = 0.8
+            restitution = 0.65,
+            static_friction = 0.1,
+            dynamic_friction = 0.1
         })
 
     bounce_material_resolver =
@@ -310,8 +300,8 @@ function love.load()
     )
 
     bounce_velocity = Velocity.new({
-        x = -2000,
-        y = -1000
+        x = -500,
+        y = -400
     })
 
     bounce_acceleration = Acceleration.new({
@@ -501,18 +491,11 @@ function love.update(dt)
         velocity_change_y
     )
 
-    -- VelocityMotion.advance(
-    --     bounce_mover,
-    --     bounce_velocity,
-    --     dt,
-    --     reflect_bounce_contacts
-    -- )
-
     VelocityMotion.advance(
         bounce_mover,
         bounce_velocity,
         dt,
-        reflect_bounce_contacts
+        resolve_bounce_contacts
     )
 
     runtime:update(dt)

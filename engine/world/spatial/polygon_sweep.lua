@@ -37,15 +37,12 @@ local function collect_moving_vertex_contacts(
     target_winding
 )
   for moving_index = 1, #moving_points, 2 do
-    local point_x =
-        moving_points[moving_index]
+    local point_x = moving_points[moving_index]
 
-    local point_y =
-        moving_points[moving_index + 1]
+    local point_y = moving_points[moving_index + 1]
 
     for target_index = 1, #target_points, 2 do
-      local next_target_index =
-          target_index + 2
+      local next_target_index = target_index + 2
 
       if next_target_index > #target_points then
         next_target_index = 1
@@ -104,15 +101,12 @@ local function collect_target_vertex_contacts(
   local relative_y = -move_y
 
   for target_index = 1, #target_points, 2 do
-    local point_x =
-        target_points[target_index]
+    local point_x = target_points[target_index]
 
-    local point_y =
-        target_points[target_index + 1]
+    local point_y = target_points[target_index + 1]
 
     for moving_index = 1, #moving_points, 2 do
-      local next_moving_index =
-          moving_index + 2
+      local next_moving_index = moving_index + 2
 
       if next_moving_index > #moving_points then
         next_moving_index = 1
@@ -127,8 +121,7 @@ local function collect_target_vertex_contacts(
             moving_winding
           )
 
-      if outward_x ~= nil
-          and Geometry.dot(
+      if outward_x ~= nil and Geometry.dot(
             relative_x,
             relative_y,
             outward_x,
@@ -147,12 +140,7 @@ local function collect_target_vertex_contacts(
               moving_points[next_moving_index + 1]
             )
 
-        add_candidate(
-          candidates,
-          fraction,
-          -outward_x,
-          -outward_y
-        )
+        add_candidate(candidates, fraction, -outward_x, -outward_y)
       end
     end
   end
@@ -169,16 +157,11 @@ local function find_blocking_candidate(
   table.sort(
     candidates,
     function(left, right)
-      return left.fraction
-          < right.fraction
+      return left.fraction < right.fraction
     end
   )
 
-  local movement_length =
-      math.sqrt(
-        move_x * move_x
-        + move_y * move_y
-      )
+  local movement_length = math.sqrt(move_x * move_x + move_y * move_y)
 
   if movement_length <= Geometry.EPSILON then
     return nil
@@ -189,9 +172,7 @@ local function find_blocking_candidate(
       / movement_length
 
   for _, candidate in ipairs(candidates) do
-    local after_contact =
-        candidate.fraction
-        + probe_fraction
+    local after_contact = candidate.fraction + probe_fraction
 
     local probe_points =
         PolygonGeometry.translate_points(

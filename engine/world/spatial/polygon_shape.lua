@@ -67,10 +67,8 @@ function PolygonShape:contains_point(x, y, transform)
 
         if crosses_vertical_range then
             local intersection_x =
-                (previous_point.x - current_point.x)
-                * (local_y - current_point.y)
-                / (previous_point.y - current_point.y)
-                + current_point.x
+                (previous_point.x - current_point.x) * (local_y - current_point.y)
+                / (previous_point.y - current_point.y) + current_point.x
 
             if local_x < intersection_x then
                 inside = not inside

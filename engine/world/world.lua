@@ -132,8 +132,7 @@ function World:sweep_shape(
     table.sort(
         hits,
         function(left, right)
-            return left.fraction
-                < right.fraction
+            return left.fraction < right.fraction
         end
     )
 

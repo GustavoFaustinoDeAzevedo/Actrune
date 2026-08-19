@@ -19,11 +19,9 @@ end
 
 -- Adds an applied displacement to this motion result.
 function MotionResult:add_applied(dx, dy)
-  self.applied_x =
-      self.applied_x + dx
+  self.applied_x = self.applied_x + dx
 
-  self.applied_y =
-      self.applied_y + dy
+  self.applied_y = self.applied_y + dy
 end
 
 -- Adds a collided entity without duplicating it.
@@ -59,13 +57,11 @@ function MotionResult:add_contact(
   local target_material = nil
 
   if source_shape ~= nil then
-    source_material =
-        source_shape:get_material()
+    source_material = source_shape:get_material()
   end
 
   if target_shape ~= nil then
-    target_material =
-        target_shape:get_material()
+    target_material = target_shape:get_material()
   end
 
   table.insert(

@@ -262,17 +262,10 @@ function Geometry.moving_point_segment_fraction(
     end_x,
     end_y
 )
-  local segment_x =
-      end_x - start_x
-
-  local segment_y =
-      end_y - start_y
-
-  local relative_x =
-      start_x - point_x
-
-  local relative_y =
-      start_y - point_y
+  local segment_x = end_x - start_x
+  local segment_y = end_y - start_y
+  local relative_x = start_x - point_x
+  local relative_y = start_y - point_y
 
   local denominator =
       Geometry.vector_cross(
@@ -282,8 +275,7 @@ function Geometry.moving_point_segment_fraction(
         segment_y
       )
 
-  if math.abs(denominator)
-      <= Geometry.EPSILON
+  if math.abs(denominator) <= Geometry.EPSILON
   then
     return nil
   end
@@ -314,11 +306,7 @@ function Geometry.moving_point_segment_fraction(
     return nil
   end
 
-  return Geometry.clamp(
-    movement_fraction,
-    0,
-    1
-  )
+  return Geometry.clamp(movement_fraction, 0, 1)
 end
 
 return Geometry
