@@ -27,6 +27,7 @@ local Entity = require(engineFolder .. "entity")
 
 local movementFolder = "engine/world/movement/"
 local Velocity = require(movementFolder .. "velocity")
+local VelocityMotion = require(movementFolder .. "velocity_motion")
 local VelocityResponse = require(movementFolder .. "velocity_response")
 
 local spatialFolder = "engine/world/spatial/"
@@ -63,6 +64,23 @@ local messages = {}
 -- Adds a message to the test output.
 local function add_message(message)
     table.insert(messages, message)
+end
+
+-- Reflects the test velocity against every simultaneous collision contact.
+local function reflect_bounce_contacts(
+    velocity,
+    result
+)
+    for _, contact in ipairs(
+        result.contacts
+    ) do
+        VelocityResponse.reflect(
+            velocity,
+            contact.normal_x,
+            contact.normal_y,
+            1
+        )
+    end
 end
 
 -- Draws a named polygon shape belonging to an entity for debugging purposes.
@@ -223,8 +241,8 @@ function love.load()
     )
 
     bounce_velocity = Velocity.new({
-        x = 170,
-        y = 110
+        x = 700,
+        y = 430
     })
 
     bounce_mover = SpatialMover.new(
@@ -397,25 +415,12 @@ function love.update(dt)
         )
     end
 
-    local bounce_x, bounce_y =
-        bounce_velocity:get_displacement(dt)
-
-    local bounce_result =
-        bounce_mover:try_move(
-            bounce_x,
-            bounce_y
-        )
-
-    for _, contact in ipairs(
-        bounce_result.contacts
-    ) do
-        VelocityResponse.reflect(
-            bounce_velocity,
-            contact.normal_x,
-            contact.normal_y,
-            0.7
-        )
-    end
+    VelocityMotion.advance(
+        bounce_mover,
+        bounce_velocity,
+        dt,
+        reflect_bounce_contacts
+    )
 
     runtime:update(dt)
 end

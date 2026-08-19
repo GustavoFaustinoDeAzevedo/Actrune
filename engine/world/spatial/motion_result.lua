@@ -94,4 +94,19 @@ function MotionResult:has_collision()
   return #self.collisions > 0
 end
 
+-- Returns the earliest contact fraction recorded by this motion result.
+function MotionResult:get_first_contact_fraction()
+  local earliest_fraction = nil
+
+  for _, contact in ipairs(self.contacts) do
+    if earliest_fraction == nil
+        or contact.fraction < earliest_fraction
+    then
+      earliest_fraction = contact.fraction
+    end
+  end
+
+  return earliest_fraction
+end
+
 return MotionResult
