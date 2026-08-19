@@ -27,6 +27,7 @@ local Entity = require(engineFolder .. "entity")
 
 local movementFolder = "engine/world/movement/"
 local Velocity = require(movementFolder .. "velocity")
+local Acceleration = require(movementFolder .. "acceleration")
 local VelocityMotion = require(movementFolder .. "velocity_motion")
 local VelocityResponse = require(movementFolder .. "velocity_response")
 
@@ -56,6 +57,7 @@ local player_velocity
 local bounce_ball
 local bounce_velocity
 local bounce_mover
+local bounce_acceleration
 local bounce_walls = {}
 local runtime
 local messages = {}
@@ -78,7 +80,7 @@ local function reflect_bounce_contacts(
             velocity,
             contact.normal_x,
             contact.normal_y,
-            1
+            0.5
         )
     end
 end
@@ -243,6 +245,11 @@ function love.load()
     bounce_velocity = Velocity.new({
         x = 700,
         y = 430
+    })
+
+    bounce_acceleration = Acceleration.new({
+        x = 0,
+        y = 500
     })
 
     bounce_mover = SpatialMover.new(
@@ -414,6 +421,14 @@ function love.update(dt)
             player_entity
         )
     end
+
+    local velocity_change_x, velocity_change_y =
+        bounce_acceleration:get_velocity_change(dt)
+
+    bounce_velocity:add(
+        velocity_change_x,
+        velocity_change_y
+    )
 
     VelocityMotion.advance(
         bounce_mover,
