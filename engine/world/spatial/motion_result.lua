@@ -49,7 +49,9 @@ function MotionResult:add_contact(
     normal_y,
     fraction,
     source_shape,
-    target_shape
+    target_shape,
+    point_x,
+    point_y
 )
   self:add_collision(entity)
 
@@ -57,11 +59,13 @@ function MotionResult:add_contact(
   local target_material = nil
 
   if source_shape ~= nil then
-    source_material = source_shape:get_material()
+    source_material =
+        source_shape:get_material()
   end
 
   if target_shape ~= nil then
-    target_material = target_shape:get_material()
+    target_material =
+        target_shape:get_material()
   end
 
   table.insert(
@@ -77,6 +81,9 @@ function MotionResult:add_contact(
 
       normal_x = normal_x,
       normal_y = normal_y,
+
+      point_x = point_x,
+      point_y = point_y,
 
       fraction = fraction
     }
@@ -105,7 +112,9 @@ function MotionResult:absorb(other)
       contact.normal_y,
       contact.fraction,
       contact.source_shape,
-      contact.target_shape
+      contact.target_shape,
+      contact.point_x,
+      contact.point_y
     )
   end
 end

@@ -6,23 +6,34 @@ local PolygonSweep = {}
 
 local CONTACT_PROBE_DISTANCE = 0.0001
 
--- Adds a possible polygon sweep contact to a candidate list.
+-- Adds a possible polygon sweep contact with its geometric contact point.
 local function add_candidate(
     candidates,
     fraction,
     normal_x,
-    normal_y
+    normal_y,
+    point_x,
+    point_y
 )
   if fraction == nil then
     return
   end
 
+  assert(
+    point_x ~= nil and point_y ~= nil,
+    "sweep candidate contact point is required"
+  )
+
   table.insert(
     candidates,
     {
       fraction = fraction,
+
       normal_x = normal_x,
-      normal_y = normal_y
+      normal_y = normal_y,
+
+      point_x = point_x,
+      point_y = point_y
     }
   )
 end
@@ -77,12 +88,19 @@ local function collect_moving_vertex_contacts(
               target_points[next_target_index + 1]
             )
 
-        add_candidate(
-          candidates,
-          fraction,
-          normal_x,
-          normal_y
-        )
+        if fraction ~= nil then
+          local contact_x = point_x + move_x * fraction
+          local contact_y = point_y + move_y * fraction
+
+          add_candidate(
+            candidates,
+            fraction,
+            normal_x,
+            normal_y,
+            contact_x,
+            contact_y
+          )
+        end
       end
     end
   end
@@ -121,7 +139,8 @@ local function collect_target_vertex_contacts(
             moving_winding
           )
 
-      if outward_x ~= nil and Geometry.dot(
+      if outward_x ~= nil
+          and Geometry.dot(
             relative_x,
             relative_y,
             outward_x,
@@ -140,7 +159,16 @@ local function collect_target_vertex_contacts(
               moving_points[next_moving_index + 1]
             )
 
-        add_candidate(candidates, fraction, -outward_x, -outward_y)
+        if fraction ~= nil then
+          add_candidate(
+            candidates,
+            fraction,
+            -outward_x,
+            -outward_y,
+            point_x,
+            point_y
+          )
+        end
       end
     end
   end
@@ -161,8 +189,7 @@ local function contains_similar_normal(
           normal_y
         )
 
-    if similarity
-        >= 1 - Geometry.EPSILON
+    if similarity >= 1 - Geometry.EPSILON
     then
       return true
     end
@@ -171,20 +198,48 @@ local function contains_similar_normal(
   return false
 end
 
--- Combines unique normals produced at the same collision fraction.
-local function combine_contact_normals(
+
+
+-- Returns whether a nearly identical contact point is already stored.
+local function contains_similar_point(
+    points,
+    point_x,
+    point_y
+)
+  for _, point in ipairs(points) do
+    local difference_x = point.x - point_x
+    local difference_y = point.y - point_y
+    local distance_squared =
+        difference_x * difference_x
+        + difference_y * difference_y
+
+    if distance_squared <= Geometry.EPSILON * Geometry.EPSILON then
+      return true
+    end
+  end
+
+  return false
+end
+
+-- Combines unique normals and contact points produced at the same collision fraction.
+local function combine_contact_data(
     candidates,
     fraction
 )
   local normals = {}
+  local points = {}
 
-  local combined_x = 0
-  local combined_y = 0
+  local normal_x = 0
+  local normal_y = 0
+
+  local point_x = 0
+  local point_y = 0
 
   local fallback = nil
 
   for _, candidate in ipairs(candidates) do
-    if math.abs(candidate.fraction - fraction) <= Geometry.EPSILON
+    if math.abs(
+          candidate.fraction - fraction) <= Geometry.EPSILON
     then
       fallback = fallback or candidate
 
@@ -202,28 +257,55 @@ local function combine_contact_normals(
           }
         )
 
-        combined_x = combined_x + candidate.normal_x
+        normal_x = normal_x + candidate.normal_x
 
-        combined_y = combined_y + candidate.normal_y
+        normal_y = normal_y + candidate.normal_y
+      end
+
+      if not contains_similar_point(
+            points,
+            candidate.point_x,
+            candidate.point_y
+          )
+      then
+        table.insert(
+          points,
+          {
+            x = candidate.point_x,
+            y = candidate.point_y
+          }
+        )
+
+        point_x = point_x + candidate.point_x
+        point_y = point_y + candidate.point_y
       end
     end
   end
 
-  local combined_length = math.sqrt(
-    combined_x * combined_x
-    + combined_y * combined_y
-  )
+  local normal_length = math.sqrt(normal_x * normal_x + normal_y * normal_y)
 
-  if fallback and combined_length <= Geometry.EPSILON
+  if fallback and normal_length <= Geometry.EPSILON
   then
-    return fallback.normal_x, fallback.normal_y
+    normal_x = fallback.normal_x
+    normal_y = fallback.normal_y
+  else
+    normal_x = normal_x / normal_length
+    normal_y = normal_y / normal_length
   end
 
-  return combined_x / combined_length,
-      combined_y / combined_length
+  if #points > 0 then
+    point_x = point_x / #points
+    point_y = point_y / #points
+  elseif fallback then
+    point_x = fallback.point_x
+    point_y = fallback.point_y
+  end
+
+  return normal_x, normal_y,
+      point_x, point_y
 end
 
--- Finds the earliest penetrating contact and combines its simultaneous surface normals.
+-- Finds the earliest penetrating contact and combines its simultaneous contact data.
 local function find_blocking_candidate(
     candidates,
     moving_points,
@@ -239,9 +321,14 @@ local function find_blocking_candidate(
     end
   )
 
-  local movement_length = math.sqrt(move_x * move_x + move_y * move_y)
+  local movement_length =
+      math.sqrt(
+        move_x * move_x
+        + move_y * move_y
+      )
 
-  if movement_length <= Geometry.EPSILON
+  if movement_length
+      <= Geometry.EPSILON
   then
     return nil
   end
@@ -253,7 +340,10 @@ local function find_blocking_candidate(
   local blocking_fraction = nil
 
   for _, candidate in ipairs(candidates) do
-    local after_contact = candidate.fraction + probe_fraction
+    local after_contact =
+        candidate.fraction
+        + probe_fraction
+
     local probe_points =
         PolygonGeometry.translate_points(
           moving_points,
@@ -262,8 +352,12 @@ local function find_blocking_candidate(
           after_contact
         )
 
-    if PolygonGeometry.overlaps_strict(probe_points, target_points) then
-      blocking_fraction = candidate.fraction
+    if PolygonGeometry.overlaps_strict(
+          probe_points,
+          target_points
+        ) then
+      blocking_fraction =
+          candidate.fraction
 
       break
     end
@@ -273,18 +367,25 @@ local function find_blocking_candidate(
     return nil
   end
 
-  local normal_x, normal_y =
-      combine_contact_normals(
-        candidates,
-        blocking_fraction
-      )
+  local normal_x,
+  normal_y,
+  point_x,
+  point_y = combine_contact_data(
+    candidates,
+    blocking_fraction
+  )
 
   return {
     fraction = blocking_fraction,
+
     normal_x = normal_x,
-    normal_y = normal_y
+    normal_y = normal_y,
+
+    point_x = point_x,
+    point_y = point_y
   }
 end
+
 
 -- Finds the earliest blocking contact while translating one polygon against another.
 function PolygonSweep.sweep(

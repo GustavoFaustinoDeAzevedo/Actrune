@@ -145,14 +145,12 @@ local function find_earliest_contacts(
           )
 
       local relative_x = move_a_x - move_b_x
-
       local relative_y = move_a_y - move_b_y
 
       if math.abs(relative_x) > Geometry.EPSILON
           or math.abs(relative_y) > Geometry.EPSILON
       then
         local shape_a = entry_a.entity:get_shape(entry_a.shape_name)
-
         local shape_b = entry_b.entity:get_shape(entry_b.shape_name)
 
         local hit =
@@ -169,21 +167,28 @@ local function find_earliest_contacts(
           if earliest_fraction == nil or hit.fraction < earliest_fraction - Geometry.EPSILON
           then
             earliest_fraction = hit.fraction
-
             contacts = {}
           end
 
           if math.abs(hit.fraction - earliest_fraction) <= Geometry.EPSILON
           then
+            local contact_x = hit.point_x + move_b_x * hit.fraction
+            local contact_y = hit.point_y + move_b_y * hit.fraction
             table.insert(
               contacts,
               {
                 source = entry_a,
                 target = entry_b,
+
                 source_shape = shape_a,
                 target_shape = shape_b,
+
                 normal_x = hit.normal_x,
                 normal_y = hit.normal_y,
+
+                point_x = contact_x,
+                point_y = contact_y,
+
                 fraction = hit.fraction
               }
             )
