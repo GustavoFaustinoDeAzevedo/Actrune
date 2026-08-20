@@ -13,8 +13,6 @@ PhysicsWorld.__index = PhysicsWorld
 local DEFAULT_MAX_COLLISIONS = 16
 local DEFAULT_CONTACT_ITERATIONS = 4
 local CONTACT_SEPARATION = 0.0001
-local OVERLAP_RECOVERY_STEP = 0.001
-local MAX_OVERLAP_RECOVERY_ITERATIONS = 16
 
 -- Creates a coordinated physics simulation over an existing Actrune world.
 function PhysicsWorld.new(world, material_resolver, options)
@@ -45,27 +43,6 @@ end
 local function get_inverse_mass(entry)
   if not is_dynamic(entry) then return 0 end
   return entry.entity:get_component("mass"):get_inverse()
-end
-
--- Returns a fallback separation normal for an already-overlapping entity pair.
-local function get_overlap_normal(entry_a, entry_b, move_a_x, move_a_y, move_b_x, move_b_y)
-  local relative_x = move_a_x - move_b_x
-  local relative_y = move_a_y - move_b_y
-  local relative_length = math.sqrt(relative_x * relative_x + relative_y * relative_y)
-
-  if relative_length > Geometry.EPSILON then
-    return -relative_x / relative_length, -relative_y / relative_length
-  end
-
-  local difference_x = entry_a.entity.transform.x - entry_b.entity.transform.x
-  local difference_y = entry_a.entity.transform.y - entry_b.entity.transform.y
-  local difference_length = math.sqrt(difference_x * difference_x + difference_y * difference_y)
-
-  if difference_length > Geometry.EPSILON then
-    return difference_x / difference_length, difference_y / difference_length
-  end
-
-  return 1, 0
 end
 
 -- Applies configured acceleration to every dynamic entity in simulation order.
@@ -200,8 +177,8 @@ function PhysicsWorld:remove_entity(entity)
   return true
 end
 
--- Moves an overlapping pair apart using inverse-mass-weighted separation.
-function PhysicsWorld:_move_pair_apart(entry_a, entry_b, normal_x, normal_y, amount)
+-- Applies a relative separation vector according to both entities' inverse masses.
+function PhysicsWorld:_apply_pair_separation(entry_a, entry_b, separation_x, separation_y)
   local inverse_mass_a = get_inverse_mass(entry_a)
   local inverse_mass_b = get_inverse_mass(entry_b)
   local inverse_mass_sum = inverse_mass_a + inverse_mass_b
@@ -211,42 +188,31 @@ function PhysicsWorld:_move_pair_apart(entry_a, entry_b, normal_x, normal_y, amo
   local share_a = inverse_mass_a / inverse_mass_sum
   local share_b = inverse_mass_b / inverse_mass_sum
 
-  entry_a.entity.transform:translate(normal_x * amount * share_a, normal_y * amount * share_a)
-  entry_b.entity.transform:translate(-normal_x * amount * share_b, -normal_y * amount * share_b)
+  entry_a.entity.transform:translate(separation_x * share_a, separation_y * share_a)
+  entry_b.entity.transform:translate(-separation_x * share_b, -separation_y * share_b)
 
   return true
 end
 
--- Attempts to recover a pair that already begins the simulation step overlapping.
-function PhysicsWorld:_recover_overlap(entry_a, entry_b, remaining_time)
+-- Recovers a pair that already begins the simulation interval overlapping.
+function PhysicsWorld:_recover_overlap(entry_a, entry_b)
   local shape_a = entry_a.entity:get_shape(entry_a.shape_name)
   local shape_b = entry_b.entity:get_shape(entry_b.shape_name)
 
-  if not SpatialQuery.polygons_overlap_strict(shape_a, entry_a.entity.transform, shape_b, entry_b.entity.transform) then
-    return false
-  end
+  local separation = SpatialQuery.find_polygon_separation(
+    shape_a,
+    entry_a.entity.transform,
+    shape_b,
+    entry_b.entity.transform
+  )
 
-  local move_a_x, move_a_y = get_displacement(entry_a, remaining_time)
-  local move_b_x, move_b_y = get_displacement(entry_b, remaining_time)
-  local normal_x, normal_y = get_overlap_normal(entry_a, entry_b, move_a_x, move_a_y, move_b_x, move_b_y)
+  if separation == nil then return false end
 
-  local separation = OVERLAP_RECOVERY_STEP
-
-  for _ = 1, MAX_OVERLAP_RECOVERY_ITERATIONS do
-    if not self:_move_pair_apart(entry_a, entry_b, normal_x, normal_y, separation) then return false end
-
-    if not SpatialQuery.polygons_overlap_strict(shape_a, entry_a.entity.transform, shape_b, entry_b.entity.transform) then
-      return true
-    end
-
-    separation = separation * 2
-  end
-
-  return false
+  return self:_apply_pair_separation(entry_a, entry_b, separation.x, separation.y)
 end
 
 -- Recovers registered entity pairs that begin a simulation interval overlapping.
-function PhysicsWorld:_recover_overlaps(remaining_time)
+function PhysicsWorld:_recover_overlaps()
   for index_a = 1, #self.entries - 1 do
     local entry_a = self.entries[index_a]
 
@@ -254,7 +220,7 @@ function PhysicsWorld:_recover_overlaps(remaining_time)
       local entry_b = self.entries[index_b]
 
       if is_dynamic(entry_a) or is_dynamic(entry_b) then
-        self:_recover_overlap(entry_a, entry_b, remaining_time)
+        self:_recover_overlap(entry_a, entry_b)
       end
     end
   end
@@ -355,7 +321,7 @@ function PhysicsWorld:update(dt)
   local collision_count = 0
 
   while remaining_time > Geometry.EPSILON do
-    self:_recover_overlaps(remaining_time)
+    self:_recover_overlaps()
 
     local fraction, contacts = find_earliest_contacts(self.entries, remaining_time)
 

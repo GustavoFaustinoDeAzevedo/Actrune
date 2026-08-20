@@ -1,6 +1,7 @@
 local Geometry = require("engine.world.spatial.geometry")
 local PolygonGeometry = require("engine.world.spatial.polygon_geometry")
 local PolygonSweep = require("engine.world.spatial.polygon_sweep")
+local PolygonSeparation = require("engine.world.spatial.polygon_separation")
 
 local SpatialQuery = {}
 
@@ -96,6 +97,14 @@ function SpatialQuery.polygons_overlap_strict(shape_a, transform_a, shape_b, tra
     local points_b = shape_b:get_world_points(transform_b)
 
     return PolygonGeometry.overlaps_strict(points_a, points_b)
+end
+
+-- Finds a geometric translation that removes a strict overlap between two polygon shapes.
+function SpatialQuery.find_polygon_separation(shape_a, transform_a, shape_b, transform_b)
+    local points_a = shape_a:get_world_points(transform_a)
+    local points_b = shape_b:get_world_points(transform_b)
+
+    return PolygonSeparation.find(points_a, points_b)
 end
 
 return SpatialQuery
