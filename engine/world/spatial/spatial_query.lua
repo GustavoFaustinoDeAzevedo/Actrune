@@ -1,5 +1,5 @@
 local Geometry = require("engine.world.spatial.geometry")
-
+local PolygonGeometry = require("engine.world.spatial.polygon_geometry")
 local PolygonSweep = require("engine.world.spatial.polygon_sweep")
 
 local SpatialQuery = {}
@@ -88,6 +88,14 @@ function SpatialQuery.sweep_polygons(
         target_shape,
         target_transform
     )
+end
+
+-- Returns whether two polygon interiors strictly overlap in world space.
+function SpatialQuery.polygons_overlap_strict(shape_a, transform_a, shape_b, transform_b)
+    local points_a = shape_a:get_world_points(transform_a)
+    local points_b = shape_b:get_world_points(transform_b)
+
+    return PolygonGeometry.overlaps_strict(points_a, points_b)
 end
 
 return SpatialQuery

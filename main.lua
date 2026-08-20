@@ -312,7 +312,7 @@ function love.load()
     event_entity:add_event(create_test_event())
 
     bounce_ball, bounce_velocity = create_bounce_ball(
-        "bounce_ball", 320, 350, 200, 0, 1, bounce_ball_material
+        "bounce_ball", 320, 510, 0, 0, 1, bounce_ball_material
     )
 
     bounce_ball_b, bounce_velocity_b = create_bounce_ball(
@@ -371,8 +371,10 @@ function love.draw()
     local velocity_a_x, velocity_a_y = bounce_velocity:get()
     local velocity_b_x, velocity_b_y = bounce_velocity_b:get()
 
-    love.graphics.print(string.format("Ball A velocity: %.2f, %.2f", velocity_a_x, velocity_a_y), 20, 130)
-    love.graphics.print(string.format("Ball B velocity: %.2f, %.2f", velocity_b_x, velocity_b_y), 20, 150)
+    love.graphics.print(string.format(
+        "Ball A velocity: %.2f, %.2f", velocity_a_x, velocity_a_y), 20, 130)
+    love.graphics.print(string.format(
+        "Ball B velocity: %.2f, %.2f", velocity_b_x, velocity_b_y), 20, 150)
 
     draw_shape(bounce_ball, "bounce")
     draw_shape(bounce_ball_b, "bounce")
