@@ -175,6 +175,15 @@ local function create_test_event()
     })
 end
 
+-- Draws an entity's local forward direction for rotational debugging.
+local function draw_forward(entity, length)
+    local x = entity.transform.x
+    local y = entity.transform.y
+    local forward_x, forward_y = entity.transform:get_forward()
+
+    love.graphics.line(x, y, x + forward_x * length, y + forward_y * length)
+end
+
 -- Advances the physics simulation by one fixed step.
 local function update_physics(step_dt)
     physics_world:update(step_dt)
@@ -367,6 +376,7 @@ function love.draw()
 
     draw_shape(bounce_ball, "bounce")
     draw_shape(bounce_ball_b, "bounce")
+    draw_forward(bounce_ball, 16)
 
     for _, wall in ipairs(bounce_walls) do
         draw_shape(wall, "bounce")

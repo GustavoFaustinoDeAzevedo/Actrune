@@ -11,6 +11,8 @@ local PhysicsWorld = {}
 PhysicsWorld.__index = PhysicsWorld
 
 local DEFAULT_MAX_COLLISIONS = 16
+local DEFAULT_CONTACT_ITERATIONS = 4
+local CONTACT_SEPARATION = 0.0001
 
 -- Creates a coordinated physics simulation over an existing Actrune world.
 function PhysicsWorld.new(world, material_resolver, options)
@@ -24,7 +26,7 @@ function PhysicsWorld.new(world, material_resolver, options)
   self.world = world
   self.material_resolver = material_resolver
   self.entries = {}
-
+  self.contact_iterations = options.contact_iterations or DEFAULT_CONTACT_ITERATIONS
   self.max_collisions = options.max_collisions or DEFAULT_MAX_COLLISIONS
 
   return self
@@ -63,6 +65,12 @@ local function is_dynamic(entry)
       and entry.entity:get_component("mass") ~= nil
 end
 
+-- Returns the inverse mass of a dynamic entry or zero for a static entry.
+local function get_inverse_mass(entry)
+  if not is_dynamic(entry) then return 0 end
+  return entry.entity:get_component("mass"):get_inverse()
+end
+
 -- Applies configured acceleration to every dynamic entity.
 local function apply_accelerations(entries, dt)
   for _, entry in pairs(entries) do
@@ -94,20 +102,12 @@ local function get_displacement(entry, dt)
   return velocity:get_displacement(dt)
 end
 
--- Advances every dynamic entity by the provided time interval.
+-- Advances every dynamic entity through the provided linear time interval.
 local function advance_entries(entries, dt)
   for _, entry in pairs(entries) do
     if is_dynamic(entry) then
-      local dx, dy =
-          get_displacement(
-            entry,
-            dt
-          )
-
-      entry.entity.transform:translate(
-        dx,
-        dy
-      )
+      local dx, dy = get_displacement(entry, dt)
+      entry.entity.transform:translate(dx, dy)
     end
   end
 end
@@ -201,6 +201,41 @@ local function find_earliest_contacts(
   return earliest_fraction, contacts
 end
 
+-- Separates two contacting entities by a tiny mass-weighted distance.
+function PhysicsWorld:_separate_contact(contact)
+  local source_inverse_mass = get_inverse_mass(contact.source)
+  local target_inverse_mass = get_inverse_mass(contact.target)
+  local inverse_mass_sum = source_inverse_mass + target_inverse_mass
+
+  if inverse_mass_sum <= Geometry.EPSILON then return end
+
+  local source_share = source_inverse_mass / inverse_mass_sum
+  local target_share = target_inverse_mass / inverse_mass_sum
+
+  contact.source.entity.transform:translate(
+    contact.normal_x * CONTACT_SEPARATION * source_share,
+    contact.normal_y * CONTACT_SEPARATION * source_share
+  )
+
+  contact.target.entity.transform:translate(
+    -contact.normal_x * CONTACT_SEPARATION * target_share,
+    -contact.normal_y * CONTACT_SEPARATION * target_share
+  )
+end
+
+-- Resolves simultaneous contacts through repeated sequential impulse passes.
+function PhysicsWorld:_resolve_contacts(contacts)
+  for _ = 1, self.contact_iterations do
+    for _, contact in ipairs(contacts) do
+      self:_resolve_contact(contact)
+    end
+  end
+
+  for _, contact in ipairs(contacts) do
+    self:_separate_contact(contact)
+  end
+end
+
 -- Resolves one contact using the dynamic state and materials of both entities.
 function PhysicsWorld:_resolve_contact(contact)
   local source_entity = contact.source.entity
@@ -248,54 +283,29 @@ end
 
 -- Advances all registered physical entities through one coordinated simulation step.
 function PhysicsWorld:update(dt)
-  apply_accelerations(
-    self.entries,
-    dt
-  )
+  apply_accelerations(self.entries, dt)
 
   local remaining_time = dt
   local collision_count = 0
 
   while remaining_time > Geometry.EPSILON do
-    local fraction, contacts =
-        find_earliest_contacts(
-          self.entries,
-          remaining_time
-        )
+    local fraction, contacts = find_earliest_contacts(self.entries, remaining_time)
 
     if fraction == nil then
-      advance_entries(
-        self.entries,
-        remaining_time
-      )
-
+      advance_entries(self.entries, remaining_time)
       break
     end
 
-    local consumed_time =
-        remaining_time
-        * Geometry.clamp(
-          fraction,
-          0,
-          1
-        )
+    local consumed_time = remaining_time * Geometry.clamp(fraction, 0, 1)
 
-    advance_entries(
-      self.entries,
-      consumed_time
-    )
-
+    advance_entries(self.entries, consumed_time)
     remaining_time = remaining_time - consumed_time
 
-    for _, contact in ipairs(contacts) do
-      self:_resolve_contact(contact)
-    end
+    self:_resolve_contacts(contacts)
 
     collision_count = collision_count + #contacts
 
-    if collision_count >= self.max_collisions then
-      break
-    end
+    if collision_count >= self.max_collisions then break end
   end
 end
 
