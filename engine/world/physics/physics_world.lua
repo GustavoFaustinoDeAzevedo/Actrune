@@ -14,6 +14,7 @@ local DEFAULT_MAX_COLLISIONS = 16
 local DEFAULT_CONTACT_ITERATIONS = 4
 local CONTACT_SEPARATION = 0.0001
 local DEFAULT_RESTITUTION_THRESHOLD = 0
+local MIN_TIME_ADVANCE = 0.000001
 
 -- Creates a coordinated physics simulation over an existing Actrune world.
 function PhysicsWorld.new(world, material_resolver, options)
@@ -28,6 +29,9 @@ function PhysicsWorld.new(world, material_resolver, options)
   self.material_resolver = material_resolver
   self.entries = {}
   self.entry_by_entity = {}
+  self.last_collision_iterations = 0
+  self.last_broadphase_pairs = 0
+  self.last_narrowphase_tests = 0
   self.contact_iterations = options.contact_iterations or DEFAULT_CONTACT_ITERATIONS
   self.max_collisions = options.max_collisions or DEFAULT_MAX_COLLISIONS
   self.restitution_threshold = options.restitution_threshold or DEFAULT_RESTITUTION_THRESHOLD
@@ -90,24 +94,76 @@ local function advance_entries(entries, dt)
   end
 end
 
--- Finds the earliest simultaneous contacts among registered entities.
+-- Calculates the swept world-space AABB of an entry over the provided displacement.
+local function get_swept_bounds(entry, move_x, move_y)
+  local shape = entry.entity:get_shape(entry.shape_name)
+  local points = shape:get_world_points(entry.entity.transform)
+
+  local min_x, max_x = points[1], points[1]
+  local min_y, max_y = points[2], points[2]
+
+  for index = 3, #points, 2 do
+    local x = points[index]
+    local y = points[index + 1]
+
+    if x < min_x then min_x = x end
+    if x > max_x then max_x = x end
+    if y < min_y then min_y = y end
+    if y > max_y then max_y = y end
+  end
+
+  if move_x < 0 then min_x = min_x + move_x else max_x = max_x + move_x end
+  if move_y < 0 then min_y = min_y + move_y else max_y = max_y + move_y end
+
+  return {
+    min_x = min_x,
+    min_y = min_y,
+    max_x = max_x,
+    max_y = max_y
+  }
+end
+
+-- Returns whether two swept AABBs can possibly overlap during the interval.
+local function bounds_overlap(a, b)
+  return a.max_x >= b.min_x and a.min_x <= b.max_x and a.max_y >= b.min_y and a.min_y <= b.max_y
+end
+
+-- Finds the earliest simultaneous contacts among broad-phase candidate pairs.
 local function find_earliest_contacts(entries, remaining_time)
   local earliest_fraction = nil
   local contacts = {}
+  local states = {}
+  local broadphase_pairs = 0
+  local narrowphase_tests = 0
 
-  for index_a = 1, #entries - 1 do
-    local entry_a = entries[index_a]
+  for index, entry in ipairs(entries) do
+    local move_x, move_y = get_displacement(entry, remaining_time)
 
-    for index_b = index_a + 1, #entries do
-      local entry_b = entries[index_b]
+    states[index] = {
+      entry = entry,
+      move_x = move_x,
+      move_y = move_y,
+      bounds = get_swept_bounds(entry, move_x, move_y)
+    }
+  end
 
-      local move_a_x, move_a_y = get_displacement(entry_a, remaining_time)
-      local move_b_x, move_b_y = get_displacement(entry_b, remaining_time)
+  for index_a = 1, #states - 1 do
+    local state_a = states[index_a]
 
-      local relative_x = move_a_x - move_b_x
-      local relative_y = move_a_y - move_b_y
+    for index_b = index_a + 1, #states do
+      local state_b = states[index_b]
 
-      if math.abs(relative_x) > Geometry.EPSILON or math.abs(relative_y) > Geometry.EPSILON then
+      broadphase_pairs = broadphase_pairs + 1
+
+      local relative_x = state_a.move_x - state_b.move_x
+      local relative_y = state_a.move_y - state_b.move_y
+
+      if (math.abs(relative_x) > Geometry.EPSILON or math.abs(relative_y) > Geometry.EPSILON)
+          and bounds_overlap(state_a.bounds, state_b.bounds) then
+        narrowphase_tests = narrowphase_tests + 1
+
+        local entry_a = state_a.entry
+        local entry_b = state_b.entry
         local shape_a = entry_a.entity:get_shape(entry_a.shape_name)
         local shape_b = entry_b.entity:get_shape(entry_b.shape_name)
 
@@ -127,9 +183,6 @@ local function find_earliest_contacts(entries, remaining_time)
           end
 
           if math.abs(hit.fraction - earliest_fraction) <= Geometry.EPSILON then
-            local contact_x = hit.point_x + move_b_x * hit.fraction
-            local contact_y = hit.point_y + move_b_y * hit.fraction
-
             table.insert(contacts, {
               source = entry_a,
               target = entry_b,
@@ -137,8 +190,8 @@ local function find_earliest_contacts(entries, remaining_time)
               target_shape = shape_b,
               normal_x = hit.normal_x,
               normal_y = hit.normal_y,
-              point_x = contact_x,
-              point_y = contact_y,
+              point_x = hit.point_x + state_b.move_x * hit.fraction,
+              point_y = hit.point_y + state_b.move_y * hit.fraction,
               fraction = hit.fraction
             })
           end
@@ -147,7 +200,7 @@ local function find_earliest_contacts(entries, remaining_time)
     end
   end
 
-  return earliest_fraction, contacts
+  return earliest_fraction, contacts, broadphase_pairs, narrowphase_tests
 end
 
 -- Registers an entity in deterministic insertion order for physics simulation.
@@ -353,15 +406,25 @@ end
 
 -- Advances all registered physical entities through one coordinated simulation step.
 function PhysicsWorld:update(dt)
+  self.last_collision_iterations = 0
+  self.last_broadphase_pairs = 0
+  self.last_narrowphase_tests = 0
+
+
   apply_accelerations(self.entries, dt)
+  self:_recover_overlaps()
 
   local remaining_time = dt
   local collision_count = 0
 
-  while remaining_time > Geometry.EPSILON do
-    self:_recover_overlaps()
 
-    local fraction, contacts = find_earliest_contacts(self.entries, remaining_time)
+  while remaining_time > Geometry.EPSILON do
+    self.last_collision_iterations = self.last_collision_iterations + 1
+
+    local fraction, contacts, broadphase_pairs, narrowphase_tests = find_earliest_contacts(self.entries, remaining_time)
+
+    self.last_broadphase_pairs = self.last_broadphase_pairs + broadphase_pairs
+    self.last_narrowphase_tests = self.last_narrowphase_tests + narrowphase_tests
 
     if fraction == nil then
       advance_entries(self.entries, remaining_time)
@@ -376,6 +439,8 @@ function PhysicsWorld:update(dt)
     self:_resolve_contacts(contacts)
 
     collision_count = collision_count + #contacts
+
+    if consumed_time <= MIN_TIME_ADVANCE then break end
     if collision_count >= self.max_collisions then break end
   end
 end

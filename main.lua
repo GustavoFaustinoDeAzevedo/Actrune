@@ -107,7 +107,7 @@ local function draw_shape(entity, shape_name)
 end
 
 -- Creates a rectangular static wall for the physics test.
-local function create_bounce_wall(id, x, y, width, height, material)
+local function create_bounce_wall(id, x, y, width, height, material, rotation)
     local half_width = width / 2
     local half_height = height / 2
 
@@ -115,6 +115,7 @@ local function create_bounce_wall(id, x, y, width, height, material)
         id = id,
         x = x,
         y = y,
+        rotation = rotation or 0,
         shapes = {
             bounce = PolygonShape.new({
                 material = material,
@@ -175,14 +176,7 @@ local function create_test_event()
     })
 end
 
--- Draws an entity's local forward direction for rotational debugging.
-local function draw_forward(entity, length)
-    local x = entity.transform.x
-    local y = entity.transform.y
-    local forward_x, forward_y = entity.transform:get_forward()
 
-    love.graphics.line(x, y, x + forward_x * length, y + forward_y * length)
-end
 
 -- Advances the physics simulation by one fixed step.
 local function update_physics(step_dt)
@@ -214,15 +208,15 @@ function love.load()
     })
 
     local bounce_ball_material = PhysicalMaterial.new({
-        restitution = 0.5,
-        static_friction = 0,
-        dynamic_friction = 0
+        restitution = 0.65,
+        static_friction = 0.1,
+        dynamic_friction = 0.08
     })
 
     local bounce_wall_material = PhysicalMaterial.new({
-        restitution = 0.5,
-        static_friction = 0.9,
-        dynamic_friction = 0.8
+        restitution = 0.65,
+        static_friction = 0.1,
+        dynamic_friction = 0.08
     })
 
     local bounce_material_resolver = ContactMaterialResolver.new({
@@ -316,11 +310,13 @@ function love.load()
     )
 
     bounce_ball_b, bounce_velocity_b = create_bounce_ball(
-        "bounce_ball_b", 420, 350, 0, 0, 1, bounce_ball_material
+        "bounce_ball_b", 420, 350, -50, 0, 1, bounce_ball_material
     )
 
     runtime:add_entity(bounce_ball)
     runtime:add_entity(bounce_ball_b)
+
+
 
     bounce_walls = {
         create_bounce_wall("bounce_left", 80, 350, 20, 300, bounce_wall_material),
@@ -332,6 +328,17 @@ function love.load()
     physics_world = PhysicsWorld.new(runtime.world, bounce_material_resolver, {
         restitution_threshold = 30
     })
+    local ramp = create_bounce_wall(
+        "bounce_ramp",
+        320,
+        420,
+        220,
+        20,
+        bounce_wall_material,
+        math.rad(-20)
+    )
+
+    table.insert(bounce_walls, ramp)
 
     physics_world:add_entity(bounce_ball, { shape = "bounce" })
     physics_world:add_entity(bounce_ball_b, { shape = "bounce" })
@@ -369,6 +376,10 @@ end
 function love.draw()
     love.graphics.print(table.concat(messages, "\n"), 20, 20)
     love.graphics.print("Active events: " .. runtime:get_active_event_count(), 20, 100)
+    love.graphics.print("FPS: " .. love.timer.getFPS(), 20, 180)
+    love.graphics.print("Physics iterations: " .. physics_world.last_collision_iterations, 20, 200)
+    love.graphics.print("Broad phase pairs: " .. physics_world.last_broadphase_pairs, 20, 220)
+    love.graphics.print("Narrow phase tests: " .. physics_world.last_narrowphase_tests, 20, 240)
 
     local velocity_a_x, velocity_a_y = bounce_velocity:get()
     local velocity_b_x, velocity_b_y = bounce_velocity_b:get()
@@ -380,7 +391,6 @@ function love.draw()
 
     draw_shape(bounce_ball, "bounce")
     draw_shape(bounce_ball_b, "bounce")
-    draw_forward(bounce_ball, 16)
 
     for _, wall in ipairs(bounce_walls) do
         draw_shape(wall, "bounce")
