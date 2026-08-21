@@ -2,6 +2,7 @@ local Geometry = require("engine.world.spatial.geometry")
 local PolygonGeometry = require("engine.world.spatial.polygon_geometry")
 local PolygonSweep = require("engine.world.spatial.polygon_sweep")
 local PolygonSeparation = require("engine.world.spatial.polygon_separation")
+local PolygonContact = require("engine.world.spatial.polygon_contact")
 
 local SpatialQuery = {}
 
@@ -105,6 +106,14 @@ function SpatialQuery.find_polygon_separation(shape_a, transform_a, shape_b, tra
     local points_b = shape_b:get_world_points(transform_b)
 
     return PolygonSeparation.find(points_a, points_b)
+end
+
+-- Finds a persistent contact between two polygon shapes within the provided distance.
+function SpatialQuery.find_polygon_contact(shape_a, transform_a, shape_b, transform_b, slop)
+    local points_a = shape_a:get_world_points(transform_a)
+    local points_b = shape_b:get_world_points(transform_b)
+
+    return PolygonContact.find(points_a, points_b, slop)
 end
 
 return SpatialQuery

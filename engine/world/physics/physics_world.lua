@@ -11,10 +11,9 @@ local PhysicsWorld = {}
 PhysicsWorld.__index = PhysicsWorld
 
 local DEFAULT_MAX_COLLISIONS = 16
-local DEFAULT_CONTACT_ITERATIONS = 4
-local CONTACT_SEPARATION = 0.0001
+local DEFAULT_CONTACT_ITERATIONS = 8
 local DEFAULT_RESTITUTION_THRESHOLD = 0
-local MIN_TIME_ADVANCE = 0.000001
+local DEFAULT_CCD_VELOCITY_EPSILON = 0.1
 
 -- Creates a coordinated physics simulation over an existing Actrune world.
 function PhysicsWorld.new(world, material_resolver, options)
@@ -25,16 +24,19 @@ function PhysicsWorld.new(world, material_resolver, options)
 
   local self = setmetatable({}, PhysicsWorld)
 
-  self.world = world
-  self.material_resolver = material_resolver
   self.entries = {}
   self.entry_by_entity = {}
+  self.contact_cache = {}
   self.last_collision_iterations = 0
   self.last_broadphase_pairs = 0
+  self.last_cached_contacts = 0
   self.last_narrowphase_tests = 0
+  self.world = world
+  self.material_resolver = material_resolver
   self.contact_iterations = options.contact_iterations or DEFAULT_CONTACT_ITERATIONS
   self.max_collisions = options.max_collisions or DEFAULT_MAX_COLLISIONS
   self.restitution_threshold = options.restitution_threshold or DEFAULT_RESTITUTION_THRESHOLD
+  self.ccd_velocity_epsilon = options.ccd_velocity_epsilon or DEFAULT_CCD_VELOCITY_EPSILON
 
   return self
 end
@@ -129,7 +131,7 @@ local function bounds_overlap(a, b)
 end
 
 -- Finds the earliest simultaneous contacts among broad-phase candidate pairs.
-local function find_earliest_contacts(entries, remaining_time)
+local function find_earliest_contacts(entries, remaining_time, velocity_epsilon)
   local earliest_fraction = nil
   local contacts = {}
   local states = {}
@@ -175,6 +177,14 @@ local function find_earliest_contacts(entries, remaining_time)
           shape_b,
           entry_b.entity.transform
         )
+        if hit ~= nil then
+          local normal_displacement = Geometry.dot(relative_x, relative_y, hit.normal_x, hit.normal_y)
+          local closing_speed = -normal_displacement / remaining_time
+
+          if closing_speed <= velocity_epsilon then
+            hit = nil
+          end
+        end
 
         if hit ~= nil then
           if earliest_fraction == nil or hit.fraction < earliest_fraction - Geometry.EPSILON then
@@ -201,6 +211,54 @@ local function find_earliest_contacts(entries, remaining_time)
   end
 
   return earliest_fraction, contacts, broadphase_pairs, narrowphase_tests
+end
+
+-- Returns whether a cached contact still geometrically connects its two entities.
+function PhysicsWorld:_is_contact_active(contact)
+  if self.entry_by_entity[contact.source.entity] ~= contact.source then return false end
+  if self.entry_by_entity[contact.target.entity] ~= contact.target then return false end
+
+  return SpatialQuery.polygons_intersect(
+    contact.source_shape,
+    contact.source.entity.transform,
+    contact.target_shape,
+    contact.target.entity.transform
+  )
+end
+
+-- Removes cached contacts whose shapes are no longer touching.
+function PhysicsWorld:_prune_contact_cache()
+  for index = #self.contact_cache, 1, -1 do
+    if not self:_is_contact_active(self.contact_cache[index]) then
+      table.remove(self.contact_cache, index)
+    end
+  end
+end
+
+-- Adds new CCD contacts to the persistent contact cache.
+function PhysicsWorld:_cache_contacts(contacts)
+  for _, contact in ipairs(contacts) do
+    local cached = nil
+
+    for _, candidate in ipairs(self.contact_cache) do
+      if candidate.source == contact.source and candidate.target == contact.target then
+        cached = candidate
+        break
+      end
+    end
+
+    if cached ~= nil then
+      cached.source_shape = contact.source_shape
+      cached.target_shape = contact.target_shape
+      cached.normal_x = contact.normal_x
+      cached.normal_y = contact.normal_y
+      cached.point_x = contact.point_x
+      cached.point_y = contact.point_y
+      cached.fraction = contact.fraction
+    else
+      table.insert(self.contact_cache, contact)
+    end
+  end
 end
 
 -- Registers an entity in deterministic insertion order for physics simulation.
@@ -235,6 +293,15 @@ function PhysicsWorld:remove_entity(entity)
   end
 
   self.entry_by_entity[entity] = nil
+
+  for index = #self.contact_cache, 1, -1 do
+    local contact = self.contact_cache[index]
+
+    if contact.source == entry or contact.target == entry then
+      table.remove(self.contact_cache, index)
+    end
+  end
+
   return true
 end
 
@@ -292,7 +359,7 @@ function PhysicsWorld:_recover_overlap(entry_a, entry_b)
   return self:_apply_pair_separation(entry_a, entry_b, separation.x, separation.y)
 end
 
--- Recovers registered entity pairs that begin a simulation interval overlapping.
+-- Recovers uncached entity pairs that begin a simulation interval overlapping.
 function PhysicsWorld:_recover_overlaps()
   for index_a = 1, #self.entries - 1 do
     local entry_a = self.entries[index_a]
@@ -300,45 +367,18 @@ function PhysicsWorld:_recover_overlaps()
     for index_b = index_a + 1, #self.entries do
       local entry_b = self.entries[index_b]
 
-      if is_dynamic(entry_a) or is_dynamic(entry_b) then
+      if (is_dynamic(entry_a) or is_dynamic(entry_b))
+          and not self:_has_cached_contact(entry_a, entry_b) then
         self:_recover_overlap(entry_a, entry_b)
       end
     end
   end
 end
 
--- Separates two contacting entities by a tiny mass-weighted distance.
-function PhysicsWorld:_separate_contact(contact)
-  local source_inverse_mass = get_inverse_mass(contact.source)
-  local target_inverse_mass = get_inverse_mass(contact.target)
-  local inverse_mass_sum = source_inverse_mass + target_inverse_mass
-
-  if inverse_mass_sum <= Geometry.EPSILON then return end
-
-  local source_share = source_inverse_mass / inverse_mass_sum
-  local target_share = target_inverse_mass / inverse_mass_sum
-
-  contact.source.entity.transform:translate(
-    contact.normal_x * CONTACT_SEPARATION * source_share,
-    contact.normal_y * CONTACT_SEPARATION * source_share
-  )
-
-  contact.target.entity.transform:translate(
-    -contact.normal_x * CONTACT_SEPARATION * target_share,
-    -contact.normal_y * CONTACT_SEPARATION * target_share
-  )
-end
-
 -- Resolves simultaneous contacts through repeated sequential impulse passes.
 function PhysicsWorld:_resolve_contacts(contacts)
   for _ = 1, self.contact_iterations do
-    for _, contact in ipairs(contacts) do
-      self:_resolve_contact(contact)
-    end
-  end
-
-  for _, contact in ipairs(contacts) do
-    self:_separate_contact(contact)
+    for _, contact in ipairs(contacts) do self:_resolve_contact(contact) end
   end
 end
 
@@ -404,24 +444,41 @@ function PhysicsWorld:_resolve_contact(contact)
   end
 end
 
+-- Returns whether a pair already has a persistent cached contact.
+function PhysicsWorld:_has_cached_contact(entry_a, entry_b)
+  for _, contact in ipairs(self.contact_cache) do
+    if (contact.source == entry_a and contact.target == entry_b)
+        or (contact.source == entry_b and contact.target == entry_a) then
+      return true
+    end
+  end
+
+  return false
+end
+
 -- Advances all registered physical entities through one coordinated simulation step.
 function PhysicsWorld:update(dt)
   self.last_collision_iterations = 0
   self.last_broadphase_pairs = 0
   self.last_narrowphase_tests = 0
 
-
   apply_accelerations(self.entries, dt)
+
+  self:_prune_contact_cache()
   self:_recover_overlaps()
+
+  if #self.contact_cache > 0 then
+    self:_resolve_contacts(self.contact_cache)
+  end
 
   local remaining_time = dt
   local collision_count = 0
 
-
   while remaining_time > Geometry.EPSILON do
     self.last_collision_iterations = self.last_collision_iterations + 1
 
-    local fraction, contacts, broadphase_pairs, narrowphase_tests = find_earliest_contacts(self.entries, remaining_time)
+    local fraction, contacts, broadphase_pairs, narrowphase_tests =
+        find_earliest_contacts(self.entries, remaining_time, self.ccd_velocity_epsilon)
 
     self.last_broadphase_pairs = self.last_broadphase_pairs + broadphase_pairs
     self.last_narrowphase_tests = self.last_narrowphase_tests + narrowphase_tests
@@ -436,13 +493,13 @@ function PhysicsWorld:update(dt)
     advance_entries(self.entries, consumed_time)
     remaining_time = remaining_time - consumed_time
 
-    self:_resolve_contacts(contacts)
+    self:_cache_contacts(contacts)
+    self:_resolve_contacts(self.contact_cache)
 
     collision_count = collision_count + #contacts
-
-    if consumed_time <= MIN_TIME_ADVANCE then break end
     if collision_count >= self.max_collisions then break end
   end
+  self.last_cached_contacts = #self.contact_cache
 end
 
 return PhysicsWorld

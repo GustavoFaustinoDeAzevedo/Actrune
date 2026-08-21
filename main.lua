@@ -208,15 +208,15 @@ function love.load()
     })
 
     local bounce_ball_material = PhysicalMaterial.new({
-        restitution = 0.65,
-        static_friction = 0.1,
+        restitution = 0.1,
+        static_friction = 0.5,
         dynamic_friction = 0.08
     })
 
     local bounce_wall_material = PhysicalMaterial.new({
-        restitution = 0.65,
-        static_friction = 0.1,
-        dynamic_friction = 0.08
+        restitution = 0.1,
+        static_friction = 0.5,
+        dynamic_friction = 0.5
     })
 
     local bounce_material_resolver = ContactMaterialResolver.new({
@@ -380,6 +380,8 @@ function love.draw()
     love.graphics.print("Physics iterations: " .. physics_world.last_collision_iterations, 20, 200)
     love.graphics.print("Broad phase pairs: " .. physics_world.last_broadphase_pairs, 20, 220)
     love.graphics.print("Narrow phase tests: " .. physics_world.last_narrowphase_tests, 20, 240)
+    love.graphics.print("Cached contacts: " .. physics_world.last_cached_contacts, 20, 260)
+    love.graphics.print("Fixed steps: " .. physics_step.last_steps, 20, 280)
 
     local velocity_a_x, velocity_a_y = bounce_velocity:get()
     local velocity_b_x, velocity_b_y = bounce_velocity_b:get()

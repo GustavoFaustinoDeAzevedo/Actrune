@@ -10,16 +10,16 @@ function FixedStep.new(options)
   self.stall_threshold = options.stall_threshold or 0.1
   self.max_steps = options.max_steps or 8
   self.accumulator = 0
+  self.last_steps = 0
 
   return self
 end
 
 -- Advances the simulation using fixed steps while discarding abnormally long frame stalls.
 function FixedStep:update(dt, callback)
-  assert(
-    type(callback) == "function",
-    "fixed-step callback is required"
-  )
+  assert(type(callback) == "function", "fixed-step callback is required")
+
+  self.last_steps = 0
 
   if dt >= self.stall_threshold then
     self.accumulator = 0
@@ -28,20 +28,13 @@ function FixedStep:update(dt, callback)
 
   self.accumulator = self.accumulator + dt
 
-  local steps = 0
-
-  while self.accumulator >= self.step and steps < self.max_steps
-  do
+  while self.accumulator >= self.step and self.last_steps < self.max_steps do
     callback(self.step)
-
     self.accumulator = self.accumulator - self.step
-
-    steps = steps + 1
+    self.last_steps = self.last_steps + 1
   end
 
-  if steps >= self.max_steps then
-    self.accumulator = 0
-  end
+  if self.last_steps >= self.max_steps then self.accumulator = 0 end
 end
 
 -- Clears any accumulated simulation time.
