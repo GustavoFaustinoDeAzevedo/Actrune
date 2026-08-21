@@ -13,6 +13,7 @@ PhysicsWorld.__index = PhysicsWorld
 local DEFAULT_MAX_COLLISIONS = 16
 local DEFAULT_CONTACT_ITERATIONS = 4
 local CONTACT_SEPARATION = 0.0001
+local DEFAULT_RESTITUTION_THRESHOLD = 0
 
 -- Creates a coordinated physics simulation over an existing Actrune world.
 function PhysicsWorld.new(world, material_resolver, options)
@@ -29,6 +30,7 @@ function PhysicsWorld.new(world, material_resolver, options)
   self.entry_by_entity = {}
   self.contact_iterations = options.contact_iterations or DEFAULT_CONTACT_ITERATIONS
   self.max_collisions = options.max_collisions or DEFAULT_MAX_COLLISIONS
+  self.restitution_threshold = options.restitution_threshold or DEFAULT_RESTITUTION_THRESHOLD
 
   return self
 end
@@ -43,6 +45,12 @@ end
 local function get_inverse_mass(entry)
   if not is_dynamic(entry) then return 0 end
   return entry.entity:get_component("mass"):get_inverse()
+end
+
+-- Returns a body's linear velocity or zero when the body is static.
+local function get_velocity(entry)
+  if not is_dynamic(entry) then return 0, 0 end
+  return entry.entity:get_component("velocity"):get()
 end
 
 -- Applies configured acceleration to every dynamic entity in simulation order.
@@ -177,6 +185,26 @@ function PhysicsWorld:remove_entity(entity)
   return true
 end
 
+-- Resolves material properties while suppressing restitution for low-speed contacts.
+function PhysicsWorld:_get_contact_properties(contact, normal_x, normal_y, source_entry, target_entry)
+  local properties = self.material_resolver:resolve(
+    contact.source_shape:get_material(),
+    contact.target_shape:get_material()
+  )
+
+  local source_x, source_y = get_velocity(source_entry)
+  local target_x, target_y = get_velocity(target_entry)
+  local relative_x = source_x - target_x
+  local relative_y = source_y - target_y
+  local normal_velocity = Geometry.dot(relative_x, relative_y, normal_x, normal_y)
+
+  if normal_velocity < 0 and -normal_velocity < self.restitution_threshold then
+    properties.restitution = 0
+  end
+
+  return properties
+end
+
 -- Applies a relative separation vector according to both entities' inverse masses.
 function PhysicsWorld:_apply_pair_separation(entry_a, entry_b, separation_x, separation_y)
   local inverse_mass_a = get_inverse_mass(entry_a)
@@ -263,30 +291,29 @@ end
 
 -- Resolves one contact using the dynamic state and materials of both entities.
 function PhysicsWorld:_resolve_contact(contact)
-  local source_entity = contact.source.entity
-  local target_entity = contact.target.entity
+  local source_dynamic = is_dynamic(contact.source)
+  local target_dynamic = is_dynamic(contact.target)
 
-  local source_velocity = nil
-  local source_mass = nil
-  local target_velocity = nil
-  local target_mass = nil
+  if source_dynamic then
+    local source_velocity = contact.source.entity:get_component("velocity")
+    local source_mass = contact.source.entity:get_component("mass")
 
-  if is_dynamic(contact.source) then
-    source_velocity = source_entity:get_component("velocity")
-    source_mass = source_entity:get_component("mass")
-  end
+    local target_velocity = nil
+    local target_mass = nil
 
-  if is_dynamic(contact.target) then
-    target_velocity = target_entity:get_component("velocity")
-    target_mass = target_entity:get_component("mass")
-  end
+    if target_dynamic then
+      target_velocity = contact.target.entity:get_component("velocity")
+      target_mass = contact.target.entity:get_component("mass")
+    end
 
-  local properties = self.material_resolver:resolve(
-    contact.source_shape:get_material(),
-    contact.target_shape:get_material()
-  )
+    local properties = self:_get_contact_properties(
+      contact,
+      contact.normal_x,
+      contact.normal_y,
+      contact.source,
+      contact.target
+    )
 
-  if source_velocity ~= nil then
     ContactImpulse.apply_pair(
       source_velocity,
       source_mass,
@@ -300,7 +327,18 @@ function PhysicsWorld:_resolve_contact(contact)
     return
   end
 
-  if target_velocity ~= nil then
+  if target_dynamic then
+    local target_velocity = contact.target.entity:get_component("velocity")
+    local target_mass = contact.target.entity:get_component("mass")
+
+    local properties = self:_get_contact_properties(
+      contact,
+      -contact.normal_x,
+      -contact.normal_y,
+      contact.target,
+      contact.source
+    )
+
     ContactImpulse.apply_pair(
       target_velocity,
       target_mass,

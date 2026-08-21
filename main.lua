@@ -214,7 +214,7 @@ function love.load()
     })
 
     local bounce_ball_material = PhysicalMaterial.new({
-        restitution = 1,
+        restitution = 0.5,
         static_friction = 0,
         dynamic_friction = 0
     })
@@ -312,11 +312,11 @@ function love.load()
     event_entity:add_event(create_test_event())
 
     bounce_ball, bounce_velocity = create_bounce_ball(
-        "bounce_ball", 320, 499, 0, 0, 1, bounce_ball_material
+        "bounce_ball", 320, 350, 100, 0, 1, bounce_ball_material
     )
 
     bounce_ball_b, bounce_velocity_b = create_bounce_ball(
-        "bounce_ball_b", 420, 350, -50, 0, 1, bounce_ball_material
+        "bounce_ball_b", 420, 350, 0, 0, 1, bounce_ball_material
     )
 
     runtime:add_entity(bounce_ball)
@@ -329,7 +329,9 @@ function love.load()
         create_bounce_wall("bounce_bottom", 320, 500, 500, 20, bounce_wall_material)
     }
 
-    physics_world = PhysicsWorld.new(runtime.world, bounce_material_resolver)
+    physics_world = PhysicsWorld.new(runtime.world, bounce_material_resolver, {
+        restitution_threshold = 30
+    })
 
     physics_world:add_entity(bounce_ball, { shape = "bounce" })
     physics_world:add_entity(bounce_ball_b, { shape = "bounce" })
