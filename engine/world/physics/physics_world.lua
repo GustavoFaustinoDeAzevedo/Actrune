@@ -1,11 +1,7 @@
-local Geometry =
-    require("engine.world.spatial.geometry")
-
-local SpatialQuery =
-    require("engine.world.spatial.spatial_query")
-
-local ContactImpulse =
-    require("engine.world.physics.contact_impulse")
+local Geometry = require("engine.world.spatial.geometry")
+local SpatialQuery = require("engine.world.spatial.spatial_query")
+local ContactImpulse = require("engine.world.physics.contact_impulse")
+local PhysicsStats = require("engine/world/physics/physics_stats")
 
 local PhysicsWorld = {}
 PhysicsWorld.__index = PhysicsWorld
@@ -27,10 +23,7 @@ function PhysicsWorld.new(world, material_resolver, options)
   self.entries = {}
   self.entry_by_entity = {}
   self.contact_cache = {}
-  self.last_collision_iterations = 0
-  self.last_broadphase_pairs = 0
-  self.last_cached_contacts = 0
-  self.last_narrowphase_tests = 0
+  self.stats = PhysicsStats.new()
   self.world = world
   self.material_resolver = material_resolver
   self.contact_iterations = options.contact_iterations or DEFAULT_CONTACT_ITERATIONS
@@ -211,6 +204,11 @@ local function find_earliest_contacts(entries, remaining_time, velocity_epsilon)
   end
 
   return earliest_fraction, contacts, broadphase_pairs, narrowphase_tests
+end
+
+-- Returns the statistics collected during the most recent physics step.
+function PhysicsWorld:get_stats()
+  return self.stats
 end
 
 -- Returns whether a cached contact still geometrically connects its two entities.
@@ -461,6 +459,7 @@ function PhysicsWorld:update(dt)
   self.last_collision_iterations = 0
   self.last_broadphase_pairs = 0
   self.last_narrowphase_tests = 0
+  self.stats:reset()
 
   apply_accelerations(self.entries, dt)
 
@@ -475,13 +474,15 @@ function PhysicsWorld:update(dt)
   local collision_count = 0
 
   while remaining_time > Geometry.EPSILON do
-    self.last_collision_iterations = self.last_collision_iterations + 1
+    self.stats:record_collision_iteration()
 
     local fraction, contacts, broadphase_pairs, narrowphase_tests =
         find_earliest_contacts(self.entries, remaining_time, self.ccd_velocity_epsilon)
 
-    self.last_broadphase_pairs = self.last_broadphase_pairs + broadphase_pairs
-    self.last_narrowphase_tests = self.last_narrowphase_tests + narrowphase_tests
+    self.stats:record_collision_search(
+      broadphase_pairs,
+      narrowphase_tests
+    )
 
     if fraction == nil then
       advance_entries(self.entries, remaining_time)
@@ -499,7 +500,7 @@ function PhysicsWorld:update(dt)
     collision_count = collision_count + #contacts
     if collision_count >= self.max_collisions then break end
   end
-  self.last_cached_contacts = #self.contact_cache
+  self.stats:set_cached_contacts(#self.contact_cache)
 end
 
 return PhysicsWorld

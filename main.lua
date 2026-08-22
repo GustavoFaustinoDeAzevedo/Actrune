@@ -376,11 +376,29 @@ end
 function love.draw()
     love.graphics.print(table.concat(messages, "\n"), 20, 20)
     love.graphics.print("Active events: " .. runtime:get_active_event_count(), 20, 100)
+    local physics_stats = physics_world:get_stats()
+
     love.graphics.print("FPS: " .. love.timer.getFPS(), 20, 180)
-    love.graphics.print("Physics iterations: " .. physics_world.last_collision_iterations, 20, 200)
-    love.graphics.print("Broad phase pairs: " .. physics_world.last_broadphase_pairs, 20, 220)
-    love.graphics.print("Narrow phase tests: " .. physics_world.last_narrowphase_tests, 20, 240)
-    love.graphics.print("Cached contacts: " .. physics_world.last_cached_contacts, 20, 260)
+    love.graphics.print(
+        "Physics iterations: " .. physics_stats.collision_iterations,
+        20,
+        200
+    )
+    love.graphics.print(
+        "Broad phase pairs: " .. physics_stats.broadphase_pairs,
+        20,
+        220
+    )
+    love.graphics.print(
+        "Narrow phase tests: " .. physics_stats.narrowphase_tests,
+        20,
+        240
+    )
+    love.graphics.print(
+        "Cached contacts: " .. physics_stats.cached_contacts,
+        20,
+        260
+    )
     love.graphics.print("Fixed steps: " .. physics_step.last_steps, 20, 280)
 
     local velocity_a_x, velocity_a_y = bounce_velocity:get()
