@@ -24,6 +24,7 @@ function PhysicsWorld.new(world, material_resolver, options)
   self.entries = {}
   self.entry_by_entity = {}
   self.contact_cache = {}
+  self.contact_by_pair = {}
   self.stats = PhysicsStats.new()
   self.world = world
 
@@ -36,6 +37,17 @@ function PhysicsWorld.new(world, material_resolver, options)
   self.contact_refresh_threshold = options.contact_refresh_threshold or 0.25
 
   return self
+end
+
+-- Returns a deterministic cache key for an entity pair.
+local function get_contact_key(entry_a, entry_b)
+  return tostring(entry_a.entity) .. "|" .. tostring(entry_b.entity)
+end
+
+-- Returns a cached contact regardless of the pair's source-target order.
+function PhysicsWorld:_get_cached_contact(entry_a, entry_b)
+  return self.contact_by_pair[get_contact_key(entry_a, entry_b)]
+      or self.contact_by_pair[get_contact_key(entry_b, entry_a)]
 end
 
 -- Stores the relative entity position used by the latest contact geometry refresh.
@@ -254,7 +266,7 @@ function PhysicsWorld:remove_entity(entity)
 
   for index, candidate in ipairs(self.entries) do
     if candidate == entry then
-      table.remove(self.entries, index)
+      self:_remove_cached_contact(index)
       break
     end
   end
@@ -265,7 +277,7 @@ function PhysicsWorld:remove_entity(entity)
     local contact = self.contact_cache[index]
 
     if contact.source == entry or contact.target == entry then
-      table.remove(self.contact_cache, index)
+      self:_remove_cached_contact(index)
     end
   end
 
@@ -284,14 +296,14 @@ function PhysicsWorld:_refresh_contact_cache()
 
     if self.entry_by_entity[contact.source.entity] ~= contact.source
         or self.entry_by_entity[contact.target.entity] ~= contact.target then
-      table.remove(self.contact_cache, index)
+      self:_remove_cached_contact(index)
     elseif not SpatialQuery.polygons_intersect(
           contact.source_shape,
           contact.source.entity.transform,
           contact.target_shape,
           contact.target.entity.transform
         ) then
-      table.remove(self.contact_cache, index)
+      self:_remove_cached_contact(index)
     elseif should_refresh_contact(contact, self.contact_refresh_threshold) then
       local hit = SpatialQuery.find_polygon_contact(
         contact.source_shape,
@@ -314,17 +326,10 @@ function PhysicsWorld:_refresh_contact_cache()
   end
 end
 
---- Adds new CCD contacts to the persistent contact cache.
+-- Adds new CCD contacts to the persistent contact cache or refreshes existing ones.
 function PhysicsWorld:_cache_contacts(contacts)
   for _, contact in ipairs(contacts) do
-    local cached = nil
-
-    for _, candidate in ipairs(self.contact_cache) do
-      if candidate.source == contact.source and candidate.target == contact.target then
-        cached = candidate
-        break
-      end
-    end
+    local cached = self:_get_cached_contact(contact.source, contact.target)
 
     if cached ~= nil then
       cached.source_shape = contact.source_shape
@@ -334,13 +339,23 @@ function PhysicsWorld:_cache_contacts(contacts)
       cached.point_x = contact.point_x
       cached.point_y = contact.point_y
       cached.fraction = contact.fraction
-
       store_contact_refresh_position(cached)
     else
       store_contact_refresh_position(contact)
       table.insert(self.contact_cache, contact)
+      self.contact_by_pair[get_contact_key(contact.source, contact.target)] = contact
     end
   end
+end
+
+-- Removes a cached contact and its pair index.
+function PhysicsWorld:_remove_cached_contact(index)
+  local contact = self.contact_cache[index]
+  if contact == nil then return end
+
+  self.contact_by_pair[get_contact_key(contact.source, contact.target)] = nil
+  self.contact_by_pair[get_contact_key(contact.target, contact.source)] = nil
+  table.remove(self.contact_cache, index)
 end
 
 -- Resolves material properties while suppressing restitution for low-speed contacts.
@@ -484,14 +499,7 @@ end
 
 -- Returns whether a pair already has a persistent cached contact.
 function PhysicsWorld:_has_cached_contact(entry_a, entry_b)
-  for _, contact in ipairs(self.contact_cache) do
-    if (contact.source == entry_a and contact.target == entry_b)
-        or (contact.source == entry_b and contact.target == entry_a) then
-      return true
-    end
-  end
-
-  return false
+  return self:_get_cached_contact(entry_a, entry_b) ~= nil
 end
 
 -- Advances all registered physical entities through one coordinated simulation step.
