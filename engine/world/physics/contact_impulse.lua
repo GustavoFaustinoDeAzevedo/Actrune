@@ -146,21 +146,10 @@ function ContactImpulse.apply_pair(
   local impulse_x = normal_x * normal_impulse + tangent_x * tangent_impulse
   local impulse_y = normal_y * normal_impulse + tangent_y * tangent_impulse
 
-  apply_impulse(
-    source_velocity,
-    source_inverse_mass,
-    impulse_x,
-    impulse_y
-  )
+  apply_impulse(source_velocity, source_inverse_mass, impulse_x, impulse_y)
+  apply_impulse(target_velocity, target_inverse_mass, -impulse_x, -impulse_y)
 
-  apply_impulse(
-    target_velocity,
-    target_inverse_mass,
-    -impulse_x,
-    -impulse_y
-  )
-
-  return true
+  return true, impulse_x, impulse_y
 end
 
 -- Applies contact impulses between a dynamic body and an immovable surface.

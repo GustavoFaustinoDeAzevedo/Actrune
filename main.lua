@@ -306,7 +306,7 @@ function love.load()
     event_entity:add_event(create_test_event())
 
     bounce_ball, bounce_velocity = create_bounce_ball(
-        "bounce_ball", 340, 200, 0, 0, 1, bounce_ball_material
+        "bounce_ball", 320, 200, 0, 0, 1, bounce_ball_material
     )
 
     bounce_ball_b, bounce_velocity_b = create_bounce_ball(
