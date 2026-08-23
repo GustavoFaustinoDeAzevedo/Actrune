@@ -306,11 +306,11 @@ function love.load()
     event_entity:add_event(create_test_event())
 
     bounce_ball, bounce_velocity = create_bounce_ball(
-        "bounce_ball", 320, 350, 100, 0, 1, bounce_ball_material
+        "bounce_ball", 328, 200, 0, 0, 1, bounce_ball_material
     )
 
     bounce_ball_b, bounce_velocity_b = create_bounce_ball(
-        "bounce_ball_b", 420, 350, -50, 0, 1, bounce_ball_material
+        "bounce_ball_b", 320, 400, 0, 0, 1, bounce_ball_material
     )
 
     runtime:add_entity(bounce_ball)
@@ -326,7 +326,9 @@ function love.load()
     }
 
     physics_world = PhysicsWorld.new(runtime.world, bounce_material_resolver, {
-        restitution_threshold = 30
+        restitution_threshold = 30,
+        contact_refresh_distance = 0.1,
+        contact_refresh_threshold = 0.25
     })
     local ramp = create_bounce_wall(
         "bounce_ramp",

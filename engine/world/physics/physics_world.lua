@@ -10,6 +10,7 @@ local DEFAULT_MAX_COLLISIONS = 16
 local DEFAULT_CONTACT_ITERATIONS = 8
 local DEFAULT_RESTITUTION_THRESHOLD = 0
 local DEFAULT_CCD_VELOCITY_EPSILON = 0.1
+local DEFAULT_CONTACT_REFRESH_DISTANCE = 0.1
 
 -- Creates a coordinated physics simulation over an existing Actrune world.
 function PhysicsWorld.new(world, material_resolver, options)
@@ -25,13 +26,34 @@ function PhysicsWorld.new(world, material_resolver, options)
   self.contact_cache = {}
   self.stats = PhysicsStats.new()
   self.world = world
+
   self.material_resolver = material_resolver
   self.contact_iterations = options.contact_iterations or DEFAULT_CONTACT_ITERATIONS
   self.max_collisions = options.max_collisions or DEFAULT_MAX_COLLISIONS
   self.restitution_threshold = options.restitution_threshold or DEFAULT_RESTITUTION_THRESHOLD
   self.ccd_velocity_epsilon = options.ccd_velocity_epsilon or DEFAULT_CCD_VELOCITY_EPSILON
+  self.contact_refresh_distance = options.contact_refresh_distance or DEFAULT_CONTACT_REFRESH_DISTANCE
+  self.contact_refresh_threshold = options.contact_refresh_threshold or 0.25
 
   return self
+end
+
+-- Stores the relative entity position used by the latest contact geometry refresh.
+local function store_contact_refresh_position(contact)
+  contact.refresh_x = contact.source.entity.transform.x - contact.target.entity.transform.x
+  contact.refresh_y = contact.source.entity.transform.y - contact.target.entity.transform.y
+end
+
+-- Returns whether the pair moved enough relative to each other to require refreshed contact geometry.
+local function should_refresh_contact(contact, threshold)
+  if contact.refresh_x == nil or contact.refresh_y == nil then return true end
+
+  local relative_x = contact.source.entity.transform.x - contact.target.entity.transform.x
+  local relative_y = contact.source.entity.transform.y - contact.target.entity.transform.y
+  local difference_x = relative_x - contact.refresh_x
+  local difference_y = relative_y - contact.refresh_y
+
+  return difference_x * difference_x + difference_y * difference_y >= threshold * threshold
 end
 
 -- Returns whether an entity has both velocity and mass components.
@@ -206,59 +228,6 @@ local function find_earliest_contacts(entries, remaining_time, velocity_epsilon)
   return earliest_fraction, contacts, broadphase_pairs, narrowphase_tests
 end
 
--- Returns the statistics collected during the most recent physics step.
-function PhysicsWorld:get_stats()
-  return self.stats
-end
-
--- Returns whether a cached contact still geometrically connects its two entities.
-function PhysicsWorld:_is_contact_active(contact)
-  if self.entry_by_entity[contact.source.entity] ~= contact.source then return false end
-  if self.entry_by_entity[contact.target.entity] ~= contact.target then return false end
-
-  return SpatialQuery.polygons_intersect(
-    contact.source_shape,
-    contact.source.entity.transform,
-    contact.target_shape,
-    contact.target.entity.transform
-  )
-end
-
--- Removes cached contacts whose shapes are no longer touching.
-function PhysicsWorld:_prune_contact_cache()
-  for index = #self.contact_cache, 1, -1 do
-    if not self:_is_contact_active(self.contact_cache[index]) then
-      table.remove(self.contact_cache, index)
-    end
-  end
-end
-
--- Adds new CCD contacts to the persistent contact cache.
-function PhysicsWorld:_cache_contacts(contacts)
-  for _, contact in ipairs(contacts) do
-    local cached = nil
-
-    for _, candidate in ipairs(self.contact_cache) do
-      if candidate.source == contact.source and candidate.target == contact.target then
-        cached = candidate
-        break
-      end
-    end
-
-    if cached ~= nil then
-      cached.source_shape = contact.source_shape
-      cached.target_shape = contact.target_shape
-      cached.normal_x = contact.normal_x
-      cached.normal_y = contact.normal_y
-      cached.point_x = contact.point_x
-      cached.point_y = contact.point_y
-      cached.fraction = contact.fraction
-    else
-      table.insert(self.contact_cache, contact)
-    end
-  end
-end
-
 -- Registers an entity in deterministic insertion order for physics simulation.
 function PhysicsWorld:add_entity(entity, options)
   assert(entity ~= nil, "entity is required")
@@ -301,6 +270,77 @@ function PhysicsWorld:remove_entity(entity)
   end
 
   return true
+end
+
+-- Returns the statistics collected during the most recent physics step.
+function PhysicsWorld:get_stats()
+  return self.stats
+end
+
+-- Prunes stale cached contacts and refreshes geometry only after meaningful relative movement.
+function PhysicsWorld:_refresh_contact_cache()
+  for index = #self.contact_cache, 1, -1 do
+    local contact = self.contact_cache[index]
+
+    if self.entry_by_entity[contact.source.entity] ~= contact.source
+        or self.entry_by_entity[contact.target.entity] ~= contact.target then
+      table.remove(self.contact_cache, index)
+    elseif not SpatialQuery.polygons_intersect(
+          contact.source_shape,
+          contact.source.entity.transform,
+          contact.target_shape,
+          contact.target.entity.transform
+        ) then
+      table.remove(self.contact_cache, index)
+    elseif should_refresh_contact(contact, self.contact_refresh_threshold) then
+      local hit = SpatialQuery.find_polygon_contact(
+        contact.source_shape,
+        contact.source.entity.transform,
+        contact.target_shape,
+        contact.target.entity.transform,
+        self.contact_refresh_distance
+      )
+
+      if hit ~= nil then
+        contact.normal_x = hit.normal_x
+        contact.normal_y = hit.normal_y
+        contact.point_x = hit.point_x
+        contact.point_y = hit.point_y
+        contact.fraction = 0
+
+        store_contact_refresh_position(contact)
+      end
+    end
+  end
+end
+
+--- Adds new CCD contacts to the persistent contact cache.
+function PhysicsWorld:_cache_contacts(contacts)
+  for _, contact in ipairs(contacts) do
+    local cached = nil
+
+    for _, candidate in ipairs(self.contact_cache) do
+      if candidate.source == contact.source and candidate.target == contact.target then
+        cached = candidate
+        break
+      end
+    end
+
+    if cached ~= nil then
+      cached.source_shape = contact.source_shape
+      cached.target_shape = contact.target_shape
+      cached.normal_x = contact.normal_x
+      cached.normal_y = contact.normal_y
+      cached.point_x = contact.point_x
+      cached.point_y = contact.point_y
+      cached.fraction = contact.fraction
+
+      store_contact_refresh_position(cached)
+    else
+      store_contact_refresh_position(contact)
+      table.insert(self.contact_cache, contact)
+    end
+  end
 end
 
 -- Resolves material properties while suppressing restitution for low-speed contacts.
@@ -456,14 +496,11 @@ end
 
 -- Advances all registered physical entities through one coordinated simulation step.
 function PhysicsWorld:update(dt)
-  self.last_collision_iterations = 0
-  self.last_broadphase_pairs = 0
-  self.last_narrowphase_tests = 0
   self.stats:reset()
 
   apply_accelerations(self.entries, dt)
 
-  self:_prune_contact_cache()
+  self:_refresh_contact_cache()
   self:_recover_overlaps()
 
   if #self.contact_cache > 0 then
