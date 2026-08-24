@@ -23,6 +23,7 @@ local WaitCommand = require(commandFolder .. "wait_command")
 
 local worldFolder = "engine/world/"
 local Entity = require(worldFolder .. "entity")
+local EntityFactory = require(worldFolder .. "entity_factory")
 
 local movementFolder = worldFolder .. "movement/"
 local Velocity = require(movementFolder .. "velocity")
@@ -45,6 +46,7 @@ local runtime
 local physics_step
 local box2d
 
+local entity_factory
 local event_entity
 local player_entity
 local player_translation
@@ -217,31 +219,51 @@ function love.load()
         friction = 0.8
     })
 
-    bounce_ball = Entity.new({
+    entity_factory = EntityFactory.new()
+
+    entity_factory:register_material("ball", ball_material)
+    entity_factory:register_material("floor", floor_material)
+
+    local bounce_ball_definition = {
         id = "bounce_ball",
-        x = 280,
-        y = 200,
-        shapes = {
-            physics = CircleShape.new({
-                radius = 10,
-                material = ball_material
-            })
+
+        transform = {
+            x = 280,
+            y = 200
         },
+
+        shapes = {
+            physics = {
+                type = "circle",
+                radius = 10,
+                material = "ball"
+            }
+        },
+
         components = {
-            rigid_body = RigidBody.new({
+            rigid_body = {
+                type = "rigid_body",
                 body_type = "dynamic",
                 shapes = { "physics" }
-            })
+            }
         }
-    })
+    }
 
-    floor_entity = Entity.new({
+    bounce_ball = entity_factory:create(bounce_ball_definition)
+
+    local floor_definition = {
         id = "floor",
-        x = 320,
-        y = 480,
+
+        transform = {
+            x = 320,
+            y = 480
+        },
+
         shapes = {
-            physics = PolygonShape.new({
-                material = floor_material,
+            physics = {
+                type = "polygon",
+                material = "floor",
+
                 points = {
                     { x = -250, y = -20 },
                     { x = -80,  y = -20 },
@@ -251,15 +273,20 @@ function love.load()
                     { x = 250,  y = 20 },
                     { x = -250, y = 20 }
                 }
-            })
+            }
         },
+
         components = {
-            rigid_body = RigidBody.new({
+            rigid_body = {
+                type = "rigid_body",
                 body_type = "static",
                 shapes = { "physics" }
-            })
+            }
         }
-    })
+    }
+
+    floor_entity = entity_factory:create(floor_definition)
+
 
     runtime:add_entity(bounce_ball)
     runtime:add_entity(floor_entity)

@@ -1,7 +1,13 @@
 local love = require "love"
+local PhysicsShapeCompiler = require("engine.world.physics.physics_shape_compiler")
 
 local Box2DBackend = {}
 Box2DBackend.__index = Box2DBackend
+
+local CAPABILITIES = {
+  max_polygon_vertices = 8,
+  boundary_loop = true
+}
 
 -- Returns a Box2D property from an optional Actrune physical material.
 local function get_material_value(material, name, fallback)
@@ -9,72 +15,21 @@ local function get_material_value(material, name, fallback)
   return material:get(name, fallback)
 end
 
--- Returns the polygon vertices including the shape's local offset.
-local function get_polygon_vertices(shape)
-  local offset_x, offset_y = shape:get_offset()
-  local vertices = {}
-
-  for _, point in ipairs(shape.points) do
-    table.insert(vertices, point.x + offset_x)
-    table.insert(vertices, point.y + offset_y)
+-- Creates a Box2D shape from one compiled Actrune physics part.
+local function create_box2d_shape(part)
+  if part.type == "circle" then
+    return love.physics.newCircleShape(part.offset_x, part.offset_y, part.radius)
   end
 
-  return vertices
-end
-
--- Converts an Actrune circle into one Box2D circle shape.
-local function create_circle_shapes(shape)
-  local offset_x, offset_y = shape:get_offset()
-
-  return {
-    love.physics.newCircleShape(offset_x, offset_y, shape:get_radius())
-  }
-end
-
--- Converts a static Actrune polygon into a Box2D boundary when necessary.
-local function create_static_polygon_shapes(shape)
-  local vertices = get_polygon_vertices(shape)
-  local vertex_count = #vertices / 2
-
-  assert(vertex_count >= 3, "polygon must contain at least 3 vertices")
-
-  if vertex_count <= 8 and love.math.isConvex(vertices) then
-    return {
-      love.physics.newPolygonShape(vertices)
-    }
+  if part.type == "polygon" then
+    return love.physics.newPolygonShape(part.vertices)
   end
 
-  return {
-    love.physics.newChainShape(true, vertices)
-  }
-end
-
--- Converts a dynamic or kinematic Actrune polygon into a Box2D polygon.
-local function create_moving_polygon_shapes(shape)
-  local vertices = get_polygon_vertices(shape)
-  local vertex_count = #vertices / 2
-
-  assert(vertex_count >= 3, "polygon must contain at least 3 vertices")
-  assert(vertex_count <= 8, "dynamic Box2D polygons currently support at most 8 vertices")
-  assert(love.math.isConvex(vertices), "dynamic Box2D polygons must currently be convex")
-
-  return {
-    love.physics.newPolygonShape(vertices)
-  }
-end
-
--- Converts an Actrune spatial shape into one or more Box2D shapes.
-local function create_box2d_shapes(shape, body_type)
-  local geometry_type = shape:get_geometry_type()
-
-  if geometry_type == "circle" then return create_circle_shapes(shape) end
-
-  if geometry_type == "polygon" then
-    if body_type == "static" then return create_static_polygon_shapes(shape) end
-    return create_moving_polygon_shapes(shape)
+  if part.type == "boundary_loop" then
+    return love.physics.newChainShape(true, part.vertices)
   end
 
-  error("unsupported Box2D geometry type: " .. tostring(geometry_type))
+  error("unsupported compiled physics shape: " .. tostring(part.type))
 end
 
 -- Creates all Box2D fixtures required to represent one Actrune spatial shape.
@@ -83,10 +38,19 @@ local function create_fixtures(body, entity, shape_name, shape, body_type)
   local density = get_material_value(material, "density", 1)
   local restitution = get_material_value(material, "restitution", 0)
   local friction = get_material_value(material, "friction", 0)
-  local box2d_shapes = create_box2d_shapes(shape, body_type)
+
+  local compiled_parts, compilation_error =
+      PhysicsShapeCompiler.compile(shape, body_type, CAPABILITIES)
+
+  assert(
+    compiled_parts ~= nil,
+    "cannot compile physics shape '" .. shape_name .. "': " .. tostring(compilation_error)
+  )
+
   local fixtures = {}
 
-  for part_index, box2d_shape in ipairs(box2d_shapes) do
+  for part_index, part in ipairs(compiled_parts) do
+    local box2d_shape = create_box2d_shape(part)
     local fixture = love.physics.newFixture(body, box2d_shape, density)
 
     fixture:setRestitution(restitution)
@@ -99,6 +63,7 @@ local function create_fixtures(body, entity, shape_name, shape, body_type)
     })
 
     table.insert(fixtures, {
+      compiled_part = part,
       shape = box2d_shape,
       fixture = fixture
     })
@@ -130,13 +95,45 @@ function Box2DBackend.new(options)
   return self
 end
 
+-- Returns the physical shape capabilities supported by this backend.
+function Box2DBackend:get_shape_capabilities()
+  return CAPABILITIES
+end
+
+-- Validates whether an entity's rigid body can be represented by this backend.
+function Box2DBackend:validate_entity(entity)
+  assert(entity ~= nil, "entity is required")
+
+  local rigid_body = entity:get_component("rigid_body")
+  if rigid_body == nil then return false, "entity does not have a rigid_body component" end
+
+  for _, shape_name in ipairs(rigid_body:get_shapes()) do
+    local shape = entity:get_shape(shape_name)
+
+    if shape == nil then
+      return false, "rigid body references missing shape: " .. shape_name
+    end
+
+    local valid, error_message =
+        PhysicsShapeCompiler.validate(shape, rigid_body:get_body_type(), CAPABILITIES)
+
+    if not valid then
+      return false, "shape '" .. shape_name .. "': " .. error_message
+    end
+  end
+
+  return true
+end
+
 -- Registers an Actrune entity containing a rigid body component.
 function Box2DBackend:add_entity(entity)
   assert(entity ~= nil, "entity is required")
   assert(self.entry_by_entity[entity] == nil, "entity is already registered in Box2D")
 
+  local valid, validation_error = self:validate_entity(entity)
+  assert(valid, validation_error)
+
   local rigid_body = entity:get_component("rigid_body")
-  assert(rigid_body ~= nil, "entity must have a rigid_body component")
 
   assert(
     entity.transform.scale_x == 1 and entity.transform.scale_y == 1,
@@ -144,7 +141,6 @@ function Box2DBackend:add_entity(entity)
   )
 
   local body_type = rigid_body:get_body_type()
-
   local body = love.physics.newBody(
     self.world,
     entity.transform.x,
@@ -163,15 +159,7 @@ function Box2DBackend:add_entity(entity)
 
   for _, shape_name in ipairs(rigid_body:get_shapes()) do
     local shape = entity:get_shape(shape_name)
-    assert(shape ~= nil, "rigid body references missing shape: " .. shape_name)
-
-    entry.fixtures[shape_name] = create_fixtures(
-      body,
-      entity,
-      shape_name,
-      shape,
-      body_type
-    )
+    entry.fixtures[shape_name] = create_fixtures(body, entity, shape_name, shape, body_type)
   end
 
   table.insert(self.entries, entry)
