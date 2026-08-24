@@ -24,34 +24,24 @@ local WaitCommand = require(commandFolder .. "wait_command")
 local worldFolder = "engine/world/"
 local Entity = require(worldFolder .. "entity")
 
-local physicsFolder = worldFolder .. "physics/"
-local PhysicalMaterial = require(physicsFolder .. "physical_material")
-local ContactMaterialResolver = require(physicsFolder .. "contact_material_resolver")
-local PhysicsWorld = require(physicsFolder .. "physics_world")
-local Mass = require(physicsFolder .. "mass")
-local MomentOfInertia = require(physicsFolder .. "moment_of_inertia")
-
 local movementFolder = worldFolder .. "movement/"
 local Velocity = require(movementFolder .. "velocity")
-local Acceleration = require(movementFolder .. "acceleration")
-local AngularVelocity = require(movementFolder .. "angular_velocity")
+local Translation = require(movementFolder .. "translation.translation")
+local FacingDirection = require(movementFolder .. "direction.facing_direction")
+local Rotation = require(movementFolder .. "rotation.rotation")
 
 local spatialFolder = worldFolder .. "spatial/"
 local PolygonShape = require(spatialFolder .. "polygon_shape")
 local SpatialMover = require(spatialFolder .. "spatial_mover")
 
-local Translation = require(movementFolder .. "translation.translation")
-local FacingDirection = require(movementFolder .. "direction.facing_direction")
-local Rotation = require(movementFolder .. "rotation.rotation")
-local Box2DBackend = require("engine.world.physics.backends.box2d_backend")
+local physicsFolder = worldFolder .. "physics/"
+local PhysicalMaterial = require(physicsFolder .. "physical_material")
+local Box2DBackend = require(physicsFolder .. "backends.box2d_backend")
 
-local box2d
-local test_ball
-local test_floor
 
 local runtime
-local physics_world
 local physics_step
+local box2d
 
 local event_entity
 local player_entity
@@ -64,32 +54,10 @@ local player_move_input
 local player_velocity
 
 local bounce_ball
-local bounce_ball_b
-local bounce_velocity
-local bounce_velocity_b
-local bounce_angular_velocity
-local bounce_walls = {}
+local test_ball
+local test_floor
 
 local messages = {}
-
-local ball_points = {
-    { x = 0,   y = -10 },
-    { x = 4,   y = -9 },
-    { x = 7,   y = -7 },
-    { x = 9,   y = -4 },
-    { x = 10,  y = 0 },
-    { x = 9,   y = 4 },
-    { x = 7,   y = 7 },
-    { x = 4,   y = 9 },
-    { x = 0,   y = 10 },
-    { x = -4,  y = 9 },
-    { x = -7,  y = 7 },
-    { x = -9,  y = 4 },
-    { x = -10, y = 0 },
-    { x = -9,  y = -4 },
-    { x = -7,  y = -7 },
-    { x = -4,  y = -9 }
-}
 
 -- Adds a message to the test output.
 local function add_message(message)
@@ -106,61 +74,14 @@ local function on_test_event_finished()
     add_message("Evento finalizado.")
 end
 
--- Draws a named polygon shape belonging to an entity.
+-- Draws a named polygon shape belonging to an Actrune entity.
 local function draw_shape(entity, shape_name)
     local shape = entity:get_shape(shape_name)
     if shape == nil then return end
     love.graphics.polygon("line", shape:get_world_points(entity.transform))
 end
 
--- Creates a rectangular static wall for the physics test.
-local function create_bounce_wall(id, x, y, width, height, material, rotation)
-    local half_width = width / 2
-    local half_height = height / 2
-
-    return Entity.new({
-        id = id,
-        x = x,
-        y = y,
-        rotation = rotation or 0,
-        shapes = {
-            bounce = PolygonShape.new({
-                material = material,
-                points = {
-                    { x = -half_width, y = -half_height },
-                    { x = half_width,  y = -half_height },
-                    { x = half_width,  y = half_height },
-                    { x = -half_width, y = half_height }
-                }
-            })
-        }
-    })
-end
-
--- Creates a dynamic ball with velocity, mass, and acceleration components.
-local function create_bounce_ball(id, x, y, velocity_x, velocity_y, mass_value, material)
-    local entity = Entity.new({
-        id = id,
-        x = x,
-        y = y,
-        shapes = {
-            bounce = PolygonShape.new({
-                material = material,
-                points = ball_points
-            })
-        }
-    })
-
-    local velocity = Velocity.new({ x = velocity_x, y = velocity_y })
-
-    entity:set_component("velocity", velocity)
-    entity:set_component("mass", Mass.new(mass_value))
-    entity:set_component("acceleration", Acceleration.new({ x = 0, y = 980 }))
-
-    return entity, velocity
-end
-
--- Creates the directional interaction event used by the current test scene.
+-- Creates the directional interaction event used by the test scene.
 local function create_test_event()
     return Event.new({
         id = "test_event",
@@ -183,12 +104,12 @@ local function create_test_event()
     })
 end
 
--- Advances the physics simulation by one fixed step.
+-- Advances the Box2D simulation through one fixed physics step.
 local function update_physics(step_dt)
-    physics_world:update(step_dt)
+    box2d:update(step_dt)
 end
 
--- Creates the Actrune runtime and the current test scene.
+-- Creates the Actrune runtime, gameplay entities, and Box2D test scene.
 function love.load()
     runtime = Actrune.new()
 
@@ -204,50 +125,6 @@ function love.load()
         activator_shape = "collision",
         target_shape = "interaction",
         trigger = "interact"
-    })
-
-    box2d = Box2DBackend.new({
-        gravity_x = 0,
-        gravity_y = 980,
-        sleep = true
-    })
-
-    test_ball = box2d:create_circle("ball", 320, 200, 10, {
-        density = 1,
-        restitution = 0.6,
-        friction = 0.3
-    })
-
-    test_floor = box2d:create_rectangle("floor", 320, 500, 500, 20, {
-        restitution = 0.2,
-        friction = 0.8
-    })
-
-    physics_step = FixedStep.new({
-        step = 1 / 60,
-        stall_threshold = 0.1,
-        max_steps = 8
-    })
-
-    local bounce_ball_material = PhysicalMaterial.new({
-        restitution = 0.1,
-        static_friction = 0.5,
-        dynamic_friction = 0.08
-    })
-
-    local bounce_wall_material = PhysicalMaterial.new({
-        restitution = 0.1,
-        static_friction = 0.5,
-        dynamic_friction = 0.5
-    })
-
-    local bounce_material_resolver = ContactMaterialResolver.new({
-        restitution_combiner = math.min,
-        static_friction_combiner = function(a, b) return math.sqrt(a * b) end,
-        dynamic_friction_combiner = function(a, b) return math.sqrt(a * b) end,
-        default_restitution = 0,
-        default_static_friction = 0,
-        default_dynamic_friction = 0
     })
 
     event_entity = Entity.new({
@@ -294,6 +171,8 @@ function love.load()
     runtime:add_entity(event_entity)
     runtime:add_entity(player_entity)
 
+    event_entity:add_event(create_test_event())
+
     player_velocity = Velocity.new()
 
     player_move_input = ActionVector.new({
@@ -325,64 +204,64 @@ function love.load()
     })
 
     player_translation = Translation.new(player_mover)
-    event_entity:add_event(create_test_event())
 
-    bounce_ball, bounce_velocity = create_bounce_ball(
-        "bounce_ball", 350, 200, 0, 0, 1, bounce_ball_material
-    )
-
-    bounce_ball_b, bounce_velocity_b = create_bounce_ball(
-        "bounce_ball_b", 320, 200, 0, 0, 1, bounce_ball_material
-    )
-
-    runtime:add_entity(bounce_ball)
-    runtime:add_entity(bounce_ball_b)
-
-    bounce_angular_velocity = AngularVelocity.new()
-
-    bounce_ball:set_component("angular_velocity", bounce_angular_velocity)
-    bounce_ball:set_component("inertia", MomentOfInertia.new(100))
-
-    local bounce_angular_velocity_b = AngularVelocity.new()
-
-    bounce_ball_b:set_component("angular_velocity", bounce_angular_velocity_b)
-    bounce_ball_b:set_component("inertia", MomentOfInertia.new(100))
-
-    bounce_walls = {
-        create_bounce_wall("bounce_left", 80, 350, 20, 300, bounce_wall_material),
-        create_bounce_wall("bounce_right", 560, 350, 20, 300, bounce_wall_material),
-        create_bounce_wall("bounce_top", 320, 200, 500, 20, bounce_wall_material),
-        create_bounce_wall("bounce_bottom", 320, 500, 500, 20, bounce_wall_material)
-    }
-
-    local ramp = create_bounce_wall(
-        "bounce_ramp",
-        320,
-        420,
-        220,
-        20,
-        bounce_wall_material,
-        math.rad(-20)
-    )
-
-    table.insert(bounce_walls, ramp)
-
-    physics_world = PhysicsWorld.new(runtime.world, bounce_material_resolver, {
-        restitution_threshold = 30,
-        contact_refresh_distance = 0.1,
-        contact_refresh_threshold = 0.25,
-        contact_refresh_angle_threshold = math.rad(2)
+    local ball_material = PhysicalMaterial.new({
+        density = 1,
+        restitution = 0.6,
+        friction = 0.3
     })
 
-    physics_world:add_entity(bounce_ball, { shape = "bounce" })
-    physics_world:add_entity(bounce_ball_b, { shape = "bounce" })
+    local floor_material = PhysicalMaterial.new({
+        restitution = 0.2,
+        friction = 0.8
+    })
 
-    for _, wall in ipairs(bounce_walls) do
-        physics_world:add_entity(wall, { shape = "bounce" })
-    end
+    bounce_ball = Entity.new({
+        id = "bounce_ball",
+        x = 320,
+        y = 200
+    })
+
+    runtime:add_entity(bounce_ball)
+
+    box2d = Box2DBackend.new({
+        gravity_x = 0,
+        gravity_y = 980,
+        sleep = true
+    })
+
+    test_ball = box2d:create_circle(
+        "bounce_ball",
+        bounce_ball.transform.x,
+        bounce_ball.transform.y,
+        10,
+        {
+            entity = bounce_ball,
+            body_type = "dynamic",
+            material = ball_material
+        }
+    )
+
+    test_floor = box2d:create_rectangle(
+        "floor",
+        320,
+        500,
+        500,
+        20,
+        {
+            body_type = "static",
+            material = floor_material
+        }
+    )
+
+    physics_step = FixedStep.new({
+        step = 1 / 60,
+        stall_threshold = 0.1,
+        max_steps = 8
+    })
 end
 
--- Processes player actions and advances the runtime every frame.
+-- Processes gameplay input and advances physics and runtime systems.
 function love.update(dt)
     local move_x, move_y = player_move_input:resolve(runtime)
     local turn_direction = player_turn_axis:resolve(runtime)
@@ -400,42 +279,32 @@ function love.update(dt)
 
     if runtime:is_action_pressed("interact") then runtime:trigger_spatial_action("interact", player_entity) end
 
-    physics_step:update(dt, function(step_dt)
-        box2d:update(step_dt)
-    end)
+    physics_step:update(dt, update_physics)
+    runtime:update(dt)
 end
 
--- Draws the current test scene and diagnostic information.
+-- Draws the gameplay scene, Box2D test objects, and diagnostic information.
 function love.draw()
     love.graphics.print(table.concat(messages, "\n"), 20, 20)
     love.graphics.print("Active events: " .. runtime:get_active_event_count(), 20, 100)
 
-    local velocity_a_x, velocity_a_y = bounce_velocity:get()
-    local velocity_b_x, velocity_b_y = bounce_velocity_b:get()
-    local physics_stats = physics_world:get_stats()
-    local x, y = test_ball.body:getPosition()
+    local velocity_x, velocity_y = test_ball.body:getLinearVelocity()
+    local angular_velocity = test_ball.body:getAngularVelocity()
 
-    love.graphics.circle("line", x, y, test_ball.shape:getRadius())
+    love.graphics.print(string.format("Ball velocity: %.2f, %.2f", velocity_x, velocity_y), 20, 130)
+    love.graphics.print(string.format("Angular velocity: %.4f", angular_velocity), 20, 150)
+    love.graphics.print("FPS: " .. love.timer.getFPS(), 20, 180)
+    love.graphics.print("Fixed steps: " .. physics_step.last_steps, 20, 200)
+
+    love.graphics.circle("line", bounce_ball.transform.x, bounce_ball.transform.y, 10)
+
+    local angle = bounce_ball.transform.rotation
+    local marker_x = bounce_ball.transform.x + math.cos(angle) * 10
+    local marker_y = bounce_ball.transform.y + math.sin(angle) * 10
+    love.graphics.line(bounce_ball.transform.x, bounce_ball.transform.y, marker_x, marker_y)
 
     local floor_points = { test_floor.body:getWorldPoints(test_floor.shape:getPoints()) }
     love.graphics.polygon("line", floor_points)
-
-    love.graphics.print(string.format("Ball A velocity: %.2f, %.2f", velocity_a_x, velocity_a_y), 20, 130)
-    love.graphics.print(string.format("Ball B velocity: %.2f, %.2f", velocity_b_x, velocity_b_y), 20, 150)
-    love.graphics.print("FPS: " .. love.timer.getFPS(), 20, 180)
-    love.graphics.print("Physics iterations: " .. physics_stats.collision_iterations, 20, 200)
-    love.graphics.print("Broad phase pairs: " .. physics_stats.broadphase_pairs, 20, 220)
-    love.graphics.print("Narrow phase tests: " .. physics_stats.narrowphase_tests, 20, 240)
-    love.graphics.print("Cached contacts: " .. physics_stats.cached_contacts, 20, 260)
-    love.graphics.print("Fixed steps: " .. physics_step.last_steps, 20, 280)
-    love.graphics.print(string.format("Ball A angular velocity: %.4f", bounce_angular_velocity:get()), 20, 300)
-
-    -- draw_shape(bounce_ball, "bounce")
-    -- draw_shape(bounce_ball_b, "bounce")
-
-    -- for _, wall in ipairs(bounce_walls) do
-    --     draw_shape(wall, "bounce")
-    -- end
 
     draw_shape(event_entity, "interaction")
     draw_shape(event_entity, "collision")
