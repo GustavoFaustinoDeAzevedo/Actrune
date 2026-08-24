@@ -43,6 +43,11 @@ local SpatialMover = require(spatialFolder .. "spatial_mover")
 local Translation = require(movementFolder .. "translation.translation")
 local FacingDirection = require(movementFolder .. "direction.facing_direction")
 local Rotation = require(movementFolder .. "rotation.rotation")
+local Box2DBackend = require("engine.world.physics.backends.box2d_backend")
+
+local box2d
+local test_ball
+local test_floor
 
 local runtime
 local physics_world
@@ -199,6 +204,23 @@ function love.load()
         activator_shape = "collision",
         target_shape = "interaction",
         trigger = "interact"
+    })
+
+    box2d = Box2DBackend.new({
+        gravity_x = 0,
+        gravity_y = 980,
+        sleep = true
+    })
+
+    test_ball = box2d:create_circle("ball", 320, 200, 10, {
+        density = 1,
+        restitution = 0.6,
+        friction = 0.3
+    })
+
+    test_floor = box2d:create_rectangle("floor", 320, 500, 500, 20, {
+        restitution = 0.2,
+        friction = 0.8
     })
 
     physics_step = FixedStep.new({
@@ -378,8 +400,9 @@ function love.update(dt)
 
     if runtime:is_action_pressed("interact") then runtime:trigger_spatial_action("interact", player_entity) end
 
-    physics_step:update(dt, update_physics)
-    runtime:update(dt)
+    physics_step:update(dt, function(step_dt)
+        box2d:update(step_dt)
+    end)
 end
 
 -- Draws the current test scene and diagnostic information.
@@ -390,6 +413,12 @@ function love.draw()
     local velocity_a_x, velocity_a_y = bounce_velocity:get()
     local velocity_b_x, velocity_b_y = bounce_velocity_b:get()
     local physics_stats = physics_world:get_stats()
+    local x, y = test_ball.body:getPosition()
+
+    love.graphics.circle("line", x, y, test_ball.shape:getRadius())
+
+    local floor_points = { test_floor.body:getWorldPoints(test_floor.shape:getPoints()) }
+    love.graphics.polygon("line", floor_points)
 
     love.graphics.print(string.format("Ball A velocity: %.2f, %.2f", velocity_a_x, velocity_a_y), 20, 130)
     love.graphics.print(string.format("Ball B velocity: %.2f, %.2f", velocity_b_x, velocity_b_y), 20, 150)
@@ -401,12 +430,12 @@ function love.draw()
     love.graphics.print("Fixed steps: " .. physics_step.last_steps, 20, 280)
     love.graphics.print(string.format("Ball A angular velocity: %.4f", bounce_angular_velocity:get()), 20, 300)
 
-    draw_shape(bounce_ball, "bounce")
-    draw_shape(bounce_ball_b, "bounce")
+    -- draw_shape(bounce_ball, "bounce")
+    -- draw_shape(bounce_ball_b, "bounce")
 
-    for _, wall in ipairs(bounce_walls) do
-        draw_shape(wall, "bounce")
-    end
+    -- for _, wall in ipairs(bounce_walls) do
+    --     draw_shape(wall, "bounce")
+    -- end
 
     draw_shape(event_entity, "interaction")
     draw_shape(event_entity, "collision")
