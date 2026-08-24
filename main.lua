@@ -348,7 +348,8 @@ function love.load()
     physics_world = PhysicsWorld.new(runtime.world, bounce_material_resolver, {
         restitution_threshold = 30,
         contact_refresh_distance = 0.1,
-        contact_refresh_threshold = 0.25
+        contact_refresh_threshold = 0.25,
+        contact_refresh_angle_threshold = math.rad(2)
     })
 
     physics_world:add_entity(bounce_ball, { shape = "bounce" })

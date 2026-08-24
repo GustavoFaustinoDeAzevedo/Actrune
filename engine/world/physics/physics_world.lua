@@ -12,6 +12,8 @@ local DEFAULT_RESTITUTION_THRESHOLD = 0
 local DEFAULT_CCD_VELOCITY_EPSILON = 0.1
 local DEFAULT_CONTACT_REFRESH_DISTANCE = 0.1
 local DEFAULT_CONTACT_REFRESH_THRESHOLD = 0.25
+local DEFAULT_CONTACT_REFRESH_ANGLE_THRESHOLD = math.rad(2)
+
 
 -- Creates a coordinated physics simulation over an existing Actrune world.
 function PhysicsWorld.new(world, material_resolver, options)
@@ -36,6 +38,8 @@ function PhysicsWorld.new(world, material_resolver, options)
   self.ccd_velocity_epsilon = options.ccd_velocity_epsilon or DEFAULT_CCD_VELOCITY_EPSILON
   self.contact_refresh_distance = options.contact_refresh_distance or DEFAULT_CONTACT_REFRESH_DISTANCE
   self.contact_refresh_threshold = options.contact_refresh_threshold or DEFAULT_CONTACT_REFRESH_THRESHOLD
+  self.contact_refresh_angle_threshold = options.contact_refresh_angle_threshold or
+      DEFAULT_CONTACT_REFRESH_ANGLE_THRESHOLD
 
   return self
 end
@@ -57,22 +61,33 @@ local function get_velocity(entry)
   return entry.entity:get_component("velocity"):get()
 end
 
--- Stores the relative entity position used by the latest contact geometry refresh.
-local function store_contact_refresh_position(contact)
-  contact.refresh_x = contact.source.entity.transform.x - contact.target.entity.transform.x
-  contact.refresh_y = contact.source.entity.transform.y - contact.target.entity.transform.y
+-- Returns the shortest signed difference between two angles.
+local function angle_difference(a, b)
+  return (a - b + math.pi) % (2 * math.pi) - math.pi
 end
 
--- Returns whether the pair moved enough relative to require refreshed contact geometry.
-local function should_refresh_contact(contact, threshold)
-  if contact.refresh_x == nil or contact.refresh_y == nil then return true end
+-- Stores the relative transform used by the latest contact geometry refresh.
+local function store_contact_refresh_transform(contact)
+  contact.refresh_x = contact.source.entity.transform.x - contact.target.entity.transform.x
+  contact.refresh_y = contact.source.entity.transform.y - contact.target.entity.transform.y
+  contact.refresh_rotation = contact.source.entity.transform.rotation - contact.target.entity.transform.rotation
+end
 
-  local relative_x = contact.source.entity.transform.x - contact.target.entity.transform.x
-  local relative_y = contact.source.entity.transform.y - contact.target.entity.transform.y
+-- Returns whether relative translation or rotation requires refreshed contact geometry.
+local function should_refresh_contact(contact, distance_threshold, angle_threshold)
+  if contact.refresh_x == nil or contact.refresh_y == nil or contact.refresh_rotation == nil then return true end
+
+  local source_transform = contact.source.entity.transform
+  local target_transform = contact.target.entity.transform
+  local relative_x = source_transform.x - target_transform.x
+  local relative_y = source_transform.y - target_transform.y
+  local relative_rotation = source_transform.rotation - target_transform.rotation
   local difference_x = relative_x - contact.refresh_x
   local difference_y = relative_y - contact.refresh_y
+  local difference_rotation = angle_difference(relative_rotation, contact.refresh_rotation)
 
-  return difference_x * difference_x + difference_y * difference_y >= threshold * threshold
+  if difference_x * difference_x + difference_y * difference_y >= distance_threshold * distance_threshold then return true end
+  return math.abs(difference_rotation) >= angle_threshold
 end
 
 -- Applies configured acceleration to every dynamic entity in simulation order.
@@ -309,7 +324,11 @@ function PhysicsWorld:_refresh_contact_cache()
           contact.target.entity.transform
         ) then
       self:_remove_cached_contact(index)
-    elseif should_refresh_contact(contact, self.contact_refresh_threshold) then
+    elseif should_refresh_contact(
+          contact,
+          self.contact_refresh_threshold,
+          self.contact_refresh_angle_threshold
+        ) then
       local hit = SpatialQuery.find_polygon_contact(
         contact.source_shape,
         contact.source.entity.transform,
@@ -324,7 +343,7 @@ function PhysicsWorld:_refresh_contact_cache()
         contact.point_x = hit.point_x
         contact.point_y = hit.point_y
         contact.fraction = 0
-        store_contact_refresh_position(contact)
+        store_contact_refresh_transform(contact)
       end
     end
   end
@@ -343,9 +362,9 @@ function PhysicsWorld:_cache_contacts(contacts)
       cached.point_x = contact.point_x
       cached.point_y = contact.point_y
       cached.fraction = contact.fraction
-      store_contact_refresh_position(cached)
+      store_contact_refresh_transform(cached)
     else
-      store_contact_refresh_position(contact)
+      store_contact_refresh_transform(contact)
       table.insert(self.contact_cache, contact)
       self:_index_cached_contact(contact)
     end
