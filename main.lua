@@ -29,10 +29,12 @@ local PhysicalMaterial = require(physicsFolder .. "physical_material")
 local ContactMaterialResolver = require(physicsFolder .. "contact_material_resolver")
 local PhysicsWorld = require(physicsFolder .. "physics_world")
 local Mass = require(physicsFolder .. "mass")
+local MomentOfInertia = require(physicsFolder .. "moment_of_inertia")
 
 local movementFolder = worldFolder .. "movement/"
 local Velocity = require(movementFolder .. "velocity")
 local Acceleration = require(movementFolder .. "acceleration")
+local AngularVelocity = require(movementFolder .. "angular_velocity")
 
 local spatialFolder = worldFolder .. "spatial/"
 local PolygonShape = require(spatialFolder .. "polygon_shape")
@@ -60,6 +62,7 @@ local bounce_ball
 local bounce_ball_b
 local bounce_velocity
 local bounce_velocity_b
+local bounce_angular_velocity
 local bounce_walls = {}
 
 local messages = {}
@@ -102,7 +105,6 @@ end
 local function draw_shape(entity, shape_name)
     local shape = entity:get_shape(shape_name)
     if shape == nil then return end
-
     love.graphics.polygon("line", shape:get_world_points(entity.transform))
 end
 
@@ -175,8 +177,6 @@ local function create_test_event()
         }
     })
 end
-
-
 
 -- Advances the physics simulation by one fixed step.
 local function update_physics(step_dt)
@@ -273,6 +273,7 @@ function love.load()
     runtime:add_entity(player_entity)
 
     player_velocity = Velocity.new()
+
     player_move_input = ActionVector.new({
         x_axis = ActionAxis.new({
             negative_action = "move_left",
@@ -302,21 +303,28 @@ function love.load()
     })
 
     player_translation = Translation.new(player_mover)
-
     event_entity:add_event(create_test_event())
 
     bounce_ball, bounce_velocity = create_bounce_ball(
-        "bounce_ball", 320, 200, 0, 0, 1, bounce_ball_material
+        "bounce_ball", 350, 200, 0, 0, 1, bounce_ball_material
     )
 
     bounce_ball_b, bounce_velocity_b = create_bounce_ball(
-        "bounce_ball_b", 320, 400, 0, 0, 1, bounce_ball_material
+        "bounce_ball_b", 320, 200, 0, 0, 1, bounce_ball_material
     )
 
     runtime:add_entity(bounce_ball)
     runtime:add_entity(bounce_ball_b)
 
+    bounce_angular_velocity = AngularVelocity.new()
 
+    bounce_ball:set_component("angular_velocity", bounce_angular_velocity)
+    bounce_ball:set_component("inertia", MomentOfInertia.new(100))
+
+    local bounce_angular_velocity_b = AngularVelocity.new()
+
+    bounce_ball_b:set_component("angular_velocity", bounce_angular_velocity_b)
+    bounce_ball_b:set_component("inertia", MomentOfInertia.new(100))
 
     bounce_walls = {
         create_bounce_wall("bounce_left", 80, 350, 20, 300, bounce_wall_material),
@@ -325,11 +333,6 @@ function love.load()
         create_bounce_wall("bounce_bottom", 320, 500, 500, 20, bounce_wall_material)
     }
 
-    physics_world = PhysicsWorld.new(runtime.world, bounce_material_resolver, {
-        restitution_threshold = 30,
-        contact_refresh_distance = 0.1,
-        contact_refresh_threshold = 0.25
-    })
     local ramp = create_bounce_wall(
         "bounce_ramp",
         320,
@@ -341,6 +344,12 @@ function love.load()
     )
 
     table.insert(bounce_walls, ramp)
+
+    physics_world = PhysicsWorld.new(runtime.world, bounce_material_resolver, {
+        restitution_threshold = 30,
+        contact_refresh_distance = 0.1,
+        contact_refresh_threshold = 0.25
+    })
 
     physics_world:add_entity(bounce_ball, { shape = "bounce" })
     physics_world:add_entity(bounce_ball_b, { shape = "bounce" })
@@ -366,9 +375,7 @@ function love.update(dt)
     local movement_x, movement_y = player_velocity:get_displacement(dt)
     player_translation:move(movement_x, movement_y)
 
-    if runtime:is_action_pressed("interact") then
-        runtime:trigger_spatial_action("interact", player_entity)
-    end
+    if runtime:is_action_pressed("interact") then runtime:trigger_spatial_action("interact", player_entity) end
 
     physics_step:update(dt, update_physics)
     runtime:update(dt)
@@ -378,38 +385,20 @@ end
 function love.draw()
     love.graphics.print(table.concat(messages, "\n"), 20, 20)
     love.graphics.print("Active events: " .. runtime:get_active_event_count(), 20, 100)
-    local physics_stats = physics_world:get_stats()
-
-    love.graphics.print("FPS: " .. love.timer.getFPS(), 20, 180)
-    love.graphics.print(
-        "Physics iterations: " .. physics_stats.collision_iterations,
-        20,
-        200
-    )
-    love.graphics.print(
-        "Broad phase pairs: " .. physics_stats.broadphase_pairs,
-        20,
-        220
-    )
-    love.graphics.print(
-        "Narrow phase tests: " .. physics_stats.narrowphase_tests,
-        20,
-        240
-    )
-    love.graphics.print(
-        "Cached contacts: " .. physics_stats.cached_contacts,
-        20,
-        260
-    )
-    love.graphics.print("Fixed steps: " .. physics_step.last_steps, 20, 280)
 
     local velocity_a_x, velocity_a_y = bounce_velocity:get()
     local velocity_b_x, velocity_b_y = bounce_velocity_b:get()
+    local physics_stats = physics_world:get_stats()
 
-    love.graphics.print(string.format(
-        "Ball A velocity: %.2f, %.2f", velocity_a_x, velocity_a_y), 20, 130)
-    love.graphics.print(string.format(
-        "Ball B velocity: %.2f, %.2f", velocity_b_x, velocity_b_y), 20, 150)
+    love.graphics.print(string.format("Ball A velocity: %.2f, %.2f", velocity_a_x, velocity_a_y), 20, 130)
+    love.graphics.print(string.format("Ball B velocity: %.2f, %.2f", velocity_b_x, velocity_b_y), 20, 150)
+    love.graphics.print("FPS: " .. love.timer.getFPS(), 20, 180)
+    love.graphics.print("Physics iterations: " .. physics_stats.collision_iterations, 20, 200)
+    love.graphics.print("Broad phase pairs: " .. physics_stats.broadphase_pairs, 20, 220)
+    love.graphics.print("Narrow phase tests: " .. physics_stats.narrowphase_tests, 20, 240)
+    love.graphics.print("Cached contacts: " .. physics_stats.cached_contacts, 20, 260)
+    love.graphics.print("Fixed steps: " .. physics_step.last_steps, 20, 280)
+    love.graphics.print(string.format("Ball A angular velocity: %.4f", bounce_angular_velocity:get()), 20, 300)
 
     draw_shape(bounce_ball, "bounce")
     draw_shape(bounce_ball_b, "bounce")
