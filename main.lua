@@ -33,9 +33,11 @@ local Rotation = require(movementFolder .. "rotation.rotation")
 local spatialFolder = worldFolder .. "spatial/"
 local PolygonShape = require(spatialFolder .. "polygon_shape")
 local SpatialMover = require(spatialFolder .. "spatial_mover")
+local CircleShape = require(spatialFolder .. "circle_shape")
 
 local physicsFolder = worldFolder .. "physics/"
 local PhysicalMaterial = require(physicsFolder .. "physical_material")
+local RigidBody = require(physicsFolder .. "rigid_body")
 local Box2DBackend = require(physicsFolder .. "backends.box2d_backend")
 
 
@@ -54,8 +56,7 @@ local player_move_input
 local player_velocity
 
 local bounce_ball
-local test_ball
-local test_floor
+local floor_entity
 
 local messages = {}
 
@@ -219,10 +220,46 @@ function love.load()
     bounce_ball = Entity.new({
         id = "bounce_ball",
         x = 320,
-        y = 200
+        y = 200,
+        shapes = {
+            physics = CircleShape.new({
+                radius = 10,
+                material = ball_material
+            })
+        },
+        components = {
+            rigid_body = RigidBody.new({
+                body_type = "dynamic",
+                shapes = { "physics" }
+            })
+        }
+    })
+
+    floor_entity = Entity.new({
+        id = "floor",
+        x = 320,
+        y = 500,
+        shapes = {
+            physics = PolygonShape.new({
+                material = floor_material,
+                points = {
+                    { x = -250, y = -10 },
+                    { x = 250,  y = -10 },
+                    { x = 250,  y = 10 },
+                    { x = -250, y = 10 }
+                }
+            })
+        },
+        components = {
+            rigid_body = RigidBody.new({
+                body_type = "static",
+                shapes = { "physics" }
+            })
+        }
     })
 
     runtime:add_entity(bounce_ball)
+    runtime:add_entity(floor_entity)
 
     box2d = Box2DBackend.new({
         gravity_x = 0,
@@ -230,29 +267,8 @@ function love.load()
         sleep = true
     })
 
-    test_ball = box2d:create_circle(
-        "bounce_ball",
-        bounce_ball.transform.x,
-        bounce_ball.transform.y,
-        10,
-        {
-            entity = bounce_ball,
-            body_type = "dynamic",
-            material = ball_material
-        }
-    )
-
-    test_floor = box2d:create_rectangle(
-        "floor",
-        320,
-        500,
-        500,
-        20,
-        {
-            body_type = "static",
-            material = floor_material
-        }
-    )
+    box2d:add_entity(bounce_ball)
+    box2d:add_entity(floor_entity)
 
     physics_step = FixedStep.new({
         step = 1 / 60,
@@ -288,8 +304,8 @@ function love.draw()
     love.graphics.print(table.concat(messages, "\n"), 20, 20)
     love.graphics.print("Active events: " .. runtime:get_active_event_count(), 20, 100)
 
-    local velocity_x, velocity_y = test_ball.body:getLinearVelocity()
-    local angular_velocity = test_ball.body:getAngularVelocity()
+    local velocity_x, velocity_y = box2d:get_linear_velocity(bounce_ball)
+    local angular_velocity = box2d:get_angular_velocity(bounce_ball)
 
     love.graphics.print(string.format("Ball velocity: %.2f, %.2f", velocity_x, velocity_y), 20, 130)
     love.graphics.print(string.format("Angular velocity: %.4f", angular_velocity), 20, 150)
@@ -303,8 +319,8 @@ function love.draw()
     local marker_y = bounce_ball.transform.y + math.sin(angle) * 10
     love.graphics.line(bounce_ball.transform.x, bounce_ball.transform.y, marker_x, marker_y)
 
-    local floor_points = { test_floor.body:getWorldPoints(test_floor.shape:getPoints()) }
-    love.graphics.polygon("line", floor_points)
+    draw_shape(bounce_ball, "physics")
+    draw_shape(floor_entity, "physics")
 
     draw_shape(event_entity, "interaction")
     draw_shape(event_entity, "collision")

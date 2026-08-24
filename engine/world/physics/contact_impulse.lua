@@ -76,7 +76,8 @@ local function apply_body_impulse(velocity, mass, angular, point_x, point_y, imp
 end
 
 -- Returns the relative velocity of two bodies at a contact point.
-local function get_relative_contact_velocity(source_velocity, source_angular, target_velocity, target_angular, point_x, point_y)
+local function get_relative_contact_velocity(source_velocity, source_angular, target_velocity, target_angular, point_x,
+                                             point_y)
   local source_x, source_y = get_contact_velocity(source_velocity, source_angular, point_x, point_y)
   local target_x, target_y = get_contact_velocity(target_velocity, target_angular, point_x, point_y)
 
@@ -84,7 +85,8 @@ local function get_relative_contact_velocity(source_velocity, source_angular, ta
 end
 
 -- Applies restitution and friction impulses including optional rotational response.
-function ContactImpulse.apply_pair(source_velocity, source_mass, target_velocity, target_mass, normal_x, normal_y, properties, rotational)
+function ContactImpulse.apply_pair(source_velocity, source_mass, target_velocity, target_mass, normal_x, normal_y,
+                                   properties, rotational)
   assert(source_velocity ~= nil, "source velocity is required")
   assert(source_mass ~= nil, "source mass is required")
   assert((target_velocity == nil) == (target_mass == nil), "target velocity and mass must both be present or absent")
@@ -116,8 +118,8 @@ function ContactImpulse.apply_pair(source_velocity, source_mass, target_velocity
   if normal_velocity >= 0 then return false end
 
   local normal_inverse_mass =
-    get_effective_inverse_mass(source_mass, source_angular, point_x, point_y, normal_x, normal_y)
-    + get_effective_inverse_mass(target_mass, target_angular, point_x, point_y, normal_x, normal_y)
+      get_effective_inverse_mass(source_mass, source_angular, point_x, point_y, normal_x, normal_y)
+      + get_effective_inverse_mass(target_mass, target_angular, point_x, point_y, normal_x, normal_y)
 
   if normal_inverse_mass <= Geometry.EPSILON then return false end
 
@@ -126,7 +128,8 @@ function ContactImpulse.apply_pair(source_velocity, source_mass, target_velocity
   local normal_impulse_y = normal_y * normal_impulse
 
   apply_body_impulse(source_velocity, source_mass, source_angular, point_x, point_y, normal_impulse_x, normal_impulse_y)
-  apply_body_impulse(target_velocity, target_mass, target_angular, point_x, point_y, -normal_impulse_x, -normal_impulse_y)
+  apply_body_impulse(target_velocity, target_mass, target_angular, point_x, point_y, -normal_impulse_x, -
+  normal_impulse_y)
 
   relative_x, relative_y = get_relative_contact_velocity(
     source_velocity, source_angular,
@@ -147,8 +150,8 @@ function ContactImpulse.apply_pair(source_velocity, source_mass, target_velocity
 
     local tangent_speed = Geometry.dot(relative_x, relative_y, tangent_x, tangent_y)
     local tangent_inverse_mass =
-      get_effective_inverse_mass(source_mass, source_angular, point_x, point_y, tangent_x, tangent_y)
-      + get_effective_inverse_mass(target_mass, target_angular, point_x, point_y, tangent_x, tangent_y)
+        get_effective_inverse_mass(source_mass, source_angular, point_x, point_y, tangent_x, tangent_y)
+        + get_effective_inverse_mass(target_mass, target_angular, point_x, point_y, tangent_x, tangent_y)
 
     if tangent_inverse_mass > Geometry.EPSILON then
       local tangent_impulse = -tangent_speed / tangent_inverse_mass
@@ -162,8 +165,10 @@ function ContactImpulse.apply_pair(source_velocity, source_mass, target_velocity
       tangent_impulse_x = tangent_x * tangent_impulse
       tangent_impulse_y = tangent_y * tangent_impulse
 
-      apply_body_impulse(source_velocity, source_mass, source_angular, point_x, point_y, tangent_impulse_x, tangent_impulse_y)
-      apply_body_impulse(target_velocity, target_mass, target_angular, point_x, point_y, -tangent_impulse_x, -tangent_impulse_y)
+      apply_body_impulse(source_velocity, source_mass, source_angular, point_x, point_y, tangent_impulse_x,
+        tangent_impulse_y)
+      apply_body_impulse(target_velocity, target_mass, target_angular, point_x, point_y, -tangent_impulse_x,
+        -tangent_impulse_y)
     end
   end
 

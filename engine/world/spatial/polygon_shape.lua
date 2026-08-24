@@ -23,6 +23,11 @@ function PolygonShape.new(options)
     return self
 end
 
+-- Returns the primitive geometry type represented by this shape.
+function PolygonShape:get_geometry_type()
+    return "polygon"
+end
+
 -- Returns the number of sides defined by this polygon.
 function PolygonShape:get_side_count()
     return #self.points
