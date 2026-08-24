@@ -219,7 +219,7 @@ function love.load()
 
     bounce_ball = Entity.new({
         id = "bounce_ball",
-        x = 320,
+        x = 280,
         y = 200,
         shapes = {
             physics = CircleShape.new({
@@ -238,15 +238,18 @@ function love.load()
     floor_entity = Entity.new({
         id = "floor",
         x = 320,
-        y = 500,
+        y = 480,
         shapes = {
             physics = PolygonShape.new({
                 material = floor_material,
                 points = {
-                    { x = -250, y = -10 },
-                    { x = 250,  y = -10 },
-                    { x = 250,  y = 10 },
-                    { x = -250, y = 10 }
+                    { x = -250, y = -20 },
+                    { x = -80,  y = -20 },
+                    { x = -40,  y = -70 },
+                    { x = 0,    y = -20 },
+                    { x = 250,  y = -20 },
+                    { x = 250,  y = 20 },
+                    { x = -250, y = 20 }
                 }
             })
         },
