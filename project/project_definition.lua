@@ -23,7 +23,7 @@ local project_definition = {
       id = "bounce_ball",
 
       transform = {
-        x = 280,
+        x = 320,
         y = 200
       },
 
@@ -74,6 +74,98 @@ local project_definition = {
           type = "rigid_body",
           body_type = "static",
           shapes = { "physics" }
+        }
+      }
+    },
+
+    {
+      id = "door",
+
+      transform = {
+        x = 200,
+        y = 150
+      },
+
+      shapes = {
+        interaction = {
+          type = "polygon",
+
+          points = {
+            { x = -50, y = -40 },
+            { x = 50,  y = -40 },
+            { x = 50,  y = 40 },
+            { x = -50, y = 40 }
+          }
+        },
+
+        collision = {
+          type = "polygon",
+
+          points = {
+            { x = -20, y = -40 },
+            { x = 20,  y = -40 },
+            { x = 20,  y = 40 },
+            { x = -20, y = 40 }
+          }
+        }
+      },
+
+      events = {
+        {
+          id = "test_event",
+          execution_mode = "single",
+
+          pages = {
+            {
+              trigger = {
+                type = "directional_area",
+                action = "interact",
+                shape = "interaction",
+                activator_shape = "collision",
+                max_angle = math.rad(60)
+              },
+
+              commands = {
+                {
+                  type = "call",
+                  action = "test_event_started"
+                },
+
+                {
+                  type = "wait",
+                  duration = 2
+                },
+
+                {
+                  type = "call",
+                  action = "test_event_finished"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+
+    {
+      id = "player",
+
+      transform = {
+        x = 260,
+        y = 150,
+        rotation = math.rad(270)
+      },
+
+      shapes = {
+        collision = {
+          type = "polygon",
+
+          points = {
+            { x = -15, y = -15 },
+            { x = 15,  y = -15 },
+            { x = 15,  y = 15 },
+            { x = -15, y = 15 }
+          }
         }
       }
     }

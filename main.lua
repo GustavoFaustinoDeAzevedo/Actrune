@@ -13,17 +13,7 @@ local ActionVector = require(actionFolder .. "action_vector")
 local valueFolder = coreFolder .. "values/"
 local Value = require(valueFolder .. "value")
 
-local eventFolder = "engine/events/"
-local Event = require(eventFolder .. "event")
-local EventPage = require(eventFolder .. "event_page")
-local DirectionalAreaTrigger = require(eventFolder .. "triggers.directional_area_trigger")
-
-local commandFolder = eventFolder .. "commands/"
-local CallCommand = require(commandFolder .. "call_command")
-local WaitCommand = require(commandFolder .. "wait_command")
-
 local worldFolder = "engine/world/"
-local Entity = require(worldFolder .. "entity")
 
 local movementFolder = worldFolder .. "movement/"
 local Velocity = require(movementFolder .. "velocity")
@@ -32,7 +22,6 @@ local FacingDirection = require(movementFolder .. "direction.facing_direction")
 local Rotation = require(movementFolder .. "rotation.rotation")
 
 local spatialFolder = worldFolder .. "spatial/"
-local PolygonShape = require(spatialFolder .. "polygon_shape")
 local SpatialMover = require(spatialFolder .. "spatial_mover")
 
 local physicsFolder = worldFolder .. "physics/"
@@ -48,6 +37,9 @@ local project
 
 local event_entity
 local player_entity
+local bounce_ball
+local floor_entity
+
 local player_translation
 local player_direction
 local player_rotation
@@ -55,9 +47,6 @@ local player_rotation_amount
 local player_turn_axis
 local player_move_input
 local player_velocity
-
-local bounce_ball
-local floor_entity
 
 local messages = {}
 
@@ -83,114 +72,7 @@ local function draw_shape(entity, shape_name)
     love.graphics.polygon("line", shape:get_world_points(entity.transform))
 end
 
--- Creates the directional interaction event used by the test scene.
-local function create_test_event()
-    return Event.new({
-        id = "test_event",
-        execution_mode = "single",
-        pages = {
-            EventPage.new({
-                trigger = DirectionalAreaTrigger.new({
-                    type = "interact",
-                    shape = "interaction",
-                    activator_shape = "collision",
-                    max_angle = math.rad(60)
-                }),
-                commands = {
-                    CallCommand.new(on_test_event_started),
-                    WaitCommand.new(2),
-                    CallCommand.new(on_test_event_finished)
-                }
-            })
-        }
-    })
-end
-
--- Creates the non-project entities still used by the current manual gameplay test.
-local function create_manual_entities()
-    event_entity = Entity.new({
-        id = "door",
-        x = 200,
-        y = 150,
-        shapes = {
-            interaction = PolygonShape.new({
-                points = {
-                    { x = -50, y = -40 },
-                    { x = 50,  y = -40 },
-                    { x = 50,  y = 40 },
-                    { x = -50, y = 40 }
-                }
-            }),
-            collision = PolygonShape.new({
-                points = {
-                    { x = -20, y = -40 },
-                    { x = 20,  y = -40 },
-                    { x = 20,  y = 40 },
-                    { x = -20, y = 40 }
-                }
-            })
-        }
-    })
-
-    player_entity = Entity.new({
-        id = "player",
-        x = 260,
-        y = 150,
-        rotation = math.rad(270),
-        shapes = {
-            collision = PolygonShape.new({
-                points = {
-                    { x = -15, y = -15 },
-                    { x = 15,  y = -15 },
-                    { x = 15,  y = 15 },
-                    { x = -15, y = 15 }
-                }
-            })
-        }
-    })
-
-    event_entity:add_event(create_test_event())
-
-    runtime:add_entity(event_entity)
-    runtime:add_entity(player_entity)
-end
-
--- Creates the current player movement configuration.
-local function create_player_movement()
-    player_velocity = Velocity.new()
-
-    player_move_input = ActionVector.new({
-        x_axis = ActionAxis.new({
-            negative_action = "move_left",
-            positive_action = "move_right",
-            activation = ActionActivation.new("down")
-        }),
-        y_axis = ActionAxis.new({
-            negative_action = "move_up",
-            positive_action = "move_down",
-            activation = ActionActivation.new("down")
-        })
-    })
-
-    player_turn_axis = ActionAxis.new({
-        negative_action = "turn_left",
-        positive_action = "turn_right",
-        activation = ActionActivation.new("pressed")
-    })
-
-    player_rotation_amount = Value.new(math.rad(90))
-    player_direction = FacingDirection.new()
-    player_rotation = Rotation.new(player_entity.transform)
-
-    local player_mover = SpatialMover.new(runtime.world, player_entity, {
-        source_shape = "collision",
-        target_shape = "collision"
-    })
-
-    player_translation = Translation.new(player_mover)
-end
-
--- Loads project resources and entities from the external project definition.
+-- Loads project resources, entities, and serialized events.
 local function load_project()
     local project_loader = ProjectLoader.new()
 
@@ -214,12 +96,53 @@ local function load_project()
         }
     )
 
+    project_loader:register_event_action("test_event_started", on_test_event_started)
+    project_loader:register_event_action("test_event_finished", on_test_event_finished)
+
     project = project_loader:load(project_definition)
 
     bounce_ball = project.entities_by_id["bounce_ball"]
     floor_entity = project.entities_by_id["floor"]
+    event_entity = project.entities_by_id["door"]
+    player_entity = project.entities_by_id["player"]
 
     for _, entity in ipairs(project.entities) do runtime:add_entity(entity) end
+end
+
+-- Creates the current player movement configuration.
+local function create_player_movement()
+    player_velocity = Velocity.new()
+
+    player_move_input = ActionVector.new({
+        x_axis = ActionAxis.new({
+            negative_action = "move_left",
+            positive_action = "move_right",
+            activation = ActionActivation.new("down")
+        }),
+
+        y_axis = ActionAxis.new({
+            negative_action = "move_up",
+            positive_action = "move_down",
+            activation = ActionActivation.new("down")
+        })
+    })
+
+    player_turn_axis = ActionAxis.new({
+        negative_action = "turn_left",
+        positive_action = "turn_right",
+        activation = ActionActivation.new("pressed")
+    })
+
+    player_rotation_amount = Value.new(math.rad(90))
+    player_direction = FacingDirection.new()
+    player_rotation = Rotation.new(player_entity.transform)
+
+    local player_mover = SpatialMover.new(runtime.world, player_entity, {
+        source_shape = "collision",
+        target_shape = "collision"
+    })
+
+    player_translation = Translation.new(player_mover)
 end
 
 -- Creates the physics backend and registers all project rigid bodies.
@@ -246,7 +169,7 @@ local function update_physics(step_dt)
     box2d:update(step_dt)
 end
 
--- Creates the Actrune runtime and current test scene.
+-- Creates the Actrune runtime and current project scene.
 function love.load()
     runtime = Actrune.new()
 
@@ -265,7 +188,6 @@ function love.load()
     })
 
     load_project()
-    create_manual_entities()
     create_player_movement()
     create_physics()
 end
@@ -292,7 +214,7 @@ function love.update(dt)
     runtime:update(dt)
 end
 
--- Draws the gameplay scene, project entities, and diagnostic information.
+-- Draws the current project scene and diagnostic information.
 function love.draw()
     love.graphics.print(table.concat(messages, "\n"), 20, 20)
     love.graphics.print("Active events: " .. runtime:get_active_event_count(), 20, 100)

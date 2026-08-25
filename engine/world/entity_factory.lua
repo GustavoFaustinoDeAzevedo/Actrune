@@ -8,13 +8,14 @@ local EntityFactory = {}
 EntityFactory.__index = EntityFactory
 
 -- Creates an entity factory with built-in Actrune shape and component types.
-function EntityFactory.new(definitions)
+function EntityFactory.new(definitions, event_factory)
   local self = setmetatable({}, EntityFactory)
 
   self.shape_builders = {}
   self.component_builders = {}
   self.resources = {}
   self.definitions = definitions or DefinitionRegistry.new()
+  self.event_factory = event_factory
 
   self:register_shape_type("circle", function(definition, context)
     return CircleShape.new({
@@ -57,17 +58,8 @@ function EntityFactory.new(definitions)
     })
   end, {
     fields = {
-      {
-        name = "body_type",
-        type = "enum",
-        default = "static",
-        values = { "static", "dynamic", "kinematic" }
-      },
-      {
-        name = "shapes",
-        type = "shape_reference_list",
-        required = true
-      }
+      { name = "body_type", type = "enum",                 default = "static", values = { "static", "dynamic", "kinematic" } },
+      { name = "shapes",    type = "shape_reference_list", required = true }
     }
   })
 
@@ -102,7 +94,6 @@ end
 function EntityFactory:register_resource_type(type_name, registry)
   assert(type(type_name) == "string", "resource type name must be a string")
   assert(registry ~= nil, "resource registry is required")
-
   self.resources[type_name] = registry
 end
 
@@ -152,6 +143,17 @@ function EntityFactory:_build_component(definition)
   return builder(definition)
 end
 
+-- Adds all serialized events to a newly created runtime entity.
+function EntityFactory:_build_events(entity, definitions)
+  if #definitions == 0 then return end
+
+  assert(self.event_factory ~= nil, "entity contains events but no event factory is configured")
+
+  for _, definition in ipairs(definitions) do
+    entity:add_event(self.event_factory:create(definition))
+  end
+end
+
 -- Creates a runtime entity from a serializable entity definition.
 function EntityFactory:create(definition)
   assert(type(definition) == "table", "entity definition must be a table")
@@ -169,7 +171,7 @@ function EntityFactory:create(definition)
     components[name] = self:_build_component(component_definition)
   end
 
-  return Entity.new({
+  local entity = Entity.new({
     id = definition.id,
     x = transform.x,
     y = transform.y,
@@ -179,6 +181,10 @@ function EntityFactory:create(definition)
     shapes = shapes,
     components = components
   })
+
+  self:_build_events(entity, definition.events or {})
+
+  return entity
 end
 
 return EntityFactory

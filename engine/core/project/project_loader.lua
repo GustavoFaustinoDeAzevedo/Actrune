@@ -2,6 +2,7 @@ local ResourceRegistry = require("engine.core.resources.resource_registry")
 local DefinitionRegistry = require("engine.core.definitions.definition_registry")
 local DefinitionValidator = require("engine.core.definitions.definition_validator")
 local EntityFactory = require("engine.world.entity_factory")
+local EventFactory = require("engine.events.event_factory")
 
 local ProjectLoader = {}
 ProjectLoader.__index = ProjectLoader
@@ -12,6 +13,7 @@ function ProjectLoader.new()
 
   self.resource_factories = {}
   self.definitions = DefinitionRegistry.new()
+  self.event_factory = EventFactory.new(self.definitions)
 
   return self
 end
@@ -26,6 +28,11 @@ function ProjectLoader:register_resource_type(type_name, factory, definition)
   if definition ~= nil and not self.definitions:has("resource", type_name) then
     self.definitions:register("resource", type_name, definition)
   end
+end
+
+-- Registers a named runtime action available to serialized event commands.
+function ProjectLoader:register_event_action(name, callback)
+  self.event_factory:register_action(name, callback)
 end
 
 -- Builds all resources declared by one project definition.
@@ -50,7 +57,7 @@ end
 
 -- Creates an entity factory configured with project resources and shared definitions.
 function ProjectLoader:_create_entity_factory(registries)
-  local factory = EntityFactory.new(self.definitions)
+  local factory = EntityFactory.new(self.definitions, self.event_factory)
 
   for type_name, registry in pairs(registries) do
     factory:register_resource_type(type_name, registry)
@@ -182,10 +189,9 @@ function ProjectLoader:validate(definition)
   for _, validation_error in ipairs(resource_errors) do table.insert(errors, validation_error) end
 
   local temporary_resources = {}
-
   if #resource_errors == 0 then temporary_resources = self:_load_resources(definition.resources) end
 
-  local entity_factory = self:_create_entity_factory(temporary_resources)
+  self:_create_entity_factory(temporary_resources)
 
   local entity_errors = self:_validate_entities(definition.entities, temporary_resources)
   for _, validation_error in ipairs(entity_errors) do table.insert(errors, validation_error) end
