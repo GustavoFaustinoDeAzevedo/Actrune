@@ -5,10 +5,8 @@ local Actrune = require(coreFolder .. "actrune")
 local FixedStep = require(coreFolder .. "time.fixed_step")
 local ProjectLoader = require(coreFolder .. "project.project_loader")
 
-local actionFolder = coreFolder .. "actions/"
-local ActionAxis = require(actionFolder .. "action_axis")
-local ActionActivation = require(actionFolder .. "actions_activation")
-local ActionVector = require(actionFolder .. "action_vector")
+local inputFolder = coreFolder .. "input/"
+local InputMapFactory = require(inputFolder .. "input_map_factory")
 
 local valueFolder = coreFolder .. "values/"
 local Value = require(valueFolder .. "value")
@@ -23,6 +21,9 @@ local Rotation = require(movementFolder .. "rotation.rotation")
 
 local spatialFolder = worldFolder .. "spatial/"
 local SpatialMover = require(spatialFolder .. "spatial_mover")
+
+local controlFolder = worldFolder .. "control/"
+local ControlProfileFactory = require(controlFolder .. "control_profile_factory")
 
 local physicsFolder = worldFolder .. "physics/"
 local Box2DBackend = require(physicsFolder .. "backends.box2d_backend")
@@ -40,12 +41,11 @@ local player_entity
 local bounce_ball
 local floor_entity
 
+local player_controls
 local player_translation
 local player_direction
 local player_rotation
 local player_rotation_amount
-local player_turn_axis
-local player_move_input
 local player_velocity
 
 local messages = {}
@@ -72,7 +72,7 @@ local function draw_shape(entity, shape_name)
     love.graphics.polygon("line", shape:get_world_points(entity.transform))
 end
 
--- Loads project resources, entities, and serialized events.
+-- Loads project resources, entities, controls, input configuration, and serialized events.
 local function load_project()
     local project_loader = ProjectLoader.new()
 
@@ -96,6 +96,9 @@ local function load_project()
         }
     )
 
+    project_loader:register_resource_type("input_map", InputMapFactory.create)
+    project_loader:register_resource_type("control_profile", ControlProfileFactory.create)
+
     project_loader:register_event_action("test_event_started", on_test_event_started)
     project_loader:register_event_action("test_event_finished", on_test_event_finished)
 
@@ -105,34 +108,17 @@ local function load_project()
     floor_entity = project.entities_by_id["floor"]
     event_entity = project.entities_by_id["door"]
     player_entity = project.entities_by_id["player"]
+    player_controls = player_entity:get_component("controls")
 
     for _, entity in ipairs(project.entities) do runtime:add_entity(entity) end
+
+    local input_map = project.resources["input_map"]:get("default")
+    input_map:bind(runtime)
 end
 
--- Creates the current player movement configuration.
+-- Creates the current player movement runtime objects.
 local function create_player_movement()
     player_velocity = Velocity.new()
-
-    player_move_input = ActionVector.new({
-        x_axis = ActionAxis.new({
-            negative_action = "move_left",
-            positive_action = "move_right",
-            activation = ActionActivation.new("down")
-        }),
-
-        y_axis = ActionAxis.new({
-            negative_action = "move_up",
-            positive_action = "move_down",
-            activation = ActionActivation.new("down")
-        })
-    })
-
-    player_turn_axis = ActionAxis.new({
-        negative_action = "turn_left",
-        positive_action = "turn_right",
-        activation = ActionActivation.new("pressed")
-    })
-
     player_rotation_amount = Value.new(math.rad(90))
     player_direction = FacingDirection.new()
     player_rotation = Rotation.new(player_entity.transform)
@@ -173,32 +159,17 @@ end
 function love.load()
     runtime = Actrune.new()
 
-    runtime:bind_key("interact", "space")
-    runtime:bind_key("move_up", "w")
-    runtime:bind_key("move_left", "a")
-    runtime:bind_key("move_down", "s")
-    runtime:bind_key("move_right", "d")
-    runtime:bind_key("turn_left", "q")
-    runtime:bind_key("turn_right", "e")
-
-    runtime:bind_spatial_action("interact", {
-        activator_shape = "collision",
-        target_shape = "interaction",
-        trigger = "interact"
-    })
-
     load_project()
     create_player_movement()
     create_physics()
 end
 
--- Processes gameplay input and advances physics and runtime systems.
+-- Processes control intent and advances movement, physics, and runtime systems.
 function love.update(dt)
-    local move_x, move_y = player_move_input:resolve(runtime)
-    local turn_direction = player_turn_axis:resolve(runtime)
-    local rotation_angle = turn_direction * player_rotation_amount:resolve({ dt = dt })
+    local move_x, move_y = player_controls:resolve_vector("move", runtime)
+    local turn_direction = player_controls:resolve_axis("turn", runtime)
 
-    player_rotation:turn(rotation_angle)
+    player_rotation:turn(turn_direction * player_rotation_amount:resolve({ dt = dt }))
 
     local direction_x, direction_y = player_direction:resolve(move_x, move_y, player_entity.transform)
     local movement_speed = 120
@@ -208,7 +179,8 @@ function love.update(dt)
     local movement_x, movement_y = player_velocity:get_displacement(dt)
     player_translation:move(movement_x, movement_y)
 
-    if runtime:is_action_pressed("interact") then runtime:trigger_spatial_action("interact", player_entity) end
+    local interact_action = player_controls:get_action("interact")
+    if runtime:is_action_pressed(interact_action) then runtime:trigger_spatial_action(interact_action, player_entity) end
 
     physics_step:update(dt, update_physics)
     runtime:update(dt)

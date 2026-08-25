@@ -15,6 +15,61 @@ local project_definition = {
           friction = 0.8
         }
       }
+    },
+
+    input_map = {
+      default = {
+        keys = {
+          { action = "interact",   key = "space" },
+          { action = "move_up",    key = "w" },
+          { action = "move_left",  key = "a" },
+          { action = "move_down",  key = "s" },
+          { action = "move_right", key = "d" },
+          { action = "turn_left",  key = "q" },
+          { action = "turn_right", key = "e" }
+        },
+
+        spatial_actions = {
+          {
+            action = "interact",
+            activator_shape = "collision",
+            target_shape = "interaction",
+            trigger = "interact"
+          }
+        }
+      }
+    },
+
+    control_profile = {
+      player = {
+        vectors = {
+          move = {
+            x_axis = {
+              negative_action = "move_left",
+              positive_action = "move_right",
+              activation = "down"
+            },
+
+            y_axis = {
+              negative_action = "move_up",
+              positive_action = "move_down",
+              activation = "down"
+            }
+          }
+        },
+
+        axes = {
+          turn = {
+            negative_action = "turn_left",
+            positive_action = "turn_right",
+            activation = "pressed"
+          }
+        },
+
+        actions = {
+          interact = "interact"
+        }
+      }
     }
   },
 
@@ -166,6 +221,13 @@ local project_definition = {
             { x = 15,  y = 15 },
             { x = -15, y = 15 }
           }
+        }
+      },
+
+      components = {
+        controls = {
+          type = "controls",
+          profile = "player"
         }
       }
     }

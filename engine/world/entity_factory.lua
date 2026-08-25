@@ -63,6 +63,16 @@ function EntityFactory.new(definitions, event_factory)
     }
   })
 
+  self:register_component_type("controls", function(definition, context)
+    local profile = context.factory:get_resource("control_profile", definition.profile)
+    assert(profile ~= nil, "unknown control profile: " .. tostring(definition.profile))
+    return profile
+  end, {
+    fields = {
+      { name = "profile", type = "resource_reference", resource_type = "control_profile", required = true }
+    }
+  })
+
   return self
 end
 
@@ -128,7 +138,8 @@ function EntityFactory:_build_shape(definition)
   end
 
   return builder(definition, {
-    material = material
+    material = material,
+    factory = self
   })
 end
 
@@ -140,7 +151,9 @@ function EntityFactory:_build_component(definition)
   local builder = self.component_builders[definition.type]
   assert(builder ~= nil, "unknown component type: " .. definition.type)
 
-  return builder(definition)
+  return builder(definition, {
+    factory = self
+  })
 end
 
 -- Adds all serialized events to a newly created runtime entity.

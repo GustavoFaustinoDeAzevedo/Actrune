@@ -66,28 +66,34 @@ function ProjectLoader:_create_entity_factory(registries)
   return factory
 end
 
--- Validates all resources against their registered metadata.
+-- Validates all project resources against their registered factories and optional metadata.
 function ProjectLoader:_validate_resources(resource_definitions)
   local errors = {}
 
   for type_name, definitions in pairs(resource_definitions or {}) do
-    local metadata = self.definitions:get("resource", type_name)
+    local factory = self.resource_factories[type_name]
 
-    if metadata == nil then
+    if factory == nil then
       table.insert(errors, {
         path = "resources." .. type_name,
         message = "unknown resource type"
       })
     else
-      for name, definition in pairs(definitions) do
-        local resource_errors = DefinitionValidator.validate_typed(
-          definition,
-          metadata,
-          "resources." .. type_name .. "." .. name,
-          {}
-        )
+      local metadata = self.definitions:get("resource", type_name)
 
-        for _, validation_error in ipairs(resource_errors) do table.insert(errors, validation_error) end
+      if metadata ~= nil then
+        for name, definition in pairs(definitions) do
+          local resource_errors = DefinitionValidator.validate_typed(
+            definition,
+            metadata,
+            "resources." .. type_name .. "." .. name,
+            {}
+          )
+
+          for _, validation_error in ipairs(resource_errors) do
+            table.insert(errors, validation_error)
+          end
+        end
       end
     end
   end
