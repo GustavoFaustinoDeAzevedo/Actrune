@@ -228,6 +228,27 @@ local project_definition = {
         controls = {
           type = "controls",
           profile = "player"
+        },
+
+        movement_direction = {
+          type = "facing_direction"
+        },
+
+        translation_control = {
+          type = "translation_control",
+          controls = "controls",
+          input = "move",
+          direction = "movement_direction",
+          speed = 120,
+          source_shape = "collision",
+          target_shape = "collision"
+        },
+
+        rotation_control = {
+          type = "rotation_control",
+          controls = "controls",
+          input = "turn",
+          amount = math.rad(90)
         }
       }
     }

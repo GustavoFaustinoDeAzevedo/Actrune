@@ -8,22 +8,11 @@ local ProjectLoader = require(coreFolder .. "project.project_loader")
 local inputFolder = coreFolder .. "input/"
 local InputMapFactory = require(inputFolder .. "input_map_factory")
 
-local valueFolder = coreFolder .. "values/"
-local Value = require(valueFolder .. "value")
-
 local worldFolder = "engine/world/"
-
-local movementFolder = worldFolder .. "movement/"
-local Velocity = require(movementFolder .. "velocity")
-local Translation = require(movementFolder .. "translation.translation")
-local FacingDirection = require(movementFolder .. "direction.facing_direction")
-local Rotation = require(movementFolder .. "rotation.rotation")
-
-local spatialFolder = worldFolder .. "spatial/"
-local SpatialMover = require(spatialFolder .. "spatial_mover")
 
 local controlFolder = worldFolder .. "control/"
 local ControlProfileFactory = require(controlFolder .. "control_profile_factory")
+local ControlSystem = require(controlFolder .. "control_system")
 
 local physicsFolder = worldFolder .. "physics/"
 local Box2DBackend = require(physicsFolder .. "backends.box2d_backend")
@@ -34,19 +23,13 @@ local project_definition = require("project.project_definition")
 local runtime
 local physics_step
 local box2d
+local control_system
 local project
 
 local event_entity
 local player_entity
 local bounce_ball
 local floor_entity
-
-local player_controls
-local player_translation
-local player_direction
-local player_rotation
-local player_rotation_amount
-local player_velocity
 
 local messages = {}
 
@@ -108,7 +91,6 @@ local function load_project()
     floor_entity = project.entities_by_id["floor"]
     event_entity = project.entities_by_id["door"]
     player_entity = project.entities_by_id["player"]
-    player_controls = player_entity:get_component("controls")
 
     for _, entity in ipairs(project.entities) do runtime:add_entity(entity) end
 
@@ -116,19 +98,10 @@ local function load_project()
     input_map:bind(runtime)
 end
 
--- Creates the current player movement runtime objects.
-local function create_player_movement()
-    player_velocity = Velocity.new()
-    player_rotation_amount = Value.new(math.rad(90))
-    player_direction = FacingDirection.new()
-    player_rotation = Rotation.new(player_entity.transform)
-
-    local player_mover = SpatialMover.new(runtime.world, player_entity, {
-        source_shape = "collision",
-        target_shape = "collision"
-    })
-
-    player_translation = Translation.new(player_mover)
+-- Creates and registers all control-driven project components.
+local function create_controls()
+    control_system = ControlSystem.new(runtime.world)
+    control_system:add_project(project)
 end
 
 -- Creates the physics backend and registers all project rigid bodies.
@@ -160,27 +133,20 @@ function love.load()
     runtime = Actrune.new()
 
     load_project()
-    create_player_movement()
+    create_controls()
     create_physics()
 end
 
--- Processes control intent and advances movement, physics, and runtime systems.
+-- Processes control-driven components and advances physics and runtime systems.
 function love.update(dt)
-    local move_x, move_y = player_controls:resolve_vector("move", runtime)
-    local turn_direction = player_controls:resolve_axis("turn", runtime)
+    control_system:update(runtime, dt)
 
-    player_rotation:turn(turn_direction * player_rotation_amount:resolve({ dt = dt }))
-
-    local direction_x, direction_y = player_direction:resolve(move_x, move_y, player_entity.transform)
-    local movement_speed = 120
-
-    player_velocity:set(direction_x * movement_speed, direction_y * movement_speed)
-
-    local movement_x, movement_y = player_velocity:get_displacement(dt)
-    player_translation:move(movement_x, movement_y)
-
+    local player_controls = player_entity:get_component("controls")
     local interact_action = player_controls:get_action("interact")
-    if runtime:is_action_pressed(interact_action) then runtime:trigger_spatial_action(interact_action, player_entity) end
+
+    if runtime:is_action_pressed(interact_action) then
+        runtime:trigger_spatial_action(interact_action, player_entity)
+    end
 
     physics_step:update(dt, update_physics)
     runtime:update(dt)

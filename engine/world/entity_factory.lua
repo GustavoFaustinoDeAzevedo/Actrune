@@ -3,6 +3,9 @@ local CircleShape = require("engine.world.spatial.circle_shape")
 local PolygonShape = require("engine.world.spatial.polygon_shape")
 local RigidBody = require("engine.world.physics.rigid_body")
 local DefinitionRegistry = require("engine.core.definitions.definition_registry")
+local FacingDirection = require("engine.world.movement.direction.facing_direction")
+local TranslationControl = require("engine.world.control.translation_control")
+local RotationControl = require("engine.world.control.rotation_control")
 
 local EntityFactory = {}
 EntityFactory.__index = EntityFactory
@@ -70,6 +73,46 @@ function EntityFactory.new(definitions, event_factory)
   end, {
     fields = {
       { name = "profile", type = "resource_reference", resource_type = "control_profile", required = true }
+    }
+  })
+
+  self:register_component_type("facing_direction", function()
+    return FacingDirection.new()
+  end, {
+    fields = {}
+  })
+
+  self:register_component_type("translation_control", function(definition)
+    return TranslationControl.new({
+      controls = definition.controls,
+      input = definition.input,
+      direction = definition.direction,
+      speed = definition.speed,
+      source_shape = definition.source_shape,
+      target_shape = definition.target_shape
+    })
+  end, {
+    fields = {
+      { name = "controls",     type = "string",          default = "controls" },
+      { name = "input",        type = "string",          required = true },
+      { name = "direction",    type = "string",          required = true },
+      { name = "speed",        type = "number",          required = true,     min = 0 },
+      { name = "source_shape", type = "shape_reference", required = true },
+      { name = "target_shape", type = "shape_reference", required = true }
+    }
+  })
+
+  self:register_component_type("rotation_control", function(definition)
+    return RotationControl.new({
+      controls = definition.controls,
+      input = definition.input,
+      amount = definition.amount
+    })
+  end, {
+    fields = {
+      { name = "controls", type = "string", default = "controls" },
+      { name = "input",    type = "string", required = true },
+      { name = "amount",   type = "number", required = true }
     }
   })
 
