@@ -3,6 +3,7 @@ local love = require "love"
 local coreFolder = "engine/core/"
 local Actrune = require(coreFolder .. "actrune")
 local FixedStep = require(coreFolder .. "time.fixed_step")
+local ResourceRegistry = require(coreFolder .. "resources.resource_registry")
 
 local actionFolder = coreFolder .. "actions/"
 local ActionAxis = require(actionFolder .. "action_axis")
@@ -37,9 +38,9 @@ local SpatialMover = require(spatialFolder .. "spatial_mover")
 local CircleShape = require(spatialFolder .. "circle_shape")
 
 local physicsFolder = worldFolder .. "physics/"
-local PhysicalMaterial = require(physicsFolder .. "physical_material")
 local RigidBody = require(physicsFolder .. "rigid_body")
 local Box2DBackend = require(physicsFolder .. "backends.box2d_backend")
+local PhysicalMaterialFactory = require(physicsFolder .. "physical_material_factory")
 
 
 local runtime
@@ -208,21 +209,22 @@ function love.load()
 
     player_translation = Translation.new(player_mover)
 
-    local ball_material = PhysicalMaterial.new({
-        density = 1,
-        restitution = 0.6,
-        friction = 0.3
-    })
+    local physical_material_definitions = {
+        ball = {
+            properties = {
+                density = 1,
+                restitution = 0.6,
+                friction = 0.3
+            }
+        },
 
-    local floor_material = PhysicalMaterial.new({
-        restitution = 0.2,
-        friction = 0.8
-    })
-
-    entity_factory = EntityFactory.new()
-
-    entity_factory:register_material("ball", ball_material)
-    entity_factory:register_material("floor", floor_material)
+        floor = {
+            properties = {
+                restitution = 0.2,
+                friction = 0.8
+            }
+        }
+    }
 
     local bounce_ball_definition = {
         id = "bounce_ball",
@@ -248,6 +250,15 @@ function love.load()
             }
         }
     }
+
+    local physical_materials = ResourceRegistry.new()
+
+    for name, definition in pairs(physical_material_definitions) do
+        physical_materials:register(name, PhysicalMaterialFactory.create(definition))
+    end
+
+    entity_factory = EntityFactory.new()
+    entity_factory:register_resource_type("physical_material", physical_materials)
 
     bounce_ball = entity_factory:create(bounce_ball_definition)
 

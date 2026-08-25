@@ -12,7 +12,7 @@ function EntityFactory.new()
 
   self.shape_builders = {}
   self.component_builders = {}
-  self.materials = {}
+  self.resources = {}
 
   self:register_shape_type("circle", function(definition, context)
     return CircleShape.new({
@@ -57,17 +57,21 @@ function EntityFactory:register_component_type(type_name, builder)
   self.component_builders[type_name] = builder
 end
 
--- Registers a named physical material resource.
-function EntityFactory:register_material(name, material)
-  assert(type(name) == "string", "material name must be a string")
-  assert(material ~= nil, "material is required")
-  self.materials[name] = material
+-- Registers a named resource registry available to entity builders.
+function EntityFactory:register_resource_type(type_name, registry)
+  assert(type(type_name) == "string", "resource type name must be a string")
+  assert(registry ~= nil, "resource registry is required")
+  self.resources[type_name] = registry
 end
 
--- Returns a registered physical material resource.
-function EntityFactory:get_material(name)
+-- Returns a resource from a named registry.
+function EntityFactory:get_resource(type_name, name)
   if name == nil then return nil end
-  return self.materials[name]
+
+  local registry = self.resources[type_name]
+  if registry == nil then return nil end
+
+  return registry:get(name)
 end
 
 -- Builds one spatial shape from its serializable definition.
@@ -81,8 +85,8 @@ function EntityFactory:_build_shape(definition)
   local material = nil
 
   if definition.material ~= nil then
-    material = self:get_material(definition.material)
-    assert(material ~= nil, "unknown material: " .. tostring(definition.material))
+    material = self:get_resource("physical_material", definition.material)
+    assert(material ~= nil, "unknown physical material: " .. tostring(definition.material))
   end
 
   return builder(definition, {
