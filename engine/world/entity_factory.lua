@@ -7,6 +7,7 @@ local FacingDirection = require("engine.world.movement.direction.facing_directio
 local TranslationControl = require("engine.world.control.translation_control")
 local RotationControl = require("engine.world.control.rotation_control")
 local SpatialActionControl = require("engine.world.control.spatial_action_control")
+local ValueExpressionFactory = require("engine.core.values.value_expression_factory")
 
 local EntityFactory = {}
 EntityFactory.__index = EntityFactory
@@ -88,18 +89,18 @@ function EntityFactory.new(definitions, event_factory)
       controls = definition.controls,
       input = definition.input,
       direction = definition.direction,
-      speed = definition.speed,
+      amount = ValueExpressionFactory.create(definition.amount),
       source_shape = definition.source_shape,
       target_shape = definition.target_shape
     })
   end, {
     fields = {
-      { name = "controls",     type = "string",          default = "controls" },
-      { name = "input",        type = "string",          required = true },
-      { name = "direction",    type = "string",          required = true },
-      { name = "speed",        type = "number",          required = true,     min = 0 },
-      { name = "source_shape", type = "shape_reference", required = true },
-      { name = "target_shape", type = "shape_reference", required = true }
+      { name = "controls",     type = "string",           default = "controls" },
+      { name = "input",        type = "string",           required = true },
+      { name = "direction",    type = "string",           required = true },
+      { name = "amount",       type = "value_expression", required = true },
+      { name = "source_shape", type = "shape_reference",  required = true },
+      { name = "target_shape", type = "shape_reference",  required = true }
     }
   })
 
@@ -107,13 +108,13 @@ function EntityFactory.new(definitions, event_factory)
     return RotationControl.new({
       controls = definition.controls,
       input = definition.input,
-      amount = definition.amount
+      amount = ValueExpressionFactory.create(definition.amount)
     })
   end, {
     fields = {
-      { name = "controls", type = "string", default = "controls" },
-      { name = "input",    type = "string", required = true },
-      { name = "amount",   type = "number", required = true }
+      { name = "controls", type = "string",           default = "controls" },
+      { name = "input",    type = "string",           required = true },
+      { name = "amount",   type = "value_expression", required = true }
     }
   })
 

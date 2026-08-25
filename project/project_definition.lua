@@ -238,7 +238,12 @@ local project_definition = {
           type = "rotation_control",
           controls = "controls",
           input = "turn",
-          amount = math.rad(90),
+
+          amount = {
+            type = "value",
+            value = math.rad(90)
+          },
+
           control_order = 10
         },
 
@@ -247,7 +252,16 @@ local project_definition = {
           controls = "controls",
           input = "move",
           direction = "movement_direction",
-          speed = 120,
+
+          amount = {
+            type = "delta_time",
+
+            value = {
+              type = "value",
+              value = 120
+            }
+          },
+
           source_shape = "collision",
           target_shape = "collision",
           control_order = 20

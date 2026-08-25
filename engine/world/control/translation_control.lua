@@ -1,4 +1,3 @@
-local Velocity = require("engine.world.movement.velocity")
 local Translation = require("engine.world.movement.translation.translation")
 local SpatialMover = require("engine.world.spatial.spatial_mover")
 
@@ -14,19 +13,19 @@ function TranslationControl.new(options)
   self.controls = options.controls or "controls"
   self.input = options.input
   self.direction = options.direction
-  self.speed = options.speed or 0
+  self.amount = options.amount
   self.source_shape = options.source_shape
   self.target_shape = options.target_shape
 
   self.entity = nil
   self.control_profile = nil
   self.direction_resolver = nil
-  self.velocity = nil
   self.translation = nil
 
   assert(type(self.input) == "string", "translation control input must be a string")
   assert(type(self.direction) == "string", "translation control direction must be a component name")
-  assert(type(self.speed) == "number", "translation control speed must be a number")
+  assert(self.amount ~= nil and type(self.amount.resolve) == "function",
+    "translation control amount must be a resolvable value")
 
   return self
 end
@@ -49,21 +48,18 @@ function TranslationControl:bind_control(world, entity)
     target_shape = self.target_shape
   })
 
-  self.velocity = Velocity.new()
   self.translation = Translation.new(mover)
 end
 
--- Resolves control intent and translates the bound entity.
+-- Resolves control intent, movement direction, and translation amount.
 function TranslationControl:update_control(runtime, dt)
   assert(self.entity ~= nil, "translation control is not bound")
 
   local input_x, input_y = self.control_profile:resolve_vector(self.input, runtime)
   local direction_x, direction_y = self.direction_resolver:resolve(input_x, input_y, self.entity.transform)
+  local amount = self.amount:resolve({ dt = dt, entity = self.entity, runtime = runtime })
 
-  self.velocity:set(direction_x * self.speed, direction_y * self.speed)
-
-  local movement_x, movement_y = self.velocity:get_displacement(dt)
-  self.translation:move(movement_x, movement_y)
+  self.translation:move(direction_x * amount, direction_y * amount)
 end
 
 return TranslationControl
