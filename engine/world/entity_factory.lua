@@ -2,17 +2,19 @@ local Entity = require("engine.world.entity")
 local CircleShape = require("engine.world.spatial.circle_shape")
 local PolygonShape = require("engine.world.spatial.polygon_shape")
 local RigidBody = require("engine.world.physics.rigid_body")
+local DefinitionRegistry = require("engine.core.definitions.definition_registry")
 
 local EntityFactory = {}
 EntityFactory.__index = EntityFactory
 
--- Creates an entity factory with the built-in Actrune shape and component types.
-function EntityFactory.new()
+-- Creates an entity factory with built-in Actrune shape and component types.
+function EntityFactory.new(definitions)
   local self = setmetatable({}, EntityFactory)
 
   self.shape_builders = {}
   self.component_builders = {}
   self.resources = {}
+  self.definitions = definitions or DefinitionRegistry.new()
 
   self:register_shape_type("circle", function(definition, context)
     return CircleShape.new({
@@ -22,7 +24,15 @@ function EntityFactory.new()
       segments = definition.segments,
       material = context.material
     })
-  end)
+  end, {
+    fields = {
+      { name = "radius",   type = "number",             required = true,                     min_exclusive = 0 },
+      { name = "offset_x", type = "number",             default = 0 },
+      { name = "offset_y", type = "number",             default = 0 },
+      { name = "segments", type = "integer",            default = 24,                        min = 3 },
+      { name = "material", type = "resource_reference", resource_type = "physical_material", optional = true }
+    }
+  })
 
   self:register_shape_type("polygon", function(definition, context)
     return PolygonShape.new({
@@ -31,36 +41,68 @@ function EntityFactory.new()
       offset_y = definition.offset_y,
       material = context.material
     })
-  end)
+  end, {
+    fields = {
+      { name = "points",   type = "point_list",         required = true,                     min_items = 3 },
+      { name = "offset_x", type = "number",             default = 0 },
+      { name = "offset_y", type = "number",             default = 0 },
+      { name = "material", type = "resource_reference", resource_type = "physical_material", optional = true }
+    }
+  })
 
   self:register_component_type("rigid_body", function(definition)
     return RigidBody.new({
       body_type = definition.body_type,
       shapes = definition.shapes
     })
-  end)
+  end, {
+    fields = {
+      {
+        name = "body_type",
+        type = "enum",
+        default = "static",
+        values = { "static", "dynamic", "kinematic" }
+      },
+      {
+        name = "shapes",
+        type = "shape_reference_list",
+        required = true
+      }
+    }
+  })
 
   return self
 end
 
--- Registers a builder for a named spatial shape type.
-function EntityFactory:register_shape_type(type_name, builder)
+-- Registers a builder and optional metadata for a named spatial shape type.
+function EntityFactory:register_shape_type(type_name, builder, definition)
   assert(type(type_name) == "string", "shape type name must be a string")
   assert(type(builder) == "function", "shape builder must be a function")
+
   self.shape_builders[type_name] = builder
+
+  if definition ~= nil and not self.definitions:has("shape", type_name) then
+    self.definitions:register("shape", type_name, definition)
+  end
 end
 
--- Registers a builder for a named component type.
-function EntityFactory:register_component_type(type_name, builder)
+-- Registers a builder and optional metadata for a named component type.
+function EntityFactory:register_component_type(type_name, builder, definition)
   assert(type(type_name) == "string", "component type name must be a string")
   assert(type(builder) == "function", "component builder must be a function")
+
   self.component_builders[type_name] = builder
+
+  if definition ~= nil and not self.definitions:has("component", type_name) then
+    self.definitions:register("component", type_name, definition)
+  end
 end
 
 -- Registers a named resource registry available to entity builders.
 function EntityFactory:register_resource_type(type_name, registry)
   assert(type(type_name) == "string", "resource type name must be a string")
   assert(registry ~= nil, "resource registry is required")
+
   self.resources[type_name] = registry
 end
 
@@ -72,6 +114,11 @@ function EntityFactory:get_resource(type_name, name)
   if registry == nil then return nil end
 
   return registry:get(name)
+end
+
+-- Returns the definition registry used by this factory.
+function EntityFactory:get_definitions()
+  return self.definitions
 end
 
 -- Builds one spatial shape from its serializable definition.

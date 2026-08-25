@@ -3,7 +3,7 @@ local love = require "love"
 local coreFolder = "engine/core/"
 local Actrune = require(coreFolder .. "actrune")
 local FixedStep = require(coreFolder .. "time.fixed_step")
-local ResourceRegistry = require(coreFolder .. "resources.resource_registry")
+local ProjectLoader = require(coreFolder .. "project.project_loader")
 
 local actionFolder = coreFolder .. "actions/"
 local ActionAxis = require(actionFolder .. "action_axis")
@@ -24,7 +24,6 @@ local WaitCommand = require(commandFolder .. "wait_command")
 
 local worldFolder = "engine/world/"
 local Entity = require(worldFolder .. "entity")
-local EntityFactory = require(worldFolder .. "entity_factory")
 
 local movementFolder = worldFolder .. "movement/"
 local Velocity = require(movementFolder .. "velocity")
@@ -35,19 +34,16 @@ local Rotation = require(movementFolder .. "rotation.rotation")
 local spatialFolder = worldFolder .. "spatial/"
 local PolygonShape = require(spatialFolder .. "polygon_shape")
 local SpatialMover = require(spatialFolder .. "spatial_mover")
-local CircleShape = require(spatialFolder .. "circle_shape")
 
 local physicsFolder = worldFolder .. "physics/"
-local RigidBody = require(physicsFolder .. "rigid_body")
 local Box2DBackend = require(physicsFolder .. "backends.box2d_backend")
 local PhysicalMaterialFactory = require(physicsFolder .. "physical_material_factory")
-
 
 local runtime
 local physics_step
 local box2d
+local project
 
-local entity_factory
 local event_entity
 local player_entity
 local player_translation
@@ -62,6 +58,88 @@ local bounce_ball
 local floor_entity
 
 local messages = {}
+
+local project_definition = {
+    resources = {
+        physical_material = {
+            ball = {
+                properties = {
+                    density = 1,
+                    restitution = 0.6,
+                    friction = 0.3
+                }
+            },
+
+            floor = {
+                properties = {
+                    restitution = 0.2,
+                    friction = 0.8
+                }
+            }
+        }
+    },
+
+    entities = {
+        {
+            id = "bounce_ball",
+
+            transform = {
+                x = 280,
+                y = 200
+            },
+
+            shapes = {
+                physics = {
+                    type = "circle",
+                    radius = 10,
+                    material = "ball"
+                }
+            },
+
+            components = {
+                rigid_body = {
+                    type = "rigid_body",
+                    body_type = "dynamic",
+                    shapes = { "physics" }
+                }
+            }
+        },
+
+        {
+            id = "floor",
+
+            transform = {
+                x = 320,
+                y = 480
+            },
+
+            shapes = {
+                physics = {
+                    type = "polygon",
+                    material = "floor",
+
+                    points = {
+                        { x = -250, y = -20 },
+                        { x = -80,  y = -20 },
+                        { x = -40,  y = -70 },
+                        { x = 0,    y = -20 },
+                        { x = 250,  y = -20 },
+                        { x = 250,  y = 20 },
+                        { x = -250, y = 20 }
+                    }
+                }
+            },
+
+            components = {
+                rigid_body = {
+                    type = "rigid_body",
+                    body_type = "static",
+                    shapes = { "physics" }
+                }
+            }
+        }
+    }
+}
 
 -- Adds a message to the test output.
 local function add_message(message)
@@ -78,7 +156,7 @@ local function on_test_event_finished()
     add_message("Evento finalizado.")
 end
 
--- Draws a named polygon shape belonging to an Actrune entity.
+-- Draws a named spatial shape belonging to an Actrune entity.
 local function draw_shape(entity, shape_name)
     local shape = entity:get_shape(shape_name)
     if shape == nil then return end
@@ -108,29 +186,8 @@ local function create_test_event()
     })
 end
 
--- Advances the Box2D simulation through one fixed physics step.
-local function update_physics(step_dt)
-    box2d:update(step_dt)
-end
-
--- Creates the Actrune runtime, gameplay entities, and Box2D test scene.
-function love.load()
-    runtime = Actrune.new()
-
-    runtime:bind_key("interact", "space")
-    runtime:bind_key("move_up", "w")
-    runtime:bind_key("move_left", "a")
-    runtime:bind_key("move_down", "s")
-    runtime:bind_key("move_right", "d")
-    runtime:bind_key("turn_left", "q")
-    runtime:bind_key("turn_right", "e")
-
-    runtime:bind_spatial_action("interact", {
-        activator_shape = "collision",
-        target_shape = "interaction",
-        trigger = "interact"
-    })
-
+-- Creates the non-project entities still used by the current manual gameplay test.
+local function create_manual_entities()
     event_entity = Entity.new({
         id = "door",
         x = 200,
@@ -172,11 +229,14 @@ function love.load()
         }
     })
 
-    runtime:add_entity(event_entity)
-    runtime:add_entity(player_entity)
-
     event_entity:add_event(create_test_event())
 
+    runtime:add_entity(event_entity)
+    runtime:add_entity(player_entity)
+end
+
+-- Creates the current player movement configuration.
+local function create_player_movement()
     player_velocity = Velocity.new()
 
     player_move_input = ActionVector.new({
@@ -208,114 +268,86 @@ function love.load()
     })
 
     player_translation = Translation.new(player_mover)
+end
 
-    local physical_material_definitions = {
-        ball = {
-            properties = {
-                density = 1,
-                restitution = 0.6,
-                friction = 0.3
-            }
-        },
+-- Loads project resources and entities from serializable project data.
+local function load_project()
+    local project_loader = ProjectLoader.new()
 
-        floor = {
-            properties = {
-                restitution = 0.2,
-                friction = 0.8
-            }
-        }
-    }
+    project_loader:register_resource_type(
+        "physical_material",
+        PhysicalMaterialFactory.create,
+        {
+            fields = {
+                {
+                    name = "properties",
+                    type = "property_map",
+                    allow_custom = true,
 
-    local bounce_ball_definition = {
-        id = "bounce_ball",
-
-        transform = {
-            x = 280,
-            y = 200
-        },
-
-        shapes = {
-            physics = {
-                type = "circle",
-                radius = 10,
-                material = "ball"
-            }
-        },
-
-        components = {
-            rigid_body = {
-                type = "rigid_body",
-                body_type = "dynamic",
-                shapes = { "physics" }
-            }
-        }
-    }
-
-    local physical_materials = ResourceRegistry.new()
-
-    for name, definition in pairs(physical_material_definitions) do
-        physical_materials:register(name, PhysicalMaterialFactory.create(definition))
-    end
-
-    entity_factory = EntityFactory.new()
-    entity_factory:register_resource_type("physical_material", physical_materials)
-
-    bounce_ball = entity_factory:create(bounce_ball_definition)
-
-    local floor_definition = {
-        id = "floor",
-
-        transform = {
-            x = 320,
-            y = 480
-        },
-
-        shapes = {
-            physics = {
-                type = "polygon",
-                material = "floor",
-
-                points = {
-                    { x = -250, y = -20 },
-                    { x = -80,  y = -20 },
-                    { x = -40,  y = -70 },
-                    { x = 0,    y = -20 },
-                    { x = 250,  y = -20 },
-                    { x = 250,  y = 20 },
-                    { x = -250, y = 20 }
+                    suggestions = {
+                        { name = "density",     type = "number", min = 0 },
+                        { name = "restitution", type = "number", min = 0 },
+                        { name = "friction",    type = "number", min = 0 }
+                    }
                 }
             }
-        },
-
-        components = {
-            rigid_body = {
-                type = "rigid_body",
-                body_type = "static",
-                shapes = { "physics" }
-            }
         }
-    }
+    )
 
-    floor_entity = entity_factory:create(floor_definition)
+    project = project_loader:load(project_definition)
 
+    bounce_ball = project.entities_by_id["bounce_ball"]
+    floor_entity = project.entities_by_id["floor"]
 
-    runtime:add_entity(bounce_ball)
-    runtime:add_entity(floor_entity)
+    for _, entity in ipairs(project.entities) do runtime:add_entity(entity) end
+end
 
+-- Creates the physics backend and registers all project rigid bodies.
+local function create_physics()
     box2d = Box2DBackend.new({
         gravity_x = 0,
         gravity_y = 980,
         sleep = true
     })
 
-    box2d:add_entity(bounce_ball)
-    box2d:add_entity(floor_entity)
+    for _, entity in ipairs(project.entities) do
+        if entity:get_component("rigid_body") ~= nil then box2d:add_entity(entity) end
+    end
 
     physics_step = FixedStep.new({
         step = 1 / 60,
         stall_threshold = 0.1,
         max_steps = 8
     })
+end
+
+-- Advances the Box2D simulation through one fixed physics step.
+local function update_physics(step_dt)
+    box2d:update(step_dt)
+end
+
+-- Creates the Actrune runtime and current test scene.
+function love.load()
+    runtime = Actrune.new()
+
+    runtime:bind_key("interact", "space")
+    runtime:bind_key("move_up", "w")
+    runtime:bind_key("move_left", "a")
+    runtime:bind_key("move_down", "s")
+    runtime:bind_key("move_right", "d")
+    runtime:bind_key("turn_left", "q")
+    runtime:bind_key("turn_right", "e")
+
+    runtime:bind_spatial_action("interact", {
+        activator_shape = "collision",
+        target_shape = "interaction",
+        trigger = "interact"
+    })
+
+    load_project()
+    create_manual_entities()
+    create_player_movement()
+    create_physics()
 end
 
 -- Processes gameplay input and advances physics and runtime systems.
@@ -340,7 +372,7 @@ function love.update(dt)
     runtime:update(dt)
 end
 
--- Draws the gameplay scene, Box2D test objects, and diagnostic information.
+-- Draws the gameplay scene, project entities, and diagnostic information.
 function love.draw()
     love.graphics.print(table.concat(messages, "\n"), 20, 20)
     love.graphics.print("Active events: " .. runtime:get_active_event_count(), 20, 100)
@@ -353,15 +385,16 @@ function love.draw()
     love.graphics.print("FPS: " .. love.timer.getFPS(), 20, 180)
     love.graphics.print("Fixed steps: " .. physics_step.last_steps, 20, 200)
 
-    love.graphics.circle("line", bounce_ball.transform.x, bounce_ball.transform.y, 10)
-
-    local angle = bounce_ball.transform.rotation
-    local marker_x = bounce_ball.transform.x + math.cos(angle) * 10
-    local marker_y = bounce_ball.transform.y + math.sin(angle) * 10
-    love.graphics.line(bounce_ball.transform.x, bounce_ball.transform.y, marker_x, marker_y)
-
     draw_shape(bounce_ball, "physics")
     draw_shape(floor_entity, "physics")
+
+    local ball_shape = bounce_ball:get_shape("physics")
+    local ball_radius = ball_shape:get_radius()
+    local angle = bounce_ball.transform.rotation
+    local marker_x = bounce_ball.transform.x + math.cos(angle) * ball_radius
+    local marker_y = bounce_ball.transform.y + math.sin(angle) * ball_radius
+
+    love.graphics.line(bounce_ball.transform.x, bounce_ball.transform.y, marker_x, marker_y)
 
     draw_shape(event_entity, "interaction")
     draw_shape(event_entity, "collision")
