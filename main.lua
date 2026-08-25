@@ -137,17 +137,9 @@ function love.load()
     create_physics()
 end
 
--- Processes control-driven components and advances physics and runtime systems.
+-- Advances project controls, physics, and runtime systems.
 function love.update(dt)
     control_system:update(runtime, dt)
-
-    local player_controls = player_entity:get_component("controls")
-    local interact_action = player_controls:get_action("interact")
-
-    if runtime:is_action_pressed(interact_action) then
-        runtime:trigger_spatial_action(interact_action, player_entity)
-    end
-
     physics_step:update(dt, update_physics)
     runtime:update(dt)
 end

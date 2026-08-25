@@ -6,6 +6,7 @@ local DefinitionRegistry = require("engine.core.definitions.definition_registry"
 local FacingDirection = require("engine.world.movement.direction.facing_direction")
 local TranslationControl = require("engine.world.control.translation_control")
 local RotationControl = require("engine.world.control.rotation_control")
+local SpatialActionControl = require("engine.world.control.spatial_action_control")
 
 local EntityFactory = {}
 EntityFactory.__index = EntityFactory
@@ -113,6 +114,18 @@ function EntityFactory.new(definitions, event_factory)
       { name = "controls", type = "string", default = "controls" },
       { name = "input",    type = "string", required = true },
       { name = "amount",   type = "number", required = true }
+    }
+  })
+
+  self:register_component_type("spatial_action_control", function(definition)
+    return SpatialActionControl.new({
+      controls = definition.controls,
+      input = definition.input
+    })
+  end, {
+    fields = {
+      { name = "controls", type = "string", default = "controls" },
+      { name = "input",    type = "string", required = true }
     }
   })
 

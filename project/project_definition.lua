@@ -234,6 +234,14 @@ local project_definition = {
           type = "facing_direction"
         },
 
+        rotation_control = {
+          type = "rotation_control",
+          controls = "controls",
+          input = "turn",
+          amount = math.rad(90),
+          control_order = 10
+        },
+
         translation_control = {
           type = "translation_control",
           controls = "controls",
@@ -241,14 +249,15 @@ local project_definition = {
           direction = "movement_direction",
           speed = 120,
           source_shape = "collision",
-          target_shape = "collision"
+          target_shape = "collision",
+          control_order = 20
         },
 
-        rotation_control = {
-          type = "rotation_control",
+        spatial_action_control = {
+          type = "spatial_action_control",
           controls = "controls",
-          input = "turn",
-          amount = math.rad(90)
+          input = "interact",
+          control_order = 30
         }
       }
     }
