@@ -39,6 +39,8 @@ local physicsFolder = worldFolder .. "physics/"
 local Box2DBackend = require(physicsFolder .. "backends.box2d_backend")
 local PhysicalMaterialFactory = require(physicsFolder .. "physical_material_factory")
 
+local project_definition = require("project.project_definition")
+
 local runtime
 local physics_step
 local box2d
@@ -58,88 +60,6 @@ local bounce_ball
 local floor_entity
 
 local messages = {}
-
-local project_definition = {
-    resources = {
-        physical_material = {
-            ball = {
-                properties = {
-                    density = 1,
-                    restitution = 0.6,
-                    friction = 0.3
-                }
-            },
-
-            floor = {
-                properties = {
-                    restitution = 0.2,
-                    friction = 0.8
-                }
-            }
-        }
-    },
-
-    entities = {
-        {
-            id = "bounce_ball",
-
-            transform = {
-                x = 280,
-                y = 200
-            },
-
-            shapes = {
-                physics = {
-                    type = "circle",
-                    radius = 10,
-                    material = "ball"
-                }
-            },
-
-            components = {
-                rigid_body = {
-                    type = "rigid_body",
-                    body_type = "dynamic",
-                    shapes = { "physics" }
-                }
-            }
-        },
-
-        {
-            id = "floor",
-
-            transform = {
-                x = 320,
-                y = 480
-            },
-
-            shapes = {
-                physics = {
-                    type = "polygon",
-                    material = "floor",
-
-                    points = {
-                        { x = -250, y = -20 },
-                        { x = -80,  y = -20 },
-                        { x = -40,  y = -70 },
-                        { x = 0,    y = -20 },
-                        { x = 250,  y = -20 },
-                        { x = 250,  y = 20 },
-                        { x = -250, y = 20 }
-                    }
-                }
-            },
-
-            components = {
-                rigid_body = {
-                    type = "rigid_body",
-                    body_type = "static",
-                    shapes = { "physics" }
-                }
-            }
-        }
-    }
-}
 
 -- Adds a message to the test output.
 local function add_message(message)
@@ -270,7 +190,7 @@ local function create_player_movement()
     player_translation = Translation.new(player_mover)
 end
 
--- Loads project resources and entities from serializable project data.
+-- Loads project resources and entities from the external project definition.
 local function load_project()
     local project_loader = ProjectLoader.new()
 
