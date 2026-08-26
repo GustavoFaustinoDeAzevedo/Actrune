@@ -458,6 +458,10 @@ local project_definition = {
           controls = "controls",
           input = "move",
           direction = "movement_direction",
+          direction_policy = {
+            type = "last_changed_axis",
+            initial_axis = "x"
+          },
 
           displacement = {
             type = "axes",
@@ -500,6 +504,10 @@ local project_definition = {
           controls = "controls",
           input = "move",
           direction = "movement_direction",
+          direction_policy = {
+            type = "last_changed_axis",
+            initial_axis = "x"
+          },
 
           displacement = {
             type = "uniform",
