@@ -10,6 +10,7 @@ local SpatialActionControl = require("engine.world.control.spatial_action_contro
 local ValueExpressionFactory = require("engine.core.values.value_expression_factory")
 local ControlApplicationFactory = require("engine.world.control.control_application_factory")
 local GridContext = require("engine.world.grid.grid_context")
+local GridArea = require("engine.world.grid.grid_area")
 
 local EntityFactory = {}
 EntityFactory.__index = EntityFactory
@@ -90,6 +91,23 @@ function EntityFactory.new(definitions, event_factory)
   end, {
     fields = {
       { name = "metrics", type = "resource_reference", resource_type = "grid_metrics", required = true }
+    }
+  })
+
+  self:register_component_type("grid_area", function(definition, context)
+    local metrics = context.factory:get_resource("grid_metrics", definition.metrics)
+    assert(metrics ~= nil, "unknown grid metrics resource: " .. tostring(definition.metrics))
+
+    return GridArea.new({
+      shape = definition.shape,
+      metrics = metrics,
+      priority = definition.priority
+    })
+  end, {
+    fields = {
+      { name = "shape",    type = "shape_reference",    required = true },
+      { name = "metrics",  type = "resource_reference", resource_type = "grid_metrics", required = true },
+      { name = "priority", type = "number",             default = 0 }
     }
   })
 

@@ -18,7 +18,7 @@ local project_definition = {
     },
 
     grid_metrics = {
-      test_grid = {
+      small_grid = {
         cell_size = 16
       },
 
@@ -348,7 +348,7 @@ local project_definition = {
 
         grid_context = {
           type = "grid_context",
-          metrics = "large_grid"
+          metrics = "small_grid"
         },
 
         movement_direction = {
@@ -376,7 +376,68 @@ local project_definition = {
           control_order = 10
         }
       }
-    }
+    },
+    {
+      id = "small_grid_area",
+
+      transform = {
+        x = 400,
+        y = 200
+      },
+
+      shapes = {
+        area = {
+          type = "polygon",
+
+          points = {
+            { x = -100, y = -100 },
+            { x = 100,  y = -100 },
+            { x = 100,  y = 100 },
+            { x = -100, y = 100 }
+          }
+        }
+      },
+
+      components = {
+        grid_area = {
+          type = "grid_area",
+          shape = "area",
+          metrics = "small_grid",
+          priority = 0
+        }
+      }
+    },
+
+    {
+      id = "large_grid_area",
+
+      transform = {
+        x = 600,
+        y = 200
+      },
+
+      shapes = {
+        area = {
+          type = "polygon",
+
+          points = {
+            { x = -100, y = -100 },
+            { x = 100,  y = -100 },
+            { x = 100,  y = 100 },
+            { x = -100, y = 100 }
+          }
+        }
+      },
+
+      components = {
+        grid_area = {
+          type = "grid_area",
+          shape = "area",
+          metrics = "large_grid",
+          priority = 10
+        }
+      }
+    },
   }
 }
 

@@ -25,6 +25,7 @@ local function matches_type(value, field_type)
   if field_type == "boolean" then return type(value) == "boolean" end
   if field_type == "enum" then return type(value) == "string" end
   if field_type == "resource_reference" then return type(value) == "string" end
+  if field_type == "shape_reference" then return type(value) == "string" end
   if field_type == "shape_reference_list" then return type(value) == "table" end
   if field_type == "point_list" then return type(value) == "table" end
   if field_type == "property_map" then return type(value) == "table" end
@@ -100,6 +101,9 @@ local function validate_field(errors, path, value, field, context)
     if not contains(field.values, value) then add_error(errors, path, "invalid value '" .. tostring(value) .. "'") end
   elseif field.type == "point_list" then
     validate_point_list(errors, path, value, field)
+  elseif field.type == "shape_reference" then
+    if context.shapes == nil or context.shapes[value] == nil then add_error(errors, path,
+    "references unknown shape '" .. value .. "'") end
   elseif field.type == "shape_reference_list" then
     validate_shape_references(errors, path, value, context)
   elseif field.type == "resource_reference" then

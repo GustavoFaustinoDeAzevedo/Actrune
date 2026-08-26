@@ -20,6 +20,7 @@ local PhysicalMaterialFactory = require(physicsFolder .. "physical_material_fact
 
 local gridFolder = worldFolder .. "grid/"
 local GridMetricsFactory = require(gridFolder .. "grid_metrics_factory")
+local GridContextSystem = require(gridFolder .. "grid_context_system")
 
 local project_definition = require("project.project_definition")
 
@@ -27,6 +28,7 @@ local runtime
 local physics_step
 local box2d
 local control_system
+local grid_context_system
 local project
 
 local event_entity
@@ -119,6 +121,13 @@ local function create_controls()
     control_system:add_project(project)
 end
 
+-- Creates the system that resolves active grid areas for project entities.
+local function create_grid_contexts()
+    grid_context_system = GridContextSystem.new()
+    grid_context_system:add_project(project)
+    grid_context_system:update()
+end
+
 -- Creates the physics backend and registers all project rigid bodies.
 local function create_physics()
     box2d = Box2DBackend.new({
@@ -148,12 +157,14 @@ function love.load()
     runtime = Actrune.new()
 
     load_project()
+    create_grid_contexts()
     create_controls()
     create_physics()
 end
 
--- Advances project controls, physics, and runtime systems.
+-- Advances spatial contexts, project controls, physics, and runtime systems.
 function love.update(dt)
+    grid_context_system:update()
     control_system:update(runtime, dt)
     physics_step:update(dt, update_physics)
     runtime:update(dt)
@@ -188,6 +199,9 @@ function love.draw()
     draw_shape(event_entity, "collision")
     draw_shape(player_entity, "collision")
     draw_shape(step_player_entity, "collision")
+
+    draw_shape(project.entities_by_id["small_grid_area"], "area")
+    draw_shape(project.entities_by_id["large_grid_area"], "area")
 end
 
 -- Forwards keyboard press events from LÖVE to the Actrune runtime.
