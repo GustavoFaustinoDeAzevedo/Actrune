@@ -20,6 +20,10 @@ local project_definition = {
     grid_metrics = {
       test_grid = {
         cell_size = 16
+      },
+
+      large_grid = {
+        cell_size = 32
       }
     },
 
@@ -342,6 +346,11 @@ local project_definition = {
           profile = "step_player"
         },
 
+        grid_context = {
+          type = "grid_context",
+          metrics = "large_grid"
+        },
+
         movement_direction = {
           type = "facing_direction"
         },
@@ -353,9 +362,8 @@ local project_definition = {
           direction = "movement_direction",
 
           amount = {
-            type = "resource_property",
-            resource_type = "grid_metrics",
-            resource = "test_grid",
+            type = "component_property",
+            component = "grid_context",
             property = "cell_size"
           },
 

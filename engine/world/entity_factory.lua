@@ -9,6 +9,7 @@ local RotationControl = require("engine.world.control.rotation_control")
 local SpatialActionControl = require("engine.world.control.spatial_action_control")
 local ValueExpressionFactory = require("engine.core.values.value_expression_factory")
 local ControlApplicationFactory = require("engine.world.control.control_application_factory")
+local GridContext = require("engine.world.grid.grid_context")
 
 local EntityFactory = {}
 EntityFactory.__index = EntityFactory
@@ -76,6 +77,19 @@ function EntityFactory.new(definitions, event_factory)
   end, {
     fields = {
       { name = "profile", type = "resource_reference", resource_type = "control_profile", required = true }
+    }
+  })
+
+  self:register_component_type("grid_context", function(definition, context)
+    local metrics = context.factory:get_resource("grid_metrics", definition.metrics)
+    assert(metrics ~= nil, "unknown grid metrics resource: " .. tostring(definition.metrics))
+
+    return GridContext.new({
+      metrics = metrics
+    })
+  end, {
+    fields = {
+      { name = "metrics", type = "resource_reference", resource_type = "grid_metrics", required = true }
     }
   })
 
