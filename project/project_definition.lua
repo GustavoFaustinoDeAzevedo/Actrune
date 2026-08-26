@@ -21,12 +21,19 @@ local project_definition = {
       default = {
         keys = {
           { action = "interact",   key = "space" },
+
           { action = "move_up",    key = "w" },
           { action = "move_left",  key = "a" },
           { action = "move_down",  key = "s" },
           { action = "move_right", key = "d" },
+
           { action = "turn_left",  key = "q" },
-          { action = "turn_right", key = "e" }
+          { action = "turn_right", key = "e" },
+
+          { action = "step_up",    key = "up" },
+          { action = "step_left",  key = "left" },
+          { action = "step_down",  key = "down" },
+          { action = "step_right", key = "right" }
         },
 
         spatial_actions = {
@@ -68,6 +75,24 @@ local project_definition = {
 
         actions = {
           interact = "interact"
+        }
+      },
+
+      step_player = {
+        vectors = {
+          move = {
+            x_axis = {
+              negative_action = "step_left",
+              positive_action = "step_right",
+              activation = "down"
+            },
+
+            y_axis = {
+              negative_action = "step_up",
+              positive_action = "step_down",
+              activation = "down"
+            }
+          }
         }
       }
     }
@@ -280,7 +305,60 @@ local project_definition = {
           controls = "controls",
           input = "interact",
           control_order = 30
+        }
+      }
+    },
+
+    {
+      id = "step_player",
+
+      transform = {
+        x = 450,
+        y = 150
+      },
+
+      shapes = {
+        collision = {
+          type = "polygon",
+
+          points = {
+            { x = -10, y = -10 },
+            { x = 10,  y = -10 },
+            { x = 10,  y = 10 },
+            { x = -10, y = 10 }
+          }
+        }
+      },
+
+      components = {
+        controls = {
+          type = "controls",
+          profile = "step_player"
         },
+
+        movement_direction = {
+          type = "facing_direction"
+        },
+
+        translation_control = {
+          type = "translation_control",
+          controls = "controls",
+          input = "move",
+          direction = "movement_direction",
+
+          amount = {
+            type = "value",
+            value = 16
+          },
+
+          application = {
+            type = "on_activation"
+          },
+
+          source_shape = "collision",
+          target_shape = "collision",
+          control_order = 10
+        }
       }
     }
   }

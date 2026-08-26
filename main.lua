@@ -28,6 +28,7 @@ local project
 
 local event_entity
 local player_entity
+local step_player_entity
 local bounce_ball
 local floor_entity
 
@@ -91,6 +92,7 @@ local function load_project()
     floor_entity = project.entities_by_id["floor"]
     event_entity = project.entities_by_id["door"]
     player_entity = project.entities_by_id["player"]
+    step_player_entity = project.entities_by_id["step_player"]
 
     for _, entity in ipairs(project.entities) do runtime:add_entity(entity) end
 
@@ -156,6 +158,7 @@ function love.draw()
     love.graphics.print(string.format("Angular velocity: %.4f", angular_velocity), 20, 150)
     love.graphics.print("FPS: " .. love.timer.getFPS(), 20, 180)
     love.graphics.print("Fixed steps: " .. physics_step.last_steps, 20, 200)
+    love.graphics.print("WASD: continuous player | Arrows: 16 px step player", 20, 220)
 
     draw_shape(bounce_ball, "physics")
     draw_shape(floor_entity, "physics")
@@ -171,6 +174,7 @@ function love.draw()
     draw_shape(event_entity, "interaction")
     draw_shape(event_entity, "collision")
     draw_shape(player_entity, "collision")
+    draw_shape(step_player_entity, "collision")
 end
 
 -- Forwards keyboard press events from LÖVE to the Actrune runtime.
