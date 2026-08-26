@@ -11,6 +11,7 @@ local RotationControl = require("engine.world.control.rotation_control")
 local SpatialActionControl = require("engine.world.control.spatial_action_control")
 local ValueExpressionFactory = require("engine.core.values.value_expression_factory")
 local ControlApplicationFactory = require("engine.world.control.control_application_factory")
+local DirectionPolicyFactory = require("engine.world.movement.direction.direction_policy_factory")
 local DisplacementExpressionFactory = require("engine.world.movement.translation.displacement_expression_factory")
 
 
@@ -134,6 +135,8 @@ function EntityFactory.new(definitions, event_factory)
       input = definition.input,
       direction = definition.direction,
 
+      direction_policy = DirectionPolicyFactory.create(definition.direction_policy),
+
       displacement = DisplacementExpressionFactory.create(definition.displacement, {
         factory = context.factory
       }),
@@ -147,13 +150,14 @@ function EntityFactory.new(definitions, event_factory)
     })
   end, {
     fields = {
-      { name = "controls",     type = "string",                  default = "controls" },
-      { name = "input",        type = "string",                  required = true },
-      { name = "direction",    type = "string",                  required = true },
-      { name = "displacement", type = "displacement_expression", required = true },
-      { name = "application",  type = "control_application",     required = true },
-      { name = "source_shape", type = "shape_reference",         required = true },
-      { name = "target_shape", type = "shape_reference",         required = true }
+      { name = "controls",         type = "string",                  default = "controls" },
+      { name = "input",            type = "string",                  required = true },
+      { name = "direction",        type = "string",                  required = true },
+      { name = "direction_policy", type = "direction_policy",        optional = true },
+      { name = "displacement",     type = "displacement_expression", required = true },
+      { name = "application",      type = "control_application",     required = true },
+      { name = "source_shape",     type = "shape_reference",         required = true },
+      { name = "target_shape",     type = "shape_reference",         required = true }
     }
   })
 

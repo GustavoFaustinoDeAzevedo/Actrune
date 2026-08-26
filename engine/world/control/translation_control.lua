@@ -13,6 +13,7 @@ function TranslationControl.new(options)
   self.controls = options.controls or "controls"
   self.input = options.input
   self.direction = options.direction
+  self.direction_policy = options.direction_policy
   self.displacement = options.displacement
   self.application = options.application
   self.source_shape = options.source_shape
@@ -25,6 +26,8 @@ function TranslationControl.new(options)
 
   assert(type(self.input) == "string", "translation control input must be a string")
   assert(type(self.direction) == "string", "translation control direction must be a component name")
+  assert(self.direction_policy ~= nil and type(self.direction_policy.resolve) == "function",
+    "translation control direction policy must be resolvable")
   assert(self.displacement ~= nil and type(self.displacement.resolve) == "function",
     "translation control displacement must be resolvable")
   assert(self.application ~= nil and type(self.application.should_apply) == "function",
@@ -54,17 +57,22 @@ function TranslationControl:bind_control(world, entity)
   self.translation = Translation.new(mover)
 end
 
--- Resolves control intent and applies the configured displacement and application policies.
+-- Resolves control intent and applies the configured direction, displacement, and application policies.
 function TranslationControl:update_control(runtime, dt)
   assert(self.entity ~= nil, "translation control is not bound")
 
   local input_x, input_y = self.control_profile:resolve_vector(self.input, runtime)
+  input_x, input_y = self.direction_policy:resolve(input_x, input_y)
+
   local active = input_x ~= 0 or input_y ~= 0
+
   local context = {
     active = active,
     dt = dt,
     entity = self.entity,
-    runtime = runtime
+    runtime = runtime,
+    input_x = input_x,
+    input_y = input_y
   }
 
   if not self.application:should_apply(context) then return end
