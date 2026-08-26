@@ -82,21 +82,29 @@ function EntityFactory.new(definitions, event_factory)
   })
 
   self:register_component_type("grid_context", function(definition, context)
-    local metrics = context.factory:get_resource("grid_metrics", definition.metrics)
-    assert(metrics ~= nil, "unknown grid metrics resource: " .. tostring(definition.metrics))
+    local metrics = nil
+
+    if definition.metrics ~= nil then
+      metrics = context.factory:get_resource("grid_metrics", definition.metrics)
+      assert(metrics ~= nil, "unknown grid metrics resource: " .. tostring(definition.metrics))
+    end
 
     return GridContext.new({
       metrics = metrics
     })
   end, {
     fields = {
-      { name = "metrics", type = "resource_reference", resource_type = "grid_metrics", required = true }
+      { name = "metrics", type = "resource_reference", resource_type = "grid_metrics", optional = true }
     }
   })
 
   self:register_component_type("grid_area", function(definition, context)
-    local metrics = context.factory:get_resource("grid_metrics", definition.metrics)
-    assert(metrics ~= nil, "unknown grid metrics resource: " .. tostring(definition.metrics))
+    local metrics = nil
+
+    if definition.metrics ~= nil then
+      metrics = context.factory:get_resource("grid_metrics", definition.metrics)
+      assert(metrics ~= nil, "unknown grid metrics resource: " .. tostring(definition.metrics))
+    end
 
     return GridArea.new({
       shape = definition.shape,
@@ -106,7 +114,7 @@ function EntityFactory.new(definitions, event_factory)
   end, {
     fields = {
       { name = "shape",    type = "shape_reference",    required = true },
-      { name = "metrics",  type = "resource_reference", resource_type = "grid_metrics", required = true },
+      { name = "metrics",  type = "resource_reference", resource_type = "grid_metrics", optional = true },
       { name = "priority", type = "number",             default = 0 }
     }
   })
@@ -125,7 +133,9 @@ function EntityFactory.new(definitions, event_factory)
       amount = ValueExpressionFactory.create(definition.amount, {
         factory = context.factory
       }),
-      application = ControlApplicationFactory.create(definition.application),
+      application = ControlApplicationFactory.create(definition.application, {
+        factory = context.factory
+      }),
       source_shape = definition.source_shape,
       target_shape = definition.target_shape
     })
@@ -145,10 +155,14 @@ function EntityFactory.new(definitions, event_factory)
     return RotationControl.new({
       controls = definition.controls,
       input = definition.input,
+
       amount = ValueExpressionFactory.create(definition.amount, {
         factory = context.factory
       }),
-      application = ControlApplicationFactory.create(definition.application)
+
+      application = ControlApplicationFactory.create(definition.application, {
+        factory = context.factory
+      })
     })
   end, {
     fields = {

@@ -320,64 +320,6 @@ local project_definition = {
     },
 
     {
-      id = "step_player",
-
-      transform = {
-        x = 450,
-        y = 150
-      },
-
-      shapes = {
-        collision = {
-          type = "polygon",
-
-          points = {
-            { x = -10, y = -10 },
-            { x = 10,  y = -10 },
-            { x = 10,  y = 10 },
-            { x = -10, y = 10 }
-          }
-        }
-      },
-
-      components = {
-        controls = {
-          type = "controls",
-          profile = "step_player"
-        },
-
-        grid_context = {
-          type = "grid_context",
-          metrics = "small_grid"
-        },
-
-        movement_direction = {
-          type = "facing_direction"
-        },
-
-        translation_control = {
-          type = "translation_control",
-          controls = "controls",
-          input = "move",
-          direction = "movement_direction",
-
-          amount = {
-            type = "component_property",
-            component = "grid_context",
-            property = "cell_size"
-          },
-
-          application = {
-            type = "on_activation"
-          },
-
-          source_shape = "collision",
-          target_shape = "collision",
-          control_order = 10
-        }
-      }
-    },
-    {
       id = "small_grid_area",
 
       transform = {
@@ -438,6 +380,143 @@ local project_definition = {
         }
       }
     },
+
+    {
+      id = "free_area",
+
+      transform = {
+        x = 800,
+        y = 200
+      },
+
+      shapes = {
+        area = {
+          type = "polygon",
+
+          points = {
+            { x = -100, y = -100 },
+            { x = 100,  y = -100 },
+            { x = 100,  y = 100 },
+            { x = -100, y = 100 }
+          }
+        }
+      },
+
+      components = {
+        grid_area = {
+          type = "grid_area",
+          shape = "area",
+          priority = 20
+        }
+      }
+    },
+
+    {
+      id = "step_player",
+
+      transform = {
+        x = 450,
+        y = 150
+      },
+
+      shapes = {
+        collision = {
+          type = "polygon",
+
+          points = {
+            { x = -10, y = -10 },
+            { x = 10,  y = -10 },
+            { x = 10,  y = 10 },
+            { x = -10, y = 10 }
+          }
+        }
+      },
+
+      components = {
+        controls = {
+          type = "controls",
+          profile = "step_player"
+        },
+
+        grid_context = {
+          type = "grid_context",
+          metrics = "small_grid"
+        },
+
+        movement_direction = {
+          type = "facing_direction"
+        },
+
+        grid_translation = {
+          type = "translation_control",
+          controls = "controls",
+          input = "move",
+          direction = "movement_direction",
+
+          amount = {
+            type = "component_property",
+            component = "grid_context",
+            property = "cell_size"
+          },
+
+          application = {
+            type = "when",
+
+            condition = {
+              type = "component_property_exists",
+              component = "grid_context",
+              property = "cell_size"
+            },
+
+            application = {
+              type = "on_activation"
+            }
+          },
+
+          source_shape = "collision",
+          target_shape = "collision",
+          control_order = 10
+        },
+
+        free_translation = {
+          type = "translation_control",
+          controls = "controls",
+          input = "move",
+          direction = "movement_direction",
+
+          amount = {
+            type = "delta_time",
+
+            value = {
+              type = "value",
+              value = 120
+            }
+          },
+
+          application = {
+            type = "when",
+
+            condition = {
+              type = "not",
+
+              condition = {
+                type = "component_property_exists",
+                component = "grid_context",
+                property = "cell_size"
+              }
+            },
+
+            application = {
+              type = "while_active"
+            }
+          },
+
+          source_shape = "collision",
+          target_shape = "collision",
+          control_order = 20
+        }
+      }
+    }
   }
 }
 

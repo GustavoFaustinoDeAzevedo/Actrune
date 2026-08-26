@@ -1,7 +1,7 @@
 local GridArea = {}
 GridArea.__index = GridArea
 
--- Creates an area that supplies grid metrics to entities located inside its shape.
+-- Creates an area that optionally supplies grid metrics to entities inside it.
 function GridArea.new(options)
   options = options or {}
 
@@ -12,7 +12,6 @@ function GridArea.new(options)
   self.priority = options.priority or 0
 
   assert(type(self.shape) == "string", "grid area shape must be a shape name")
-  assert(self.metrics ~= nil, "grid area requires grid metrics")
   assert(type(self.priority) == "number", "grid area priority must be a number")
 
   return self
@@ -23,9 +22,14 @@ function GridArea:get_shape()
   return self.shape
 end
 
--- Returns the grid metrics supplied by this area.
+-- Returns the grid metrics supplied by this area or nil when the area disables grid context.
 function GridArea:get_metrics()
   return self.metrics
+end
+
+-- Returns whether this area supplies grid metrics.
+function GridArea:has_metrics()
+  return self.metrics ~= nil
 end
 
 -- Returns the priority used when multiple grid areas overlap.

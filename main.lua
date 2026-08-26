@@ -182,7 +182,7 @@ function love.draw()
     love.graphics.print(string.format("Angular velocity: %.4f", angular_velocity), 20, 150)
     love.graphics.print("FPS: " .. love.timer.getFPS(), 20, 180)
     love.graphics.print("Fixed steps: " .. physics_step.last_steps, 20, 200)
-    love.graphics.print("WASD: continuous player | Arrows: 16 px step player", 20, 220)
+    love.graphics.print("WASD: continuous | Arrows: contextual grid/free movement", 20, 220)
 
     draw_shape(bounce_ball, "physics")
     draw_shape(floor_entity, "physics")
@@ -202,6 +202,7 @@ function love.draw()
 
     draw_shape(project.entities_by_id["small_grid_area"], "area")
     draw_shape(project.entities_by_id["large_grid_area"], "area")
+    draw_shape(project.entities_by_id["free_area"], "area")
 end
 
 -- Forwards keyboard press events from LÖVE to the Actrune runtime.

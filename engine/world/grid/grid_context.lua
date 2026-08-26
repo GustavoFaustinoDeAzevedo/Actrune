@@ -1,7 +1,7 @@
 local GridContext = {}
 GridContext.__index = GridContext
 
--- Creates an entity grid context with default grid metrics.
+-- Creates an entity grid context with optional default grid metrics.
 function GridContext.new(options)
   options = options or {}
 
@@ -10,14 +10,11 @@ function GridContext.new(options)
   self.default_metrics = options.metrics
   self.metrics = options.metrics
 
-  assert(self.default_metrics ~= nil, "grid context requires default grid metrics")
-
   return self
 end
 
 -- Changes the grid metrics currently active for this context.
 function GridContext:set_metrics(metrics)
-  assert(metrics ~= nil, "grid context metrics are required")
   self.metrics = metrics
 end
 
@@ -26,15 +23,20 @@ function GridContext:reset_metrics()
   self.metrics = self.default_metrics
 end
 
+-- Returns whether this context currently has active grid metrics.
+function GridContext:has_metrics()
+  return self.metrics ~= nil
+end
+
 -- Returns the grid metrics currently active for this context.
 function GridContext:get_metrics()
   return self.metrics
 end
 
--- Returns a property from the currently active grid metrics.
+-- Returns a property from the active grid metrics or a fallback when no grid is active.
 function GridContext:get(name, fallback)
-  local value = self.metrics:get(name, fallback)
-  return value
+  if self.metrics == nil then return fallback end
+  return self.metrics:get(name, fallback)
 end
 
 return GridContext
