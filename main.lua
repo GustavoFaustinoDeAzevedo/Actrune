@@ -10,6 +10,10 @@ local InputMapFactory = require(inputFolder .. "input_map_factory")
 
 local worldFolder = "engine/world/"
 
+local gridFolder = worldFolder .. "grid/"
+local GridMetricsFactory = require(gridFolder .. "grid_metrics_factory")
+local GridContextSystem = require(gridFolder .. "grid_context_system")
+
 local controlFolder = worldFolder .. "control/"
 local ControlProfileFactory = require(controlFolder .. "control_profile_factory")
 local ControlSystem = require(controlFolder .. "control_system")
@@ -18,11 +22,8 @@ local physicsFolder = worldFolder .. "physics/"
 local Box2DBackend = require(physicsFolder .. "backends.box2d_backend")
 local PhysicalMaterialFactory = require(physicsFolder .. "physical_material_factory")
 
-local gridFolder = worldFolder .. "grid/"
-local GridMetricsFactory = require(gridFolder .. "grid_metrics_factory")
-local GridContextSystem = require(gridFolder .. "grid_context_system")
-
 local project_definition = require("project.project_definition")
+local TestSceneRenderer = require("project.test_scene_renderer")
 
 local runtime
 local physics_step
@@ -30,12 +31,7 @@ local box2d
 local control_system
 local grid_context_system
 local project
-
-local event_entity
-local player_entity
-local step_player_entity
-local bounce_ball
-local floor_entity
+local renderer
 
 local messages = {}
 
@@ -52,13 +48,6 @@ end
 -- Adds the test event completion message.
 local function on_test_event_finished()
     add_message("Evento finalizado.")
-end
-
--- Draws a named spatial shape belonging to an Actrune entity.
-local function draw_shape(entity, shape_name)
-    local shape = entity:get_shape(shape_name)
-    if shape == nil then return end
-    love.graphics.polygon("line", shape:get_world_points(entity.transform))
 end
 
 -- Loads project resources, entities, controls, input configuration, and serialized events.
@@ -103,22 +92,10 @@ local function load_project()
 
     project = project_loader:load(project_definition)
 
-    bounce_ball = project.entities_by_id["bounce_ball"]
-    floor_entity = project.entities_by_id["floor"]
-    event_entity = project.entities_by_id["door"]
-    player_entity = project.entities_by_id["player"]
-    step_player_entity = project.entities_by_id["step_player"]
-
     for _, entity in ipairs(project.entities) do runtime:add_entity(entity) end
 
     local input_map = project.resources["input_map"]:get("default")
     input_map:bind(runtime)
-end
-
--- Creates and registers all control-driven project components.
-local function create_controls()
-    control_system = ControlSystem.new(runtime.world)
-    control_system:add_project(project)
 end
 
 -- Creates the system that resolves active grid areas for project entities.
@@ -126,6 +103,12 @@ local function create_grid_contexts()
     grid_context_system = GridContextSystem.new()
     grid_context_system:add_project(project)
     grid_context_system:update()
+end
+
+-- Creates and registers all control-driven project components.
+local function create_controls()
+    control_system = ControlSystem.new(runtime.world)
+    control_system:add_project(project)
 end
 
 -- Creates the physics backend and registers all project rigid bodies.
@@ -147,6 +130,17 @@ local function create_physics()
     })
 end
 
+-- Creates the renderer used by the current development project.
+local function create_renderer()
+    renderer = TestSceneRenderer.new({
+        project = project,
+        runtime = runtime,
+        box2d = box2d,
+        physics_step = physics_step,
+        messages = messages
+    })
+end
+
 -- Advances the Box2D simulation through one fixed physics step.
 local function update_physics(step_dt)
     box2d:update(step_dt)
@@ -160,6 +154,7 @@ function love.load()
     create_grid_contexts()
     create_controls()
     create_physics()
+    create_renderer()
 end
 
 -- Advances spatial contexts, project controls, physics, and runtime systems.
@@ -170,39 +165,9 @@ function love.update(dt)
     runtime:update(dt)
 end
 
--- Draws the current project scene and diagnostic information.
+-- Draws the current project through its configured renderer.
 function love.draw()
-    love.graphics.print(table.concat(messages, "\n"), 20, 20)
-    love.graphics.print("Active events: " .. runtime:get_active_event_count(), 20, 100)
-
-    local velocity_x, velocity_y = box2d:get_linear_velocity(bounce_ball)
-    local angular_velocity = box2d:get_angular_velocity(bounce_ball)
-
-    love.graphics.print(string.format("Ball velocity: %.2f, %.2f", velocity_x, velocity_y), 20, 130)
-    love.graphics.print(string.format("Angular velocity: %.4f", angular_velocity), 20, 150)
-    love.graphics.print("FPS: " .. love.timer.getFPS(), 20, 180)
-    love.graphics.print("Fixed steps: " .. physics_step.last_steps, 20, 200)
-    love.graphics.print("WASD: continuous | Arrows: contextual grid/free movement", 20, 220)
-
-    draw_shape(bounce_ball, "physics")
-    draw_shape(floor_entity, "physics")
-
-    local ball_shape = bounce_ball:get_shape("physics")
-    local ball_radius = ball_shape:get_radius()
-    local angle = bounce_ball.transform.rotation
-    local marker_x = bounce_ball.transform.x + math.cos(angle) * ball_radius
-    local marker_y = bounce_ball.transform.y + math.sin(angle) * ball_radius
-
-    love.graphics.line(bounce_ball.transform.x, bounce_ball.transform.y, marker_x, marker_y)
-
-    draw_shape(event_entity, "interaction")
-    draw_shape(event_entity, "collision")
-    draw_shape(player_entity, "collision")
-    draw_shape(step_player_entity, "collision")
-
-    draw_shape(project.entities_by_id["small_grid_area"], "area")
-    draw_shape(project.entities_by_id["large_grid_area"], "area")
-    draw_shape(project.entities_by_id["free_area"], "area")
+    renderer:draw()
 end
 
 -- Forwards keyboard press events from LÖVE to the Actrune runtime.
