@@ -485,7 +485,8 @@ local project_definition = {
             },
 
             application = {
-              type = "on_activation"
+              type = "on_change",
+              fields = { "input_x", "input_y" }
             }
           },
 
