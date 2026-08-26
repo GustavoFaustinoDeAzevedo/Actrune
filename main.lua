@@ -79,7 +79,8 @@ local function load_project()
         GridMetricsFactory.create,
         {
             fields = {
-                { name = "cell_size", type = "number", required = true, min_exclusive = 0 }
+                { name = "cell_width",  type = "number", required = true, min_exclusive = 0 },
+                { name = "cell_height", type = "number", required = true, min_exclusive = 0 }
             }
         }
     )

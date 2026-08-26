@@ -19,11 +19,13 @@ local project_definition = {
 
     grid_metrics = {
       small_grid = {
-        cell_size = 16
+        cell_width = 16,
+        cell_height = 16
       },
 
       large_grid = {
-        cell_size = 32
+        cell_width = 32,
+        cell_height = 16
       }
     },
 
@@ -292,12 +294,16 @@ local project_definition = {
           input = "move",
           direction = "movement_direction",
 
-          amount = {
-            type = "delta_time",
+          displacement = {
+            type = "uniform",
 
-            value = {
-              type = "value",
-              value = 120
+            amount = {
+              type = "delta_time",
+
+              value = {
+                type = "value",
+                value = 120
+              }
             }
           },
 
@@ -453,10 +459,20 @@ local project_definition = {
           input = "move",
           direction = "movement_direction",
 
-          amount = {
-            type = "component_property",
-            component = "grid_context",
-            property = "cell_size"
+          displacement = {
+            type = "axes",
+
+            x = {
+              type = "component_property",
+              component = "grid_context",
+              property = "cell_width"
+            },
+
+            y = {
+              type = "component_property",
+              component = "grid_context",
+              property = "cell_height"
+            }
           },
 
           application = {
@@ -465,7 +481,7 @@ local project_definition = {
             condition = {
               type = "component_property_exists",
               component = "grid_context",
-              property = "cell_size"
+              property = "cell_width"
             },
 
             application = {
@@ -484,12 +500,16 @@ local project_definition = {
           input = "move",
           direction = "movement_direction",
 
-          amount = {
-            type = "delta_time",
+          displacement = {
+            type = "uniform",
 
-            value = {
-              type = "value",
-              value = 120
+            amount = {
+              type = "delta_time",
+
+              value = {
+                type = "value",
+                value = 120
+              }
             }
           },
 
@@ -502,7 +522,7 @@ local project_definition = {
               condition = {
                 type = "component_property_exists",
                 component = "grid_context",
-                property = "cell_size"
+                property = "cell_width"
               }
             },
 

@@ -7,7 +7,8 @@ function GridMetricsFactory.create(definition)
   assert(type(definition) == "table", "grid metrics definition must be a table")
 
   return GridMetrics.new({
-    cell_size = definition.cell_size
+    cell_width = definition.cell_width,
+    cell_height = definition.cell_height
   })
 end
 

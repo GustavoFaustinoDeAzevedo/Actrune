@@ -13,7 +13,7 @@ function TranslationControl.new(options)
   self.controls = options.controls or "controls"
   self.input = options.input
   self.direction = options.direction
-  self.amount = options.amount
+  self.displacement = options.displacement
   self.application = options.application
   self.source_shape = options.source_shape
   self.target_shape = options.target_shape
@@ -25,8 +25,8 @@ function TranslationControl.new(options)
 
   assert(type(self.input) == "string", "translation control input must be a string")
   assert(type(self.direction) == "string", "translation control direction must be a component name")
-  assert(self.amount ~= nil and type(self.amount.resolve) == "function",
-    "translation control amount must be a resolvable value")
+  assert(self.displacement ~= nil and type(self.displacement.resolve) == "function",
+    "translation control displacement must be resolvable")
   assert(self.application ~= nil and type(self.application.should_apply) == "function",
     "translation control application must be a control application policy")
 
@@ -54,30 +54,25 @@ function TranslationControl:bind_control(world, entity)
   self.translation = Translation.new(mover)
 end
 
--- Resolves control intent and applies translation according to its independent policies.
+-- Resolves control intent and applies the configured displacement and application policies.
 function TranslationControl:update_control(runtime, dt)
   assert(self.entity ~= nil, "translation control is not bound")
 
   local input_x, input_y = self.control_profile:resolve_vector(self.input, runtime)
   local active = input_x ~= 0 or input_y ~= 0
-
-  if not self.application:should_apply({
-        active = active,
-        dt = dt,
-        entity = self.entity,
-        runtime = runtime
-      }) then
-    return
-  end
-
-  local direction_x, direction_y = self.direction_resolver:resolve(input_x, input_y, self.entity.transform)
-  local amount = self.amount:resolve({
+  local context = {
+    active = active,
     dt = dt,
     entity = self.entity,
     runtime = runtime
-  })
+  }
 
-  self.translation:move(direction_x * amount, direction_y * amount)
+  if not self.application:should_apply(context) then return end
+
+  local direction_x, direction_y = self.direction_resolver:resolve(input_x, input_y, self.entity.transform)
+  local movement_x, movement_y = self.displacement:resolve(direction_x, direction_y, context)
+
+  self.translation:move(movement_x, movement_y)
 end
 
 return TranslationControl

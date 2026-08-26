@@ -1,4 +1,6 @@
 local Entity = require("engine.world.entity")
+local GridContext = require("engine.world.grid.grid_context")
+local GridArea = require("engine.world.grid.grid_area")
 local CircleShape = require("engine.world.spatial.circle_shape")
 local PolygonShape = require("engine.world.spatial.polygon_shape")
 local RigidBody = require("engine.world.physics.rigid_body")
@@ -9,8 +11,9 @@ local RotationControl = require("engine.world.control.rotation_control")
 local SpatialActionControl = require("engine.world.control.spatial_action_control")
 local ValueExpressionFactory = require("engine.core.values.value_expression_factory")
 local ControlApplicationFactory = require("engine.world.control.control_application_factory")
-local GridContext = require("engine.world.grid.grid_context")
-local GridArea = require("engine.world.grid.grid_area")
+local DisplacementExpressionFactory = require("engine.world.movement.translation.displacement_expression_factory")
+
+
 
 local EntityFactory = {}
 EntityFactory.__index = EntityFactory
@@ -130,24 +133,27 @@ function EntityFactory.new(definitions, event_factory)
       controls = definition.controls,
       input = definition.input,
       direction = definition.direction,
-      amount = ValueExpressionFactory.create(definition.amount, {
+
+      displacement = DisplacementExpressionFactory.create(definition.displacement, {
         factory = context.factory
       }),
+
       application = ControlApplicationFactory.create(definition.application, {
         factory = context.factory
       }),
+
       source_shape = definition.source_shape,
       target_shape = definition.target_shape
     })
   end, {
     fields = {
-      { name = "controls",     type = "string",              default = "controls" },
-      { name = "input",        type = "string",              required = true },
-      { name = "direction",    type = "string",              required = true },
-      { name = "amount",       type = "value_expression",    required = true },
-      { name = "application",  type = "control_application", required = true },
-      { name = "source_shape", type = "shape_reference",     required = true },
-      { name = "target_shape", type = "shape_reference",     required = true }
+      { name = "controls",     type = "string",                  default = "controls" },
+      { name = "input",        type = "string",                  required = true },
+      { name = "direction",    type = "string",                  required = true },
+      { name = "displacement", type = "displacement_expression", required = true },
+      { name = "application",  type = "control_application",     required = true },
+      { name = "source_shape", type = "shape_reference",         required = true },
+      { name = "target_shape", type = "shape_reference",         required = true }
     }
   })
 
