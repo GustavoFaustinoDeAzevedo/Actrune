@@ -62,7 +62,7 @@ local project_definition = {
           turn = {
             negative_action = "turn_left",
             positive_action = "turn_right",
-            activation = "pressed"
+            activation = "down"
           }
         },
 
@@ -244,6 +244,10 @@ local project_definition = {
             value = math.rad(90)
           },
 
+          application = {
+            type = "on_activation"
+          },
+
           control_order = 10
         },
 
@@ -262,6 +266,10 @@ local project_definition = {
             }
           },
 
+          application = {
+            type = "while_active"
+          },
+
           source_shape = "collision",
           target_shape = "collision",
           control_order = 20
@@ -272,7 +280,7 @@ local project_definition = {
           controls = "controls",
           input = "interact",
           control_order = 30
-        }
+        },
       }
     }
   }
