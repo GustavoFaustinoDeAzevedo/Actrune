@@ -85,12 +85,14 @@ function EntityFactory.new(definitions, event_factory)
     fields = {}
   })
 
-  self:register_component_type("translation_control", function(definition)
+  self:register_component_type("translation_control", function(definition, context)
     return TranslationControl.new({
       controls = definition.controls,
       input = definition.input,
       direction = definition.direction,
-      amount = ValueExpressionFactory.create(definition.amount),
+      amount = ValueExpressionFactory.create(definition.amount, {
+        factory = context.factory
+      }),
       application = ControlApplicationFactory.create(definition.application),
       source_shape = definition.source_shape,
       target_shape = definition.target_shape
@@ -107,11 +109,13 @@ function EntityFactory.new(definitions, event_factory)
     }
   })
 
-  self:register_component_type("rotation_control", function(definition)
+  self:register_component_type("rotation_control", function(definition, context)
     return RotationControl.new({
       controls = definition.controls,
       input = definition.input,
-      amount = ValueExpressionFactory.create(definition.amount),
+      amount = ValueExpressionFactory.create(definition.amount, {
+        factory = context.factory
+      }),
       application = ControlApplicationFactory.create(definition.application)
     })
   end, {

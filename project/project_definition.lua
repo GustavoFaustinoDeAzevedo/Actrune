@@ -17,6 +17,12 @@ local project_definition = {
       }
     },
 
+    grid_metrics = {
+      test_grid = {
+        cell_size = 16
+      }
+    },
+
     input_map = {
       default = {
         keys = {
@@ -347,8 +353,10 @@ local project_definition = {
           direction = "movement_direction",
 
           amount = {
-            type = "value",
-            value = 16
+            type = "resource_property",
+            resource_type = "grid_metrics",
+            resource = "test_grid",
+            property = "cell_size"
           },
 
           application = {

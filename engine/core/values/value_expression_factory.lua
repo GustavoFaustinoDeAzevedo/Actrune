@@ -2,6 +2,8 @@ local Value = require("engine.core.values.value")
 
 local ValueExpressionFactory = {}
 
+local builders = {}
+
 -- Creates a constant runtime value expression.
 local function create_value(definition)
   assert(type(definition.value) == "number", "value expression requires a numeric value")
@@ -9,28 +11,82 @@ local function create_value(definition)
 end
 
 -- Creates a runtime value expression scaled by delta time.
-local function create_delta_time(definition)
-  local source = ValueExpressionFactory.create(definition.value)
+local function create_delta_time(definition, context)
+  local source = ValueExpressionFactory.create(definition.value, context)
 
   return {
     -- Resolves the source value and scales it by the current delta time.
-    resolve = function(self, context)
-      context = context or {}
-      assert(type(context.dt) == "number", "delta_time value requires context.dt")
-      return source:resolve(context) * context.dt
+    resolve = function(self, resolve_context)
+      resolve_context = resolve_context or {}
+
+      assert(type(resolve_context.dt) == "number", "delta_time value requires context.dt")
+
+      return source:resolve(resolve_context) * resolve_context.dt
     end
   }
 end
 
+-- Creates an expression that reads one numeric property from a project resource.
+local function create_resource_property(definition, context)
+  assert(context ~= nil and context.factory ~= nil, "resource_property value requires an entity factory")
+  assert(type(definition.resource_type) == "string", "resource_property requires a resource_type")
+  assert(type(definition.resource) == "string", "resource_property requires a resource")
+  assert(type(definition.property) == "string", "resource_property requires a property")
+
+  local resource = context.factory:get_resource(definition.resource_type, definition.resource)
+
+  assert(
+    resource ~= nil,
+    "unknown " .. definition.resource_type .. " resource: " .. definition.resource
+  )
+
+  assert(
+    type(resource.get) == "function",
+    "resource does not expose readable properties: " .. definition.resource_type .. "." .. definition.resource
+  )
+
+  return {
+    -- Returns the configured numeric property from the referenced resource.
+    resolve = function()
+      local value = resource:get(definition.property)
+
+      assert(
+        type(value) == "number",
+        "resource property must resolve to a number: "
+        .. definition.resource_type
+        .. "."
+        .. definition.resource
+        .. "."
+        .. definition.property
+      )
+
+      return value
+    end
+  }
+end
+
+-- Registers a constructor for a named value expression type.
+function ValueExpressionFactory.register_type(type_name, builder)
+  assert(type(type_name) == "string", "value expression type name must be a string")
+  assert(type(builder) == "function", "value expression builder must be a function")
+
+  builders[type_name] = builder
+end
+
 -- Creates a runtime value expression from a serializable definition.
-function ValueExpressionFactory.create(definition)
+function ValueExpressionFactory.create(definition, context)
   assert(type(definition) == "table", "value expression definition must be a table")
   assert(type(definition.type) == "string", "value expression requires a type")
 
-  if definition.type == "value" then return create_value(definition) end
-  if definition.type == "delta_time" then return create_delta_time(definition) end
+  local builder = builders[definition.type]
 
-  error("unknown value expression type: " .. tostring(definition.type))
+  assert(builder ~= nil, "unknown value expression type: " .. tostring(definition.type))
+
+  return builder(definition, context or {})
 end
+
+ValueExpressionFactory.register_type("value", create_value)
+ValueExpressionFactory.register_type("delta_time", create_delta_time)
+ValueExpressionFactory.register_type("resource_property", create_resource_property)
 
 return ValueExpressionFactory

@@ -18,6 +18,9 @@ local physicsFolder = worldFolder .. "physics/"
 local Box2DBackend = require(physicsFolder .. "backends.box2d_backend")
 local PhysicalMaterialFactory = require(physicsFolder .. "physical_material_factory")
 
+local gridFolder = worldFolder .. "grid/"
+local GridMetricsFactory = require(gridFolder .. "grid_metrics_factory")
+
 local project_definition = require("project.project_definition")
 
 local runtime
@@ -76,6 +79,16 @@ local function load_project()
                         { name = "friction",    type = "number", min = 0 }
                     }
                 }
+            }
+        }
+    )
+
+    project_loader:register_resource_type(
+        "grid_metrics",
+        GridMetricsFactory.create,
+        {
+            fields = {
+                { name = "cell_size", type = "number", required = true, min_exclusive = 0 }
             }
         }
     )
