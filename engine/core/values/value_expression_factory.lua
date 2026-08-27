@@ -1,8 +1,11 @@
+local FactoryRegistry = require("engine.core.definitions.factory_registry")
 local Value = require("engine.core.values.value")
 
 local ValueExpressionFactory = {}
 
-local builders = {}
+local registry = FactoryRegistry.new({
+  kind = "value expression"
+})
 
 -- Creates a constant runtime value expression.
 local function create_value(definition)
@@ -18,9 +21,7 @@ local function create_delta_time(definition, context)
     -- Resolves the source value and scales it by the current delta time.
     resolve = function(self, resolve_context)
       resolve_context = resolve_context or {}
-
       assert(type(resolve_context.dt) == "number", "delta_time value requires context.dt")
-
       return source:resolve(resolve_context) * resolve_context.dt
     end
   }
@@ -73,6 +74,7 @@ local function create_component_property(definition)
       assert(entity ~= nil, "component_property value requires context.entity")
 
       local component = entity:get_component(definition.component)
+
       assert(component ~= nil, "component_property references missing component: " .. definition.component)
       assert(type(component.get) == "function", "component does not expose readable properties: " .. definition
       .component)
@@ -92,12 +94,9 @@ local function create_component_property(definition)
   }
 end
 
--- Registers a constructor for a named value expression type.
-function ValueExpressionFactory.register_type(type_name, builder)
-  assert(type(type_name) == "string", "value expression type name must be a string")
-  assert(type(builder) == "function", "value expression builder must be a function")
-
-  builders[type_name] = builder
+-- Registers a named value expression factory and optional metadata.
+function ValueExpressionFactory.register_type(type_name, factory, definition)
+  registry:register(type_name, factory, definition)
 end
 
 -- Creates a runtime value expression from a serializable definition.
@@ -105,15 +104,39 @@ function ValueExpressionFactory.create(definition, context)
   assert(type(definition) == "table", "value expression definition must be a table")
   assert(type(definition.type) == "string", "value expression requires a type")
 
-  local builder = builders[definition.type]
-  assert(builder ~= nil, "unknown value expression type: " .. tostring(definition.type))
-
-  return builder(definition, context or {})
+  return registry:create(definition.type, definition, context)
 end
 
-ValueExpressionFactory.register_type("value", create_value)
-ValueExpressionFactory.register_type("delta_time", create_delta_time)
-ValueExpressionFactory.register_type("resource_property", create_resource_property)
-ValueExpressionFactory.register_type("component_property", create_component_property)
+-- Returns the registry containing all available value expression types.
+function ValueExpressionFactory.get_registry()
+  return registry
+end
+
+ValueExpressionFactory.register_type("value", create_value, {
+  fields = {
+    { name = "value", type = "number", required = true }
+  }
+})
+
+ValueExpressionFactory.register_type("delta_time", create_delta_time, {
+  fields = {
+    { name = "value", type = "value_expression", required = true }
+  }
+})
+
+ValueExpressionFactory.register_type("resource_property", create_resource_property, {
+  fields = {
+    { name = "resource_type", type = "string", required = true },
+    { name = "resource",      type = "string", required = true },
+    { name = "property",      type = "string", required = true }
+  }
+})
+
+ValueExpressionFactory.register_type("component_property", create_component_property, {
+  fields = {
+    { name = "component", type = "string", required = true },
+    { name = "property",  type = "string", required = true }
+  }
+})
 
 return ValueExpressionFactory

@@ -1,13 +1,18 @@
+local FactoryRegistry = require("engine.core.definitions.factory_registry")
 local ConditionExpressionFactory = require("engine.core.conditions.condition_expression_factory")
 
 local ControlApplicationFactory = {}
 
-local builders = {}
+local registry = FactoryRegistry.new({
+  kind = "control application"
+})
 
 -- Copies an application context while replacing its active state.
 local function with_active(context, active)
   local result = {}
+
   for name, value in pairs(context or {}) do result[name] = value end
+
   result.active = active
   return result
 end
@@ -55,7 +60,9 @@ local function create_on_change(definition)
   assert(type(fields) == "table", "on_change fields must be a table")
   assert(#fields > 0, "on_change requires at least one field")
 
-  for _, field in ipairs(fields) do assert(type(field) == "string", "on_change field names must be strings") end
+  for _, field in ipairs(fields) do
+    assert(type(field) == "string", "on_change field names must be strings")
+  end
 
   local policy = {
     previous_values = nil
@@ -101,6 +108,7 @@ end
 local function create_when(definition, context)
   local condition = ConditionExpressionFactory.create(definition.condition, context)
   local application = ControlApplicationFactory.create(definition.application, context)
+
   local policy = {}
 
   -- Applies the wrapped policy only while its condition is satisfied.
@@ -112,11 +120,9 @@ local function create_when(definition, context)
   return policy
 end
 
--- Registers a constructor for a named control application policy type.
-function ControlApplicationFactory.register_type(type_name, builder)
-  assert(type(type_name) == "string", "control application type name must be a string")
-  assert(type(builder) == "function", "control application builder must be a function")
-  builders[type_name] = builder
+-- Registers a named control application factory and optional metadata.
+function ControlApplicationFactory.register_type(type_name, factory, definition)
+  registry:register(type_name, factory, definition)
 end
 
 -- Creates a control application policy from a serializable definition.
@@ -124,15 +130,33 @@ function ControlApplicationFactory.create(definition, context)
   assert(type(definition) == "table", "control application definition must be a table")
   assert(type(definition.type) == "string", "control application definition requires a type")
 
-  local builder = builders[definition.type]
-  assert(builder ~= nil, "unknown control application type: " .. tostring(definition.type))
-
-  return builder(definition, context or {})
+  return registry:create(definition.type, definition, context)
 end
 
-ControlApplicationFactory.register_type("while_active", create_while_active)
-ControlApplicationFactory.register_type("on_activation", create_on_activation)
-ControlApplicationFactory.register_type("on_change", create_on_change)
-ControlApplicationFactory.register_type("when", create_when)
+-- Returns the registry containing all available control application types.
+function ControlApplicationFactory.get_registry()
+  return registry
+end
+
+ControlApplicationFactory.register_type("while_active", create_while_active, {
+  fields = {}
+})
+
+ControlApplicationFactory.register_type("on_activation", create_on_activation, {
+  fields = {}
+})
+
+ControlApplicationFactory.register_type("on_change", create_on_change, {
+  fields = {
+    { name = "fields", type = "string_list", required = true, min_items = 1 }
+  }
+})
+
+ControlApplicationFactory.register_type("when", create_when, {
+  fields = {
+    { name = "condition",   type = "condition_expression", required = true },
+    { name = "application", type = "control_application",  required = true }
+  }
+})
 
 return ControlApplicationFactory

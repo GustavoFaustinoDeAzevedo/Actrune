@@ -1,6 +1,10 @@
+local FactoryRegistry = require("engine.core.definitions.factory_registry")
+
 local ConditionExpressionFactory = {}
 
-local builders = {}
+local registry = FactoryRegistry.new({
+  kind = "condition expression"
+})
 
 -- Creates a condition that checks whether an entity component exposes a property.
 local function create_component_property_exists(definition)
@@ -35,12 +39,9 @@ local function create_not(definition, context)
   }
 end
 
--- Registers a constructor for a named condition expression type.
-function ConditionExpressionFactory.register_type(type_name, builder)
-  assert(type(type_name) == "string", "condition expression type name must be a string")
-  assert(type(builder) == "function", "condition expression builder must be a function")
-
-  builders[type_name] = builder
+-- Registers a named condition expression factory and optional metadata.
+function ConditionExpressionFactory.register_type(type_name, factory, definition)
+  registry:register(type_name, factory, definition)
 end
 
 -- Creates a runtime condition expression from a serializable definition.
@@ -48,13 +49,25 @@ function ConditionExpressionFactory.create(definition, context)
   assert(type(definition) == "table", "condition expression definition must be a table")
   assert(type(definition.type) == "string", "condition expression requires a type")
 
-  local builder = builders[definition.type]
-  assert(builder ~= nil, "unknown condition expression type: " .. tostring(definition.type))
-
-  return builder(definition, context or {})
+  return registry:create(definition.type, definition, context)
 end
 
-ConditionExpressionFactory.register_type("component_property_exists", create_component_property_exists)
-ConditionExpressionFactory.register_type("not", create_not)
+-- Returns the registry containing all available condition expression types.
+function ConditionExpressionFactory.get_registry()
+  return registry
+end
+
+ConditionExpressionFactory.register_type("component_property_exists", create_component_property_exists, {
+  fields = {
+    { name = "component", type = "string", required = true },
+    { name = "property",  type = "string", required = true }
+  }
+})
+
+ConditionExpressionFactory.register_type("not", create_not, {
+  fields = {
+    { name = "condition", type = "condition_expression", required = true }
+  }
+})
 
 return ConditionExpressionFactory
