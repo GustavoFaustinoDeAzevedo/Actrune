@@ -1,26 +1,26 @@
 local TypeCatalog = require("engine.core.definitions.type_catalog")
 
-local ValueExpressionFactory = require("engine.core.values.value_expression_factory")
-local ConditionExpressionFactory = require("engine.core.conditions.condition_expression_factory")
-local DirectionPolicyFactory = require("engine.world.movement.direction.direction_policy_factory")
-local DisplacementExpressionFactory = require("engine.world.movement.translation.displacement_expression_factory")
-local ControlApplicationFactory = require("engine.world.control.control_application_factory")
+local ActruneValueExpressionTypes = require("engine.core.values.actrune_value_expression_types")
+local ActruneConditionExpressionTypes = require("engine.core.conditions.actrune_condition_expression_types")
+local ActruneDirectionPolicyTypes = require("engine.world.movement.direction.actrune_direction_policy_types")
+local ActruneDisplacementExpressionTypes = require(
+"engine.world.movement.translation.actrune_displacement_expression_types")
+local ActruneControlApplicationTypes = require("engine.world.control.actrune_control_application_types")
 
 local ActruneEntityTypes = require("engine.world.actrune_entity_types")
 local ActruneEventTypes = require("engine.events.actrune_event_types")
 
 local ActruneTypeCatalog = {}
 
--- Creates an isolated type catalog initialized with all built-in Actrune types.
+-- Creates an isolated type catalog initialized directly with all built-in Actrune types.
 function ActruneTypeCatalog.create()
   local catalog = TypeCatalog.new()
 
-  catalog:register_registry("value_expression", ValueExpressionFactory.get_registry():copy())
-  catalog:register_registry("condition_expression", ConditionExpressionFactory.get_registry():copy())
-  catalog:register_registry("direction_policy", DirectionPolicyFactory.get_registry():copy())
-  catalog:register_registry("displacement_expression", DisplacementExpressionFactory.get_registry():copy())
-  catalog:register_registry("control_application", ControlApplicationFactory.get_registry():copy())
-
+  ActruneValueExpressionTypes.register(catalog)
+  ActruneConditionExpressionTypes.register(catalog)
+  ActruneDirectionPolicyTypes.register(catalog)
+  ActruneDisplacementExpressionTypes.register(catalog)
+  ActruneControlApplicationTypes.register(catalog)
   ActruneEntityTypes.register(catalog)
   ActruneEventTypes.register(catalog)
 
