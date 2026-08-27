@@ -1,4 +1,5 @@
 local FactoryRegistry = require("engine.core.definitions.factory_registry")
+local TypeRegister = require("engine.core.definitions.type_register")
 
 local TypeCatalog = {}
 TypeCatalog.__index = TypeCatalog
@@ -54,11 +55,11 @@ function TypeCatalog:has(kind, type_name)
 end
 
 -- Registers one type in a named catalog registry.
-function TypeCatalog:register(kind, type_name, factory, definition)
+function TypeCatalog:register(kind, type_name, factory, definition, options)
   local registry = self.registries[kind]
   assert(registry ~= nil, "unknown type catalog registry: " .. tostring(kind))
 
-  registry:register(type_name, factory, definition)
+  registry:register(type_name, factory, definition, options)
 end
 
 -- Returns metadata associated with one registered type.
@@ -67,6 +68,19 @@ function TypeCatalog:get_definition(kind, type_name)
   if registry == nil then return nil end
 
   return registry:get_definition(type_name)
+end
+
+-- Returns the provider associated with one registered type.
+function TypeCatalog:get_provider(kind, type_name)
+  local registry = self.registries[kind]
+  if registry == nil then return nil end
+
+  return registry:get_provider(type_name)
+end
+
+-- Creates a registration facade that associates new types with one provider.
+function TypeCatalog:create_register(options)
+  return TypeRegister.new(self, options)
 end
 
 -- Returns all type names registered in one family in deterministic order.

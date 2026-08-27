@@ -4,7 +4,7 @@ local ActruneValueExpressionTypes = require("engine.core.values.actrune_value_ex
 local ActruneConditionExpressionTypes = require("engine.core.conditions.actrune_condition_expression_types")
 local ActruneDirectionPolicyTypes = require("engine.world.movement.direction.actrune_direction_policy_types")
 local ActruneDisplacementExpressionTypes = require(
-"engine.world.movement.translation.actrune_displacement_expression_types")
+  "engine.world.movement.translation.actrune_displacement_expression_types")
 local ActruneControlApplicationTypes = require("engine.world.control.actrune_control_application_types")
 
 local ActruneEntityTypes = require("engine.world.actrune_entity_types")
@@ -16,13 +16,17 @@ local ActruneTypeCatalog = {}
 function ActruneTypeCatalog.create()
   local catalog = TypeCatalog.new()
 
-  ActruneValueExpressionTypes.register(catalog)
-  ActruneConditionExpressionTypes.register(catalog)
-  ActruneDirectionPolicyTypes.register(catalog)
-  ActruneDisplacementExpressionTypes.register(catalog)
-  ActruneControlApplicationTypes.register(catalog)
-  ActruneEntityTypes.register(catalog)
-  ActruneEventTypes.register(catalog)
+  local actrune = catalog:create_register({
+    provider = "actrune"
+  })
+
+  ActruneValueExpressionTypes.register(actrune)
+  ActruneConditionExpressionTypes.register(actrune)
+  ActruneDirectionPolicyTypes.register(actrune)
+  ActruneDisplacementExpressionTypes.register(actrune)
+  ActruneControlApplicationTypes.register(actrune)
+  ActruneEntityTypes.register(actrune)
+  ActruneEventTypes.register(actrune)
 
   return catalog
 end

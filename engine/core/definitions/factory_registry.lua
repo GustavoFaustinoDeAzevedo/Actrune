@@ -11,15 +11,18 @@ function FactoryRegistry.new(options)
   }, FactoryRegistry)
 end
 
--- Registers a named factory and optional metadata.
-function FactoryRegistry:register(type_name, factory, definition)
+-- Registers a named factory with optional definition and registration metadata.
+function FactoryRegistry:register(type_name, factory, definition, options)
   assert(type(type_name) == "string", self.kind .. " type name must be a string")
   assert(type(factory) == "function", self.kind .. " factory must be a function")
   assert(self.entries[type_name] == nil, self.kind .. " type is already registered: " .. type_name)
 
+  options = options or {}
+
   self.entries[type_name] = {
     factory = factory,
-    definition = definition
+    definition = definition,
+    provider = options.provider
   }
 end
 
@@ -42,6 +45,13 @@ function FactoryRegistry:get_definition(type_name)
   local entry = self.entries[type_name]
   if entry == nil then return nil end
   return entry.definition
+end
+
+-- Returns the provider associated with a registered type.
+function FactoryRegistry:get_provider(type_name)
+  local entry = self.entries[type_name]
+  if entry == nil then return nil end
+  return entry.provider
 end
 
 -- Returns all registered type names in deterministic order.
