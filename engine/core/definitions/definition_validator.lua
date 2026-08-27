@@ -27,6 +27,7 @@ local function matches_type(value, field_type)
   if field_type == "resource_reference" then return type(value) == "string" end
   if field_type == "shape_reference" then return type(value) == "string" end
   if field_type == "shape_reference_list" then return type(value) == "table" end
+  if field_type == "action_reference" then return type(value) == "string" end
   if field_type == "string_list" then return type(value) == "table" end
   if field_type == "point_list" then return type(value) == "table" end
   if field_type == "property_map" then return type(value) == "table" end
@@ -87,11 +88,11 @@ end
 -- Validates a list containing only strings and its optional size constraints.
 local function validate_string_list(errors, path, values, field)
   if field.min_items ~= nil and #values < field.min_items then
-    add_error(errors, path, "must contain at least " .. field.min_items .. " item(s)")
+    add_error(errors, path, "must contain at least " .. tostring(field.min_items) .. " item(s)")
   end
 
   if field.max_items ~= nil and #values > field.max_items then
-    add_error(errors, path, "must contain at most " .. field.max_items .. " item(s)")
+    add_error(errors, path, "must contain at most " .. tostring(field.max_items) .. " item(s)")
   end
 
   for index, value in ipairs(values) do
@@ -125,10 +126,7 @@ local function validate_catalog_definition(errors, path, value, field_type, cont
 
   if metadata ~= nil then
     local nested_errors = DefinitionValidator.validate_typed(value, metadata, path, context)
-
-    for _, validation_error in ipairs(nested_errors) do
-      table.insert(errors, validation_error)
-    end
+    for _, validation_error in ipairs(nested_errors) do table.insert(errors, validation_error) end
   end
 
   return true
@@ -166,16 +164,15 @@ local function validate_field(errors, path, value, field, context)
     local registry = context.resources and context.resources[field.resource_type]
 
     if registry == nil or not registry:has(value) then
-      add_error(
-        errors,
-        path,
-        "references unknown " .. tostring(field.resource_type) .. " resource '" .. tostring(value) .. "'"
-      )
+      add_error(errors, path,
+        "references unknown " .. tostring(field.resource_type) .. " resource '" .. tostring(value) .. "'")
+    end
+  elseif field.type == "action_reference" then
+    if context.action_exists ~= nil and not context.action_exists(value) then
+      add_error(errors, path, "references unknown event action '" .. tostring(value) .. "'")
     end
   end
 end
-
-
 
 -- Validates one typed data definition against registered metadata.
 function DefinitionValidator.validate_typed(definition, metadata, path, context)
@@ -185,14 +182,24 @@ function DefinitionValidator.validate_typed(definition, metadata, path, context)
   metadata = metadata or {}
 
   for _, field in ipairs(metadata.fields or {}) do
-    validate_field(
-      errors,
-      path .. "." .. field.name,
-      definition[field.name],
-      field,
-      context
-    )
+    validate_field(errors, path .. "." .. field.name, definition[field.name], field, context)
   end
+
+  return errors
+end
+
+-- Validates one definition belonging to a registered type catalog family.
+function DefinitionValidator.validate_catalog(definition, family, path, context)
+  local errors = {}
+
+  context = context or {}
+
+  if context.type_catalog == nil or not context.type_catalog:has_registry(family) then
+    add_error(errors, path, "unknown type catalog registry '" .. tostring(family) .. "'")
+    return errors
+  end
+
+  validate_catalog_definition(errors, path, definition, family, context)
 
   return errors
 end

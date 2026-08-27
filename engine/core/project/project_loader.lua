@@ -1,8 +1,9 @@
+local EventFactory = require("engine.events.event_factory")
+local EntityFactory = require("engine.world.entity_factory")
 local ResourceRegistry = require("engine.core.resources.resource_registry")
 local DefinitionRegistry = require("engine.core.definitions.definition_registry")
 local DefinitionValidator = require("engine.core.definitions.definition_validator")
-local EntityFactory = require("engine.world.entity_factory")
-local EventFactory = require("engine.events.event_factory")
+local EventDefinitionValidator = require("engine.events.event_definition_validator")
 
 local ProjectLoader = {}
 ProjectLoader.__index = ProjectLoader
@@ -111,7 +112,7 @@ function ProjectLoader:_validate_resources(resource_definitions)
   return errors
 end
 
--- Validates all project entities, shapes, components, and their nested typed definitions.
+-- Validates all project entities, shapes, components, events, and nested typed definitions.
 function ProjectLoader:_validate_entities(entity_definitions, resources)
   local errors = {}
 
@@ -194,6 +195,21 @@ function ProjectLoader:_validate_entities(entity_definitions, resources)
         end
       end
     end
+
+    local event_errors = EventDefinitionValidator.validate(
+      entity_definition.events,
+      entity_path .. ".events",
+      {
+        resources = resources,
+        shapes = shapes,
+        type_catalog = self.type_catalog,
+        action_exists = function(name)
+          return self.event_factory:has_action(name)
+        end
+      }
+    )
+
+    for _, validation_error in ipairs(event_errors) do table.insert(errors, validation_error) end
   end
 
   return errors

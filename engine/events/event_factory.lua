@@ -40,6 +40,11 @@ function EventFactory:get_action(name)
   return self.actions[name]
 end
 
+-- Returns whether a named runtime event action is registered.
+function EventFactory:has_action(name)
+  return self.actions[name] ~= nil
+end
+
 -- Builds one runtime event trigger from its serializable definition.
 function EventFactory:_build_trigger(definition)
   assert(type(definition) == "table", "trigger definition must be a table")
