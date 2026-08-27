@@ -1,4 +1,5 @@
 local ProjectLoader = require("engine.core.project.project_loader")
+local ActruneTypeCatalog = require("engine.core.project.actrune_type_catalog")
 
 local InputMapFactory = require("engine.core.input.input_map_factory")
 local GridMetricsFactory = require("engine.world.grid.grid_metrics_factory")
@@ -8,11 +9,15 @@ local PhysicalMaterialFactory = require("engine.world.physics.physical_material_
 local ActruneProjectLoader = {}
 ActruneProjectLoader.__index = ActruneProjectLoader
 
--- Creates a project loader configured with the built-in Actrune resource types.
+-- Creates a project loader configured with isolated built-in Actrune types and resources.
 function ActruneProjectLoader.new()
   local self = setmetatable({}, ActruneProjectLoader)
 
-  self.loader = ProjectLoader.new()
+  self.type_catalog = ActruneTypeCatalog.create()
+
+  self.loader = ProjectLoader.new({
+    type_catalog = self.type_catalog
+  })
 
   self:_register_builtin_resources()
 
@@ -59,6 +64,11 @@ end
 -- Registers a named event action available to project event definitions.
 function ActruneProjectLoader:register_event_action(name, callback)
   self.loader:register_event_action(name, callback)
+end
+
+-- Returns the isolated extensible type catalog used by this loader.
+function ActruneProjectLoader:get_type_catalog()
+  return self.type_catalog
 end
 
 -- Loads and validates one Actrune project definition.

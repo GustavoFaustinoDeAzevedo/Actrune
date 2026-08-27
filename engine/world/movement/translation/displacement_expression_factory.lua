@@ -9,7 +9,9 @@ local registry = FactoryRegistry.new({
 
 -- Creates a displacement that scales both direction components by one value.
 local function create_uniform(definition, context)
-  local amount = ValueExpressionFactory.create(definition.amount, context)
+  assert(context.catalog ~= nil, "uniform displacement requires a type catalog")
+
+  local amount = context.catalog:create("value_expression", definition.amount, context)
 
   return {
     -- Resolves a displacement by uniformly scaling the supplied direction.
@@ -22,15 +24,16 @@ end
 
 -- Creates a displacement that independently scales horizontal and vertical direction components.
 local function create_axes(definition, context)
-  local x_amount = ValueExpressionFactory.create(definition.x, context)
-  local y_amount = ValueExpressionFactory.create(definition.y, context)
+  assert(context.catalog ~= nil, "axes displacement requires a type catalog")
+
+  local x_amount = context.catalog:create("value_expression", definition.x, context)
+  local y_amount = context.catalog:create("value_expression", definition.y, context)
 
   return {
     -- Resolves a displacement using independent values for each direction axis.
     resolve = function(self, direction_x, direction_y, resolve_context)
       local x = x_amount:resolve(resolve_context)
       local y = y_amount:resolve(resolve_context)
-
       return direction_x * x, direction_y * y
     end
   }

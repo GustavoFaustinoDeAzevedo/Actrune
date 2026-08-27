@@ -15,7 +15,9 @@ end
 
 -- Creates a runtime value expression scaled by delta time.
 local function create_delta_time(definition, context)
-  local source = ValueExpressionFactory.create(definition.value, context)
+  assert(context.catalog ~= nil, "delta_time value requires a type catalog")
+
+  local source = context.catalog:create("value_expression", definition.value, context)
 
   return {
     -- Resolves the source value and scales it by the current delta time.
@@ -77,7 +79,7 @@ local function create_component_property(definition)
 
       assert(component ~= nil, "component_property references missing component: " .. definition.component)
       assert(type(component.get) == "function", "component does not expose readable properties: " .. definition
-      .component)
+        .component)
 
       local value = component:get(definition.property)
 

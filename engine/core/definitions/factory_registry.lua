@@ -54,4 +54,20 @@ function FactoryRegistry:get_type_names()
   return names
 end
 
+-- Creates an independent copy containing the currently registered factories and metadata.
+function FactoryRegistry:copy()
+  local registry = FactoryRegistry.new({
+    kind = self.kind
+  })
+
+  for type_name, entry in pairs(self.entries) do
+    registry.entries[type_name] = {
+      factory = entry.factory,
+      definition = entry.definition
+    }
+  end
+
+  return registry
+end
+
 return FactoryRegistry

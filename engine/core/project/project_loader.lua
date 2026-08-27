@@ -7,12 +7,15 @@ local EventFactory = require("engine.events.event_factory")
 local ProjectLoader = {}
 ProjectLoader.__index = ProjectLoader
 
--- Creates a project loader with extensible runtime factories and data definitions.
-function ProjectLoader.new()
+-- Creates a project loader with independent definitions, event factories, and type configuration.
+function ProjectLoader.new(options)
+  options = options or {}
+
   local self = setmetatable({}, ProjectLoader)
 
   self.resource_factories = {}
   self.definitions = DefinitionRegistry.new()
+  self.type_catalog = options.type_catalog
   self.event_factory = EventFactory.new(self.definitions)
 
   return self
@@ -55,9 +58,13 @@ function ProjectLoader:_load_resources(resource_definitions)
   return registries
 end
 
--- Creates an entity factory configured with project resources and shared definitions.
+-- Creates an entity factory configured with loaded project resources and type registries.
 function ProjectLoader:_create_entity_factory(registries)
-  local factory = EntityFactory.new(self.definitions, self.event_factory)
+  local factory = EntityFactory.new(
+    self.definitions,
+    self.event_factory,
+    self.type_catalog
+  )
 
   for type_name, registry in pairs(registries) do
     factory:register_resource_type(type_name, registry)

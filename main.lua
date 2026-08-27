@@ -28,6 +28,12 @@ end
 local function load_project()
     local project_loader = ActruneProjectLoader.new()
 
+    local direction_types = project_loader:get_type_catalog():get_registry("direction_policy"):get_type_names()
+
+    for _, type_name in ipairs(direction_types) do
+        print("Direction policy:", type_name)
+    end
+
     project_loader:register_event_action("test_event_started", on_test_event_started)
     project_loader:register_event_action("test_event_finished", on_test_event_finished)
 

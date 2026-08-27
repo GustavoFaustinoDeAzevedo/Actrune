@@ -106,8 +106,10 @@ end
 
 -- Creates an application policy enabled only while a condition is satisfied.
 local function create_when(definition, context)
-  local condition = ConditionExpressionFactory.create(definition.condition, context)
-  local application = ControlApplicationFactory.create(definition.application, context)
+  assert(context.catalog ~= nil, "when application requires a type catalog")
+
+  local condition = context.catalog:create("condition_expression", definition.condition, context)
+  local application = context.catalog:create("control_application", definition.application, context)
 
   local policy = {}
 

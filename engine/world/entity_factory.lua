@@ -9,18 +9,12 @@ local FacingDirection = require("engine.world.movement.direction.facing_directio
 local TranslationControl = require("engine.world.control.translation_control")
 local RotationControl = require("engine.world.control.rotation_control")
 local SpatialActionControl = require("engine.world.control.spatial_action_control")
-local ValueExpressionFactory = require("engine.core.values.value_expression_factory")
-local ControlApplicationFactory = require("engine.world.control.control_application_factory")
-local DirectionPolicyFactory = require("engine.world.movement.direction.direction_policy_factory")
-local DisplacementExpressionFactory = require("engine.world.movement.translation.displacement_expression_factory")
-
-
 
 local EntityFactory = {}
 EntityFactory.__index = EntityFactory
 
 -- Creates an entity factory with built-in Actrune shape and component types.
-function EntityFactory.new(definitions, event_factory)
+function EntityFactory.new(definitions, event_factory, type_catalog)
   local self = setmetatable({}, EntityFactory)
 
   self.shape_builders = {}
@@ -28,6 +22,9 @@ function EntityFactory.new(definitions, event_factory)
   self.resources = {}
   self.definitions = definitions or DefinitionRegistry.new()
   self.event_factory = event_factory
+  self.type_catalog = type_catalog
+
+  assert(self.type_catalog ~= nil, "entity factory requires a type catalog")
 
   self:register_shape_type("circle", function(definition, context)
     return CircleShape.new({
@@ -130,20 +127,32 @@ function EntityFactory.new(definitions, event_factory)
   })
 
   self:register_component_type("translation_control", function(definition, context)
+    local factory_context = {
+      factory = context.factory
+    }
+
     return TranslationControl.new({
       controls = definition.controls,
       input = definition.input,
       direction = definition.direction,
 
-      direction_policy = DirectionPolicyFactory.create(definition.direction_policy),
+      direction_policy = self.type_catalog:create(
+        "direction_policy",
+        definition.direction_policy or { type = "identity" },
+        factory_context
+      ),
 
-      displacement = DisplacementExpressionFactory.create(definition.displacement, {
-        factory = context.factory
-      }),
+      displacement = self.type_catalog:create(
+        "displacement_expression",
+        definition.displacement,
+        factory_context
+      ),
 
-      application = ControlApplicationFactory.create(definition.application, {
-        factory = context.factory
-      }),
+      application = self.type_catalog:create(
+        "control_application",
+        definition.application,
+        factory_context
+      ),
 
       source_shape = definition.source_shape,
       target_shape = definition.target_shape
@@ -162,17 +171,25 @@ function EntityFactory.new(definitions, event_factory)
   })
 
   self:register_component_type("rotation_control", function(definition, context)
+    local factory_context = {
+      factory = context.factory
+    }
+
     return RotationControl.new({
       controls = definition.controls,
       input = definition.input,
 
-      amount = ValueExpressionFactory.create(definition.amount, {
-        factory = context.factory
-      }),
+      amount = self.type_catalog:create(
+        "value_expression",
+        definition.amount,
+        factory_context
+      ),
 
-      application = ControlApplicationFactory.create(definition.application, {
-        factory = context.factory
-      })
+      application = self.type_catalog:create(
+        "control_application",
+        definition.application,
+        factory_context
+      )
     })
   end, {
     fields = {

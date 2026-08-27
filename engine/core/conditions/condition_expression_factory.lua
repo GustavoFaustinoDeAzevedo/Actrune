@@ -29,7 +29,9 @@ end
 
 -- Creates a condition that negates another condition.
 local function create_not(definition, context)
-  local condition = ConditionExpressionFactory.create(definition.condition, context)
+  assert(context.catalog ~= nil, "not condition requires a type catalog")
+
+  local condition = context.catalog:create("condition_expression", definition.condition, context)
 
   return {
     -- Returns the inverse result of the wrapped condition.
