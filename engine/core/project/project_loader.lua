@@ -16,7 +16,10 @@ function ProjectLoader.new(options)
   self.resource_factories = {}
   self.definitions = DefinitionRegistry.new()
   self.type_catalog = options.type_catalog
-  self.event_factory = EventFactory.new(self.definitions)
+
+  assert(self.type_catalog ~= nil, "project loader requires a type catalog")
+
+  self.event_factory = EventFactory.new(self.type_catalog)
 
   return self
 end

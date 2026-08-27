@@ -1,80 +1,31 @@
 local Event = require("engine.events.event")
 local EventPage = require("engine.events.event_page")
-local DirectionalAreaTrigger = require("engine.events.triggers.directional_area_trigger")
-local CallCommand = require("engine.events.commands.call_command")
-local WaitCommand = require("engine.events.commands.wait_command")
 
 local EventFactory = {}
 EventFactory.__index = EventFactory
 
--- Creates an event factory with built-in trigger and command types.
-function EventFactory.new(definitions)
+-- Creates an event factory backed by an extensible project type catalog.
+function EventFactory.new(type_catalog)
   local self = setmetatable({}, EventFactory)
 
-  self.definitions = definitions
-  self.trigger_builders = {}
-  self.command_builders = {}
+  self.type_catalog = type_catalog
   self.actions = {}
 
-  self:register_trigger_type("directional_area", function(definition)
-    return DirectionalAreaTrigger.new({
-      type = definition.action,
-      shape = definition.shape,
-      activator_shape = definition.activator_shape,
-      max_angle = definition.max_angle
-    })
-  end, {
-    fields = {
-      { name = "action",          type = "string",          required = true },
-      { name = "shape",           type = "shape_reference", required = true },
-      { name = "activator_shape", type = "string",          required = true },
-      { name = "max_angle",       type = "number",          optional = true }
-    }
-  })
-
-  self:register_command_type("wait", function(definition)
-    return WaitCommand.new(definition.duration)
-  end, {
-    fields = {
-      { name = "duration", type = "number", required = true, min = 0 }
-    }
-  })
-
-  self:register_command_type("call", function(definition)
-    local action = self.actions[definition.action]
-    assert(action ~= nil, "unknown event action: " .. tostring(definition.action))
-    return CallCommand.new(action)
-  end, {
-    fields = {
-      { name = "action", type = "action_reference", required = true }
-    }
-  })
+  assert(self.type_catalog ~= nil, "event factory requires a type catalog")
+  assert(self.type_catalog:has_registry("trigger"), "event factory requires a trigger registry")
+  assert(self.type_catalog:has_registry("command"), "event factory requires a command registry")
 
   return self
 end
 
--- Registers a serializable trigger type and its runtime builder.
+-- Registers a serializable trigger type in the current project type catalog.
 function EventFactory:register_trigger_type(type_name, builder, definition)
-  assert(type(type_name) == "string", "trigger type name must be a string")
-  assert(type(builder) == "function", "trigger builder must be a function")
-
-  self.trigger_builders[type_name] = builder
-
-  if definition ~= nil and self.definitions ~= nil and not self.definitions:has("trigger", type_name) then
-    self.definitions:register("trigger", type_name, definition)
-  end
+  self.type_catalog:register("trigger", type_name, builder, definition)
 end
 
--- Registers a serializable command type and its runtime builder.
+-- Registers a serializable command type in the current project type catalog.
 function EventFactory:register_command_type(type_name, builder, definition)
-  assert(type(type_name) == "string", "command type name must be a string")
-  assert(type(builder) == "function", "command builder must be a function")
-
-  self.command_builders[type_name] = builder
-
-  if definition ~= nil and self.definitions ~= nil and not self.definitions:has("command", type_name) then
-    self.definitions:register("command", type_name, definition)
-  end
+  self.type_catalog:register("command", type_name, builder, definition)
 end
 
 -- Registers a named runtime action callable by serialized event commands.
@@ -84,15 +35,19 @@ function EventFactory:register_action(name, callback)
   self.actions[name] = callback
 end
 
+-- Returns a named runtime action registered for serialized event commands.
+function EventFactory:get_action(name)
+  return self.actions[name]
+end
+
 -- Builds one runtime event trigger from its serializable definition.
 function EventFactory:_build_trigger(definition)
   assert(type(definition) == "table", "trigger definition must be a table")
   assert(type(definition.type) == "string", "trigger definition requires a type")
 
-  local builder = self.trigger_builders[definition.type]
-  assert(builder ~= nil, "unknown trigger type: " .. definition.type)
-
-  return builder(definition)
+  return self.type_catalog:create("trigger", definition, {
+    event_factory = self
+  })
 end
 
 -- Builds one runtime event command from its serializable definition.
@@ -100,10 +55,9 @@ function EventFactory:_build_command(definition)
   assert(type(definition) == "table", "command definition must be a table")
   assert(type(definition.type) == "string", "command definition requires a type")
 
-  local builder = self.command_builders[definition.type]
-  assert(builder ~= nil, "unknown command type: " .. definition.type)
-
-  return builder(definition)
+  return self.type_catalog:create("command", definition, {
+    event_factory = self
+  })
 end
 
 -- Builds one runtime event page from its serializable definition.

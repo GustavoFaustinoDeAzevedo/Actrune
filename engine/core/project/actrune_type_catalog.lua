@@ -7,6 +7,7 @@ local DisplacementExpressionFactory = require("engine.world.movement.translation
 local ControlApplicationFactory = require("engine.world.control.control_application_factory")
 
 local ActruneEntityTypes = require("engine.world.actrune_entity_types")
+local ActruneEventTypes = require("engine.events.actrune_event_types")
 
 local ActruneTypeCatalog = {}
 
@@ -21,6 +22,7 @@ function ActruneTypeCatalog.create()
   catalog:register_registry("control_application", ControlApplicationFactory.get_registry():copy())
 
   ActruneEntityTypes.register(catalog)
+  ActruneEventTypes.register(catalog)
 
   return catalog
 end
