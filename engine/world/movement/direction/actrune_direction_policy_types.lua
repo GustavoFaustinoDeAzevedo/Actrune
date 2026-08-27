@@ -1,14 +1,10 @@
-local FactoryRegistry = require("engine.core.definitions.factory_registry")
-
 local ActruneDirectionPolicyTypes = {}
 
 -- Registers the built-in Actrune direction policy family in a type catalog.
 function ActruneDirectionPolicyTypes.register(catalog)
   assert(catalog ~= nil, "Actrune direction policy types require a type catalog")
 
-  if not catalog:has_registry("direction_policy") then
-    catalog:register_registry("direction_policy", FactoryRegistry.new({ kind = "direction policy" }))
-  end
+  catalog:ensure_registry("direction_policy", { kind = "direction policy" })
 
   catalog:register("direction_policy", "identity", function()
     return {

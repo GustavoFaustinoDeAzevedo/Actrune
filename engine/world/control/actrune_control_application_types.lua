@@ -1,5 +1,3 @@
-local FactoryRegistry = require("engine.core.definitions.factory_registry")
-
 local ActruneControlApplicationTypes = {}
 
 -- Copies an application context while replacing its active state.
@@ -14,9 +12,7 @@ end
 function ActruneControlApplicationTypes.register(catalog)
   assert(catalog ~= nil, "Actrune control application types require a type catalog")
 
-  if not catalog:has_registry("control_application") then
-    catalog:register_registry("control_application", FactoryRegistry.new({ kind = "control application" }))
-  end
+  catalog:ensure_registry("control_application", { kind = "control application" })
 
   catalog:register("control_application", "while_active", function()
     local policy = {}

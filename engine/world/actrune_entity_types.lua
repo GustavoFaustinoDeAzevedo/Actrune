@@ -1,5 +1,3 @@
-local FactoryRegistry = require("engine.core.definitions.factory_registry")
-
 local CircleShape = require("engine.world.spatial.circle_shape")
 local PolygonShape = require("engine.world.spatial.polygon_shape")
 
@@ -20,13 +18,8 @@ local ActruneEntityTypes = {}
 function ActruneEntityTypes.register(catalog)
   assert(catalog ~= nil, "Actrune entity types require a type catalog")
 
-  if not catalog:has_registry("shape") then
-    catalog:register_registry("shape", FactoryRegistry.new({ kind = "shape" }))
-  end
-
-  if not catalog:has_registry("component") then
-    catalog:register_registry("component", FactoryRegistry.new({ kind = "component" }))
-  end
+  catalog:ensure_registry("shape", { kind = "shape" })
+  catalog:ensure_registry("component", { kind = "component" })
 
   catalog:register("shape", "circle", function(definition, context)
     return CircleShape.new({

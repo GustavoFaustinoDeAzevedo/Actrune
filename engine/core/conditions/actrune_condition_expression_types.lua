@@ -1,14 +1,10 @@
-local FactoryRegistry = require("engine.core.definitions.factory_registry")
-
 local ActruneConditionExpressionTypes = {}
 
 -- Registers the built-in Actrune condition expression family in a type catalog.
 function ActruneConditionExpressionTypes.register(catalog)
   assert(catalog ~= nil, "Actrune condition expression types require a type catalog")
 
-  if not catalog:has_registry("condition_expression") then
-    catalog:register_registry("condition_expression", FactoryRegistry.new({ kind = "condition expression" }))
-  end
+  catalog:ensure_registry("condition_expression", { kind = "condition expression" })
 
   catalog:register("condition_expression", "component_property_exists", function(definition)
     assert(type(definition.component) == "string", "component_property_exists requires a component")

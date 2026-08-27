@@ -1,3 +1,5 @@
+local FactoryRegistry = require("engine.core.definitions.factory_registry")
+
 local TypeCatalog = {}
 TypeCatalog.__index = TypeCatalog
 
@@ -17,6 +19,24 @@ function TypeCatalog:register_registry(kind, registry)
   self.registries[kind] = registry
 end
 
+-- Returns an existing registry or creates one for the requested type family.
+function TypeCatalog:ensure_registry(kind, options)
+  assert(type(kind) == "string", "type catalog kind must be a string")
+
+  local registry = self.registries[kind]
+  if registry ~= nil then return registry end
+
+  options = options or {}
+
+  registry = FactoryRegistry.new({
+    kind = options.kind or kind
+  })
+
+  self.registries[kind] = registry
+
+  return registry
+end
+
 -- Returns a registered factory registry.
 function TypeCatalog:get_registry(kind)
   return self.registries[kind]
@@ -27,11 +47,34 @@ function TypeCatalog:has_registry(kind)
   return self.registries[kind] ~= nil
 end
 
+-- Returns whether a named type exists in one catalog family.
+function TypeCatalog:has(kind, type_name)
+  local registry = self.registries[kind]
+  return registry ~= nil and registry:has(type_name)
+end
+
 -- Registers one type in a named catalog registry.
 function TypeCatalog:register(kind, type_name, factory, definition)
   local registry = self.registries[kind]
   assert(registry ~= nil, "unknown type catalog registry: " .. tostring(kind))
+
   registry:register(type_name, factory, definition)
+end
+
+-- Returns metadata associated with one registered type.
+function TypeCatalog:get_definition(kind, type_name)
+  local registry = self.registries[kind]
+  if registry == nil then return nil end
+
+  return registry:get_definition(type_name)
+end
+
+-- Returns all type names registered in one family in deterministic order.
+function TypeCatalog:get_type_names(kind)
+  local registry = self.registries[kind]
+  if registry == nil then return {} end
+
+  return registry:get_type_names()
 end
 
 -- Creates one runtime object using a named type family and serializable definition.
@@ -43,7 +86,9 @@ function TypeCatalog:create(kind, definition, context)
   assert(registry ~= nil, "unknown type catalog registry: " .. tostring(kind))
 
   local resolve_context = {}
+
   for name, value in pairs(context or {}) do resolve_context[name] = value end
+
   resolve_context.catalog = self
 
   return registry:create(definition.type, definition, resolve_context)

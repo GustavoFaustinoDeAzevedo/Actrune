@@ -1,14 +1,10 @@
-local FactoryRegistry = require("engine.core.definitions.factory_registry")
-
 local ActruneDisplacementExpressionTypes = {}
 
 -- Registers the built-in Actrune displacement expression family in a type catalog.
 function ActruneDisplacementExpressionTypes.register(catalog)
   assert(catalog ~= nil, "Actrune displacement expression types require a type catalog")
 
-  if not catalog:has_registry("displacement_expression") then
-    catalog:register_registry("displacement_expression", FactoryRegistry.new({ kind = "displacement expression" }))
-  end
+  catalog:ensure_registry("displacement_expression", { kind = "displacement expression" })
 
   catalog:register("displacement_expression", "uniform", function(definition, context)
     local amount = context.catalog:create("value_expression", definition.amount, context)

@@ -1,5 +1,3 @@
-local FactoryRegistry = require("engine.core.definitions.factory_registry")
-
 local DirectionalAreaTrigger = require("engine.events.triggers.directional_area_trigger")
 local CallCommand = require("engine.events.commands.call_command")
 local WaitCommand = require("engine.events.commands.wait_command")
@@ -10,13 +8,8 @@ local ActruneEventTypes = {}
 function ActruneEventTypes.register(catalog)
   assert(catalog ~= nil, "Actrune event types require a type catalog")
 
-  if not catalog:has_registry("trigger") then
-    catalog:register_registry("trigger", FactoryRegistry.new({ kind = "trigger" }))
-  end
-
-  if not catalog:has_registry("command") then
-    catalog:register_registry("command", FactoryRegistry.new({ kind = "command" }))
-  end
+  catalog:ensure_registry("trigger", { kind = "trigger" })
+  catalog:ensure_registry("command", { kind = "command" })
 
   catalog:register("trigger", "directional_area", function(definition)
     return DirectionalAreaTrigger.new({

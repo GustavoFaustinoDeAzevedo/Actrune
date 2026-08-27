@@ -1,4 +1,3 @@
-local FactoryRegistry = require("engine.core.definitions.factory_registry")
 local Value = require("engine.core.values.value")
 
 local ActruneValueExpressionTypes = {}
@@ -7,9 +6,7 @@ local ActruneValueExpressionTypes = {}
 function ActruneValueExpressionTypes.register(catalog)
   assert(catalog ~= nil, "Actrune value expression types require a type catalog")
 
-  if not catalog:has_registry("value_expression") then
-    catalog:register_registry("value_expression", FactoryRegistry.new({ kind = "value expression" }))
-  end
+  catalog:ensure_registry("value_expression", { kind = "value expression" })
 
   catalog:register("value_expression", "value", function(definition)
     assert(type(definition.value) == "number", "value expression requires a numeric value")
