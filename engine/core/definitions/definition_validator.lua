@@ -115,14 +115,12 @@ local function validate_catalog_definition(errors, path, value, field_type, cont
     return true
   end
 
-  local registry = type_catalog:get_registry(field_type)
-
-  if not registry:has(value.type) then
+  if not type_catalog:has(field_type, value.type) then
     add_error(errors, path .. ".type", "unknown " .. field_type .. " type '" .. tostring(value.type) .. "'")
     return true
   end
 
-  local metadata = registry:get_definition(value.type)
+  local metadata = type_catalog:get_definition(field_type, value.type)
 
   if metadata ~= nil then
     local nested_errors = DefinitionValidator.validate_typed(value, metadata, path, context)

@@ -116,9 +116,6 @@ end
 function ProjectLoader:_validate_entities(entity_definitions, resources)
   local errors = {}
 
-  local shape_registry = self.type_catalog and self.type_catalog:get_registry("shape")
-  local component_registry = self.type_catalog and self.type_catalog:get_registry("component")
-
   for entity_index, entity_definition in ipairs(entity_definitions or {}) do
     local entity_path = "entities[" .. entity_index .. "]"
     local shapes = entity_definition.shapes or {}
@@ -138,13 +135,13 @@ function ProjectLoader:_validate_entities(entity_definitions, resources)
           path = shape_path .. ".type",
           message = "is required"
         })
-      elseif shape_registry == nil or not shape_registry:has(shape_definition.type) then
+      elseif not self.type_catalog:has("shape", shape_definition.type) then
         table.insert(errors, {
           path = shape_path .. ".type",
           message = "unknown shape type '" .. tostring(shape_definition.type) .. "'"
         })
       else
-        local metadata = shape_registry:get_definition(shape_definition.type)
+        local metadata = self.type_catalog:get_definition("shape", shape_definition.type)
 
         if metadata ~= nil then
           local shape_errors = DefinitionValidator.validate_typed(
@@ -171,13 +168,13 @@ function ProjectLoader:_validate_entities(entity_definitions, resources)
           path = component_path .. ".type",
           message = "is required"
         })
-      elseif component_registry == nil or not component_registry:has(component_definition.type) then
+      elseif not self.type_catalog:has("component", component_definition.type) then
         table.insert(errors, {
           path = component_path .. ".type",
           message = "unknown component type '" .. tostring(component_definition.type) .. "'"
         })
       else
-        local metadata = component_registry:get_definition(component_definition.type)
+        local metadata = self.type_catalog:get_definition("component", component_definition.type)
 
         if metadata ~= nil then
           local component_errors = DefinitionValidator.validate_typed(
