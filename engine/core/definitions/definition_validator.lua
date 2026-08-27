@@ -17,7 +17,7 @@ local function contains(values, target)
   return false
 end
 
--- Returns whether a value matches the declared primitive field type.
+-- Returns whether a value matches the declared primitive or structural field type.
 local function matches_type(value, field_type)
   if field_type == "number" then return type(value) == "number" end
   if field_type == "integer" then return type(value) == "number" and value % 1 == 0 end
@@ -27,6 +27,7 @@ local function matches_type(value, field_type)
   if field_type == "resource_reference" then return type(value) == "string" end
   if field_type == "shape_reference" then return type(value) == "string" end
   if field_type == "shape_reference_list" then return type(value) == "table" end
+  if field_type == "string_list" then return type(value) == "table" end
   if field_type == "point_list" then return type(value) == "table" end
   if field_type == "property_map" then return type(value) == "table" end
 
@@ -83,12 +84,64 @@ local function validate_shape_references(errors, path, value, context)
   end
 end
 
+-- Validates a list containing only strings and its optional size constraints.
+local function validate_string_list(errors, path, values, field)
+  if field.min_items ~= nil and #values < field.min_items then
+    add_error(errors, path, "must contain at least " .. field.min_items .. " item(s)")
+  end
+
+  if field.max_items ~= nil and #values > field.max_items then
+    add_error(errors, path, "must contain at most " .. field.max_items .. " item(s)")
+  end
+
+  for index, value in ipairs(values) do
+    if type(value) ~= "string" then add_error(errors, path .. "[" .. index .. "]", "must be a string") end
+  end
+end
+
+-- Validates a nested typed definition using metadata from the active type catalog.
+local function validate_catalog_definition(errors, path, value, field_type, context)
+  local type_catalog = context.type_catalog
+  if type_catalog == nil or not type_catalog:has_registry(field_type) then return false end
+
+  if type(value) ~= "table" then
+    add_error(errors, path, "has invalid type")
+    return true
+  end
+
+  if type(value.type) ~= "string" then
+    add_error(errors, path .. ".type", "is required")
+    return true
+  end
+
+  local registry = type_catalog:get_registry(field_type)
+
+  if not registry:has(value.type) then
+    add_error(errors, path .. ".type", "unknown " .. field_type .. " type '" .. tostring(value.type) .. "'")
+    return true
+  end
+
+  local metadata = registry:get_definition(value.type)
+
+  if metadata ~= nil then
+    local nested_errors = DefinitionValidator.validate_typed(value, metadata, path, context)
+
+    for _, validation_error in ipairs(nested_errors) do
+      table.insert(errors, validation_error)
+    end
+  end
+
+  return true
+end
+
 -- Validates one field according to its registered metadata.
 local function validate_field(errors, path, value, field, context)
   if value == nil then
     if field.required and field.default == nil then add_error(errors, path, "is required") end
     return
   end
+
+  if validate_catalog_definition(errors, path, value, field.type, context) then return end
 
   if not matches_type(value, field.type) then
     add_error(errors, path, "has invalid type")
@@ -99,11 +152,14 @@ local function validate_field(errors, path, value, field, context)
     validate_number(errors, path, value, field)
   elseif field.type == "enum" then
     if not contains(field.values, value) then add_error(errors, path, "invalid value '" .. tostring(value) .. "'") end
+  elseif field.type == "string_list" then
+    validate_string_list(errors, path, value, field)
   elseif field.type == "point_list" then
     validate_point_list(errors, path, value, field)
   elseif field.type == "shape_reference" then
-    if context.shapes == nil or context.shapes[value] == nil then add_error(errors, path,
-    "references unknown shape '" .. value .. "'") end
+    if context.shapes == nil or context.shapes[value] == nil then
+      add_error(errors, path, "references unknown shape '" .. value .. "'")
+    end
   elseif field.type == "shape_reference_list" then
     validate_shape_references(errors, path, value, context)
   elseif field.type == "resource_reference" then
@@ -118,6 +174,8 @@ local function validate_field(errors, path, value, field, context)
     end
   end
 end
+
+
 
 -- Validates one typed data definition against registered metadata.
 function DefinitionValidator.validate_typed(definition, metadata, path, context)

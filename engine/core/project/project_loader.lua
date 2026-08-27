@@ -94,12 +94,12 @@ function ProjectLoader:_validate_resources(resource_definitions)
             definition,
             metadata,
             "resources." .. type_name .. "." .. name,
-            {}
+            {
+              type_catalog = self.type_catalog
+            }
           )
 
-          for _, validation_error in ipairs(resource_errors) do
-            table.insert(errors, validation_error)
-          end
+          for _, validation_error in ipairs(resource_errors) do table.insert(errors, validation_error) end
         end
       end
     end
@@ -108,36 +108,36 @@ function ProjectLoader:_validate_resources(resource_definitions)
   return errors
 end
 
--- Validates all entity shapes and components against their registered metadata.
+-- Validates all project entities, shapes, components, and their nested typed definitions.
 function ProjectLoader:_validate_entities(entity_definitions, resources)
   local errors = {}
 
   for entity_index, entity_definition in ipairs(entity_definitions or {}) do
     local entity_path = "entities[" .. entity_index .. "]"
+    local shapes = entity_definition.shapes or {}
 
     if type(entity_definition.id) ~= "string" then
       table.insert(errors, {
         path = entity_path .. ".id",
-        message = "must be a string"
+        message = "is required"
       })
     end
 
-    for shape_name, shape_definition in pairs(entity_definition.shapes or {}) do
+    for shape_name, shape_definition in pairs(shapes) do
       local shape_path = entity_path .. ".shapes." .. shape_name
-      local shape_type = shape_definition.type
 
-      if type(shape_type) ~= "string" then
+      if type(shape_definition) ~= "table" or type(shape_definition.type) ~= "string" then
         table.insert(errors, {
           path = shape_path .. ".type",
           message = "is required"
         })
       else
-        local metadata = self.definitions:get("shape", shape_type)
+        local metadata = self.definitions:get("shape", shape_definition.type)
 
         if metadata == nil then
           table.insert(errors, {
             path = shape_path .. ".type",
-            message = "unknown shape type '" .. shape_type .. "'"
+            message = "unknown shape type '" .. tostring(shape_definition.type) .. "'"
           })
         else
           local shape_errors = DefinitionValidator.validate_typed(
@@ -146,7 +146,8 @@ function ProjectLoader:_validate_entities(entity_definitions, resources)
             shape_path,
             {
               resources = resources,
-              shapes = entity_definition.shapes
+              shapes = shapes,
+              type_catalog = self.type_catalog
             }
           )
 
@@ -157,20 +158,19 @@ function ProjectLoader:_validate_entities(entity_definitions, resources)
 
     for component_name, component_definition in pairs(entity_definition.components or {}) do
       local component_path = entity_path .. ".components." .. component_name
-      local component_type = component_definition.type
 
-      if type(component_type) ~= "string" then
+      if type(component_definition) ~= "table" or type(component_definition.type) ~= "string" then
         table.insert(errors, {
           path = component_path .. ".type",
           message = "is required"
         })
       else
-        local metadata = self.definitions:get("component", component_type)
+        local metadata = self.definitions:get("component", component_definition.type)
 
         if metadata == nil then
           table.insert(errors, {
             path = component_path .. ".type",
-            message = "unknown component type '" .. component_type .. "'"
+            message = "unknown component type '" .. tostring(component_definition.type) .. "'"
           })
         else
           local component_errors = DefinitionValidator.validate_typed(
@@ -179,7 +179,8 @@ function ProjectLoader:_validate_entities(entity_definitions, resources)
             component_path,
             {
               resources = resources,
-              shapes = entity_definition.shapes
+              shapes = shapes,
+              type_catalog = self.type_catalog
             }
           )
 
