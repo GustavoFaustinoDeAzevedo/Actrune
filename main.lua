@@ -1,12 +1,7 @@
 local love = require "love"
 
-local ProjectLoader = require("engine.core.project.project_loader")
+local ActruneProjectLoader = require("engine.core.project.actrune_project_loader")
 local ProjectRuntime = require("engine.core.project.project_runtime")
-
-local InputMapFactory = require("engine.core.input.input_map_factory")
-local GridMetricsFactory = require("engine.world.grid.grid_metrics_factory")
-local ControlProfileFactory = require("engine.world.control.control_profile_factory")
-local PhysicalMaterialFactory = require("engine.world.physics.physical_material_factory")
 
 local project_definition = require("project.project_definition")
 local TestSceneRenderer = require("project.test_scene_renderer")
@@ -31,41 +26,7 @@ end
 
 -- Loads and validates the current project definition.
 local function load_project()
-    local project_loader = ProjectLoader.new()
-
-    project_loader:register_resource_type(
-        "physical_material",
-        PhysicalMaterialFactory.create,
-        {
-            fields = {
-                {
-                    name = "properties",
-                    type = "property_map",
-                    allow_custom = true,
-
-                    suggestions = {
-                        { name = "density",     type = "number", min = 0 },
-                        { name = "restitution", type = "number", min = 0 },
-                        { name = "friction",    type = "number", min = 0 }
-                    }
-                }
-            }
-        }
-    )
-
-    project_loader:register_resource_type(
-        "grid_metrics",
-        GridMetricsFactory.create,
-        {
-            fields = {
-                { name = "cell_width",  type = "number", required = true, min_exclusive = 0 },
-                { name = "cell_height", type = "number", required = true, min_exclusive = 0 }
-            }
-        }
-    )
-
-    project_loader:register_resource_type("input_map", InputMapFactory.create)
-    project_loader:register_resource_type("control_profile", ControlProfileFactory.create)
+    local project_loader = ActruneProjectLoader.new()
 
     project_loader:register_event_action("test_event_started", on_test_event_started)
     project_loader:register_event_action("test_event_finished", on_test_event_finished)
