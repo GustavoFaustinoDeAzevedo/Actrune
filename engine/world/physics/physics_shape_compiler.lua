@@ -1,3 +1,5 @@
+local love = require "love"
+
 local PhysicsShapeCompiler = {}
 
 -- Returns polygon vertices including the shape's local offset.

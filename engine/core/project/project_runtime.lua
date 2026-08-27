@@ -1,14 +1,10 @@
 local Actrune = require("engine.core.actrune")
-local FixedStep = require("engine.core.time.fixed_step")
-
-local GridContextSystem = require("engine.world.grid.grid_context_system")
-local ControlSystem = require("engine.world.control.control_system")
-local Box2DBackend = require("engine.world.physics.backends.box2d_backend")
+local ActruneRuntimeConfiguration = require("engine.core.project.actrune_runtime_configuration")
 
 local ProjectRuntime = {}
 ProjectRuntime.__index = ProjectRuntime
 
--- Creates a runtime that coordinates one loaded Actrune project and its systems.
+-- Creates a runtime that coordinates one loaded project through registered runtime systems.
 function ProjectRuntime.new(options)
   options = options or {}
 
@@ -16,22 +12,19 @@ function ProjectRuntime.new(options)
 
   self.project = options.project
   self.renderer_factory = options.renderer_factory
+  self.system_registry = options.system_registry or ActruneRuntimeConfiguration.create()
 
   assert(self.project ~= nil, "project runtime requires a loaded project")
+  assert(self.system_registry ~= nil, "project runtime requires a system registry")
 
   self.runtime = Actrune.new()
-
-  self.grid_context_system = nil
-  self.control_system = nil
-  self.physics_backend = nil
-  self.physics_step = nil
+  self.systems = {}
+  self.systems_by_name = {}
   self.renderer = nil
 
   self:_add_entities()
   self:_bind_input()
-  self:_create_grid_contexts()
-  self:_create_controls()
-  self:_create_physics()
+  self:_create_systems()
   self:_create_renderer()
 
   return self
@@ -51,65 +44,69 @@ function ProjectRuntime:_bind_input()
   if input_map ~= nil then input_map:bind(self.runtime) end
 end
 
--- Creates the system that resolves contextual grid areas.
-function ProjectRuntime:_create_grid_contexts()
-  self.grid_context_system = GridContextSystem.new()
-  self.grid_context_system:add_project(self.project)
-  self.grid_context_system:update()
-end
+-- Creates and initializes all registered runtime systems.
+function ProjectRuntime:_create_systems()
+  local context = self:_create_context()
 
--- Creates the system that updates control-driven components.
-function ProjectRuntime:_create_controls()
-  self.control_system = ControlSystem.new(self.runtime.world)
-  self.control_system:add_project(self.project)
-end
+  for _, definition in ipairs(self.system_registry:get_definitions()) do
+    local system = definition.factory(context)
 
--- Creates the physics backend and registers all rigid body entities.
-function ProjectRuntime:_create_physics()
-  self.physics_backend = Box2DBackend.new({
-    gravity_x = 0,
-    gravity_y = 980,
-    sleep = true
-  })
+    assert(system ~= nil, "runtime system factory returned nil: " .. definition.name)
+    assert(self.systems_by_name[definition.name] == nil, "duplicate runtime system: " .. definition.name)
 
-  for _, entity in ipairs(self.project.entities) do
-    if entity:get_component("rigid_body") ~= nil then self.physics_backend:add_entity(entity) end
+    if type(system.initialize) == "function" then system:initialize(context) end
+
+    table.insert(self.systems, {
+      name = definition.name,
+      system = system
+    })
+
+    self.systems_by_name[definition.name] = system
   end
-
-  self.physics_step = FixedStep.new({
-    step = 1 / 60,
-    stall_threshold = 0.1,
-    max_steps = 8
-  })
 end
 
 -- Creates the optional project renderer.
 function ProjectRuntime:_create_renderer()
   if self.renderer_factory == nil then return end
 
-  self.renderer = self.renderer_factory({
+  self.renderer = self.renderer_factory(self:_create_context())
+end
+
+-- Creates the context shared with runtime systems and project adapters.
+function ProjectRuntime:_create_context()
+  return {
     project = self.project,
     runtime = self.runtime,
-    box2d = self.physics_backend,
-    physics_step = self.physics_step
-  })
+    project_runtime = self
+  }
 end
 
--- Advances one fixed physics simulation step.
-function ProjectRuntime:_update_physics(step_dt)
-  self.physics_backend:update(step_dt)
+-- Returns a registered runtime system by name.
+function ProjectRuntime:get_system(name)
+  return self.systems_by_name[name]
 end
 
--- Advances all project systems in their configured execution order.
+-- Advances all registered runtime systems and the underlying Actrune runtime.
 function ProjectRuntime:update(dt)
-  self.grid_context_system:update()
-  self.control_system:update(self.runtime, dt)
-  self.physics_step:update(dt, function(step_dt) self:_update_physics(step_dt) end)
+  local context = self:_create_context()
+
+  for _, entry in ipairs(self.systems) do
+    local system = entry.system
+    if type(system.update) == "function" then system:update(dt, context) end
+  end
+
   self.runtime:update(dt)
 end
 
--- Draws the project through its configured renderer.
+-- Draws registered runtime systems and the optional project renderer.
 function ProjectRuntime:draw()
+  local context = self:_create_context()
+
+  for _, entry in ipairs(self.systems) do
+    local system = entry.system
+    if type(system.draw) == "function" then system:draw(context) end
+  end
+
   if self.renderer ~= nil then self.renderer:draw() end
 end
 
@@ -126,11 +123,6 @@ end
 -- Returns the underlying Actrune runtime.
 function ProjectRuntime:get_runtime()
   return self.runtime
-end
-
--- Returns the configured physics backend.
-function ProjectRuntime:get_physics_backend()
-  return self.physics_backend
 end
 
 -- Returns the loaded project.

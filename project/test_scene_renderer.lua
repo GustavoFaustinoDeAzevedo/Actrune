@@ -12,14 +12,18 @@ function TestSceneRenderer.new(options)
 
   self.project = options.project
   self.runtime = options.runtime
-  self.box2d = options.box2d
-  self.physics_step = options.physics_step
   self.messages = options.messages or {}
 
   assert(self.project ~= nil, "test scene renderer requires a project")
   assert(self.runtime ~= nil, "test scene renderer requires a runtime")
-  assert(self.box2d ~= nil, "test scene renderer requires a physics backend")
-  assert(self.physics_step ~= nil, "test scene renderer requires a physics step")
+  assert(options.project_runtime ~= nil, "test scene renderer requires a project runtime")
+
+  local physics_system = options.project_runtime:get_system("physics")
+
+  assert(physics_system ~= nil, "test scene renderer requires the physics runtime system")
+
+  self.box2d = physics_system:get_backend()
+  self.physics_step = physics_system:get_fixed_step()
 
   self.bounce_ball = self.project.entities_by_id["bounce_ball"]
   self.floor = self.project.entities_by_id["floor"]
