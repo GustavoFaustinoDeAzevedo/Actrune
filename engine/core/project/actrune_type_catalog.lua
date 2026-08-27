@@ -6,9 +6,11 @@ local DirectionPolicyFactory = require("engine.world.movement.direction.directio
 local DisplacementExpressionFactory = require("engine.world.movement.translation.displacement_expression_factory")
 local ControlApplicationFactory = require("engine.world.control.control_application_factory")
 
+local ActruneEntityTypes = require("engine.world.actrune_entity_types")
+
 local ActruneTypeCatalog = {}
 
--- Creates an isolated type catalog initialized with the built-in Actrune types.
+-- Creates an isolated type catalog initialized with all built-in Actrune types.
 function ActruneTypeCatalog.create()
   local catalog = TypeCatalog.new()
 
@@ -17,6 +19,8 @@ function ActruneTypeCatalog.create()
   catalog:register_registry("direction_policy", DirectionPolicyFactory.get_registry():copy())
   catalog:register_registry("displacement_expression", DisplacementExpressionFactory.get_registry():copy())
   catalog:register_registry("control_application", ControlApplicationFactory.get_registry():copy())
+
+  ActruneEntityTypes.register(catalog)
 
   return catalog
 end
