@@ -1,6 +1,10 @@
+local FactoryRegistry = require("engine.core.definitions.factory_registry")
+
 local DirectionPolicyFactory = {}
 
-local builders = {}
+local registry = FactoryRegistry.new({
+  kind = "direction policy"
+})
 
 -- Creates a direction policy that preserves the supplied direction unchanged.
 local function create_identity()
@@ -27,6 +31,7 @@ local function create_axis_lock(definition)
       if absolute_y > absolute_x then return 0, y end
       if absolute_x == 0 then return 0, 0 end
       if tie_break == "x" then return x, 0 end
+
       return 0, y
     end
   }
@@ -69,33 +74,47 @@ local function create_last_changed_axis(definition)
 
     if self.selected_axis == "x" then return x, 0 end
     if self.selected_axis == "y" then return 0, y end
+
     return 0, 0
   end
 
   return policy
 end
 
--- Registers a constructor for a named direction policy type.
-function DirectionPolicyFactory.register_type(type_name, builder)
-  assert(type(type_name) == "string", "direction policy type name must be a string")
-  assert(type(builder) == "function", "direction policy builder must be a function")
-  builders[type_name] = builder
+-- Registers a named direction policy factory and optional metadata.
+function DirectionPolicyFactory.register_type(type_name, factory, definition)
+  registry:register(type_name, factory, definition)
 end
 
 -- Creates a direction policy from a serializable definition.
-function DirectionPolicyFactory.create(definition)
+function DirectionPolicyFactory.create(definition, context)
   definition = definition or { type = "identity" }
 
   assert(type(definition) == "table", "direction policy definition must be a table")
   assert(type(definition.type) == "string", "direction policy requires a type")
 
-  local builder = builders[definition.type]
-  assert(builder ~= nil, "unknown direction policy type: " .. tostring(definition.type))
-  return builder(definition)
+  return registry:create(definition.type, definition, context)
 end
 
-DirectionPolicyFactory.register_type("identity", create_identity)
-DirectionPolicyFactory.register_type("axis_lock", create_axis_lock)
-DirectionPolicyFactory.register_type("last_changed_axis", create_last_changed_axis)
+-- Returns the registry containing all available direction policy types.
+function DirectionPolicyFactory.get_registry()
+  return registry
+end
+
+DirectionPolicyFactory.register_type("identity", create_identity, {
+  fields = {}
+})
+
+DirectionPolicyFactory.register_type("axis_lock", create_axis_lock, {
+  fields = {
+    { name = "tie_break", type = "enum", default = "x", values = { "x", "y" } }
+  }
+})
+
+DirectionPolicyFactory.register_type("last_changed_axis", create_last_changed_axis, {
+  fields = {
+    { name = "initial_axis", type = "enum", default = "x", values = { "x", "y" } }
+  }
+})
 
 return DirectionPolicyFactory
