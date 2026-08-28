@@ -1,5 +1,4 @@
 local Actrune = require("engine.core.actrune")
-local ActruneRuntimeConfiguration = require("engine.core.project.actrune_runtime_configuration")
 
 local ProjectRuntime = {}
 ProjectRuntime.__index = ProjectRuntime
@@ -12,9 +11,15 @@ function ProjectRuntime.new(options)
 
   self.project = options.project
   self.renderer_factory = options.renderer_factory
-  self.system_registry = options.system_registry or ActruneRuntimeConfiguration.create()
 
   assert(self.project ~= nil, "project runtime requires a loaded project")
+
+  self.configuration = options.configuration or self.project.configuration
+
+  assert(self.configuration ~= nil, "project runtime requires a project configuration")
+
+  self.system_registry = options.system_registry or self.configuration:get_runtime_system_registry()
+
   assert(self.system_registry ~= nil, "project runtime requires a system registry")
 
   self.runtime = Actrune.new()

@@ -1,5 +1,5 @@
 local ProjectLoader = require("engine.core.project.project_loader")
-local ActruneTypeCatalog = require("engine.core.project.actrune_type_catalog")
+local ActruneProjectConfiguration = require("engine.core.project.actrune_project_configuration")
 
 local InputMapFactory = require("engine.core.input.input_map_factory")
 local GridMetricsFactory = require("engine.world.grid.grid_metrics_factory")
@@ -9,11 +9,14 @@ local PhysicalMaterialFactory = require("engine.world.physics.physical_material_
 local ActruneProjectLoader = {}
 ActruneProjectLoader.__index = ActruneProjectLoader
 
--- Creates a project loader configured with isolated built-in Actrune types and resources.
-function ActruneProjectLoader.new()
+-- Creates a project loader configured with isolated built-in Actrune capabilities and resources.
+function ActruneProjectLoader.new(options)
+  options = options or {}
+
   local self = setmetatable({}, ActruneProjectLoader)
 
-  self.type_catalog = ActruneTypeCatalog.create()
+  self.configuration = options.configuration or ActruneProjectConfiguration.create()
+  self.type_catalog = self.configuration:get_type_catalog()
 
   self.loader = ProjectLoader.new({
     type_catalog = self.type_catalog
@@ -71,19 +74,21 @@ function ActruneProjectLoader:get_type_catalog()
   return self.type_catalog
 end
 
--- Creates a provider-scoped type register for extending this project's type catalog.
-function ActruneProjectLoader:create_type_register(provider)
-  assert(type(provider) == "string", "type register provider must be a string")
-  assert(provider ~= "", "type register provider must not be empty")
-
-  return self.type_catalog:create_register({
-    provider = provider
-  })
+-- Creates a provider-scoped register for extending project types and runtime systems.
+function ActruneProjectLoader:create_register(provider)
+  return self.configuration:create_register(provider)
 end
 
--- Loads and validates one Actrune project definition.
+-- Returns the complete configuration used to load and execute this project.
+function ActruneProjectLoader:get_configuration()
+  return self.configuration
+end
+
+-- Loads one Actrune project definition and associates its execution configuration.
 function ActruneProjectLoader:load(definition)
-  return self.loader:load(definition)
+  local project = self.loader:load(definition)
+  project.configuration = self.configuration
+  return project
 end
 
 -- Returns the underlying generic project loader for advanced configuration.
