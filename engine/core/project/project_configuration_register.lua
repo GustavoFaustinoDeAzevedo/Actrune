@@ -4,6 +4,7 @@ ProjectConfigurationRegister.__index = ProjectConfigurationRegister
 -- Creates a project configuration register associated with one provider.
 function ProjectConfigurationRegister.new(configuration, provider)
   local self = setmetatable({}, ProjectConfigurationRegister)
+
   self.configuration = configuration
   self.provider = provider
 
@@ -30,6 +31,13 @@ end
 -- Registers one serializable type under this register's provider.
 function ProjectConfigurationRegister:register_type(kind, type_name, factory, definition)
   self.type_register:register(kind, type_name, factory, definition)
+end
+
+-- Registers one serializable resource type under this register's provider.
+function ProjectConfigurationRegister:register_resource_type(type_name, factory, definition)
+  self.configuration:register_resource_type(type_name, factory, definition, {
+    provider = self.provider
+  })
 end
 
 -- Registers one runtime system under this register's provider.

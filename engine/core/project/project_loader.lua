@@ -1,40 +1,28 @@
-local EventFactory = require("engine.events.event_factory")
-local EntityFactory = require("engine.world.entity_factory")
 local ResourceRegistry = require("engine.core.resources.resource_registry")
 local DefinitionRegistry = require("engine.core.definitions.definition_registry")
 local DefinitionValidator = require("engine.core.definitions.definition_validator")
+local EntityFactory = require("engine.world.entity_factory")
+local EventFactory = require("engine.events.event_factory")
 local EventDefinitionValidator = require("engine.events.event_definition_validator")
 
 local ProjectLoader = {}
 ProjectLoader.__index = ProjectLoader
 
--- Creates a project loader with independent definitions, event factories, and type configuration.
+-- Creates a project loader backed by one complete project configuration.
 function ProjectLoader.new(options)
   options = options or {}
 
   local self = setmetatable({}, ProjectLoader)
 
-  self.resource_factories = {}
+  self.configuration = options.configuration
+
+  assert(self.configuration ~= nil, "project loader requires a project configuration")
+
+  self.type_catalog = self.configuration:get_type_catalog()
   self.definitions = DefinitionRegistry.new()
-  self.type_catalog = options.type_catalog
-
-  assert(self.type_catalog ~= nil, "project loader requires a type catalog")
-
   self.event_factory = EventFactory.new(self.type_catalog)
 
   return self
-end
-
--- Registers a runtime factory and optional metadata for a serializable resource type.
-function ProjectLoader:register_resource_type(type_name, factory, definition)
-  assert(type(type_name) == "string", "resource type name must be a string")
-  assert(type(factory) == "function", "resource factory must be a function")
-
-  self.resource_factories[type_name] = factory
-
-  if definition ~= nil and not self.definitions:has("resource", type_name) then
-    self.definitions:register("resource", type_name, definition)
-  end
 end
 
 -- Registers a named runtime action available to serialized event commands.
@@ -47,13 +35,14 @@ function ProjectLoader:_load_resources(resource_definitions)
   local registries = {}
 
   for type_name, definitions in pairs(resource_definitions or {}) do
-    local factory = self.resource_factories[type_name]
-    assert(factory ~= nil, "unknown project resource type: " .. type_name)
+    assert(self.configuration:has_resource_type(type_name), "unknown project resource type: " .. type_name)
 
     local registry = ResourceRegistry.new()
 
     for name, definition in pairs(definitions) do
-      registry:register(name, factory(definition))
+      registry:register(name, self.configuration:create_resource(type_name, definition, {
+        project_loader = self
+      }))
     end
 
     registries[type_name] = registry
@@ -82,15 +71,13 @@ function ProjectLoader:_validate_resources(resource_definitions)
   local errors = {}
 
   for type_name, definitions in pairs(resource_definitions or {}) do
-    local factory = self.resource_factories[type_name]
-
-    if factory == nil then
+    if not self.configuration:has_resource_type(type_name) then
       table.insert(errors, {
         path = "resources." .. type_name,
         message = "unknown resource type"
       })
     else
-      local metadata = self.definitions:get("resource", type_name)
+      local metadata = self.configuration:get_resource_definition(type_name)
 
       if metadata ~= nil then
         for name, definition in pairs(definitions) do
@@ -267,6 +254,7 @@ function ProjectLoader:load(definition)
   return {
     definition = definition,
     definitions = self.definitions,
+    configuration = self.configuration,
     resources = resources,
     entity_factory = entity_factory,
     entities = entities,
