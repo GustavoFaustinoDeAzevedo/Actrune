@@ -45,22 +45,15 @@ function TestSceneRenderer.new(options)
     y = player_y
   })
 
+  self.camera_position_response = PositionResponse.new({
+    half_life = 0.08
+  })
+
   self.camera_position = CameraPositionControl.new(
     self.camera,
     EntityPositionPolicy.new(self.player),
     {
-      response = PositionResponse.new({
-        half_life = 0.08
-      }),
-
-      -- constraints = {
-      --   AxisAlignedBoundsConstraint.new({
-      --     min_x = 0,
-      --     min_y = 0,
-      --     max_x = 1200,
-      --     max_y = 800
-      --   })
-      -- }
+      response = self.camera_position_response
     }
   )
   return self
