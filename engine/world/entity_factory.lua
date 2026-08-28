@@ -18,16 +18,6 @@ function EntityFactory.new(event_factory, type_catalog)
   return self
 end
 
--- Registers a shape type in the entity factory's project type catalog.
-function EntityFactory:register_shape_type(type_name, builder, definition)
-  self.type_catalog:register("shape", type_name, builder, definition)
-end
-
--- Registers a component type in the entity factory's project type catalog.
-function EntityFactory:register_component_type(type_name, builder, definition)
-  self.type_catalog:register("component", type_name, builder, definition)
-end
-
 -- Registers a named resource registry available to entity builders.
 function EntityFactory:register_resource_type(type_name, registry)
   assert(type(type_name) == "string", "resource type name must be a string")

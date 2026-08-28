@@ -19,16 +19,6 @@ function EventFactory.new(type_catalog, action_bindings)
   return self
 end
 
--- Registers a serializable trigger type in the current project type catalog.
-function EventFactory:register_trigger_type(type_name, builder, definition)
-  self.type_catalog:register("trigger", type_name, builder, definition)
-end
-
--- Registers a serializable command type in the current project type catalog.
-function EventFactory:register_command_type(type_name, builder, definition)
-  self.type_catalog:register("command", type_name, builder, definition)
-end
-
 -- Builds one runtime event trigger from its serializable definition.
 function EventFactory:_build_trigger(definition)
   assert(type(definition) == "table", "trigger definition must be a table")
