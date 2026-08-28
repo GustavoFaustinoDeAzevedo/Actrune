@@ -28,6 +28,13 @@ end
 local function load_project()
     local project_loader = ActruneProjectLoader.new()
 
+    local configuration = project_loader:get_configuration()
+
+    print(configuration:get_resource_provider("physical_material"))
+    print(configuration:get_resource_provider("grid_metrics"))
+    print(configuration:get_resource_provider("input_map"))
+    print(configuration:get_resource_provider("control_profile"))
+
     project_loader:register_event_action("test_event_started", on_test_event_started)
     project_loader:register_event_action("test_event_finished", on_test_event_finished)
 

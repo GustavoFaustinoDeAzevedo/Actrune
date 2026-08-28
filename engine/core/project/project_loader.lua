@@ -1,5 +1,4 @@
 local ResourceRegistry = require("engine.core.resources.resource_registry")
-local DefinitionRegistry = require("engine.core.definitions.definition_registry")
 local DefinitionValidator = require("engine.core.definitions.definition_validator")
 local EntityFactory = require("engine.world.entity_factory")
 local EventFactory = require("engine.events.event_factory")
@@ -20,7 +19,6 @@ function ProjectLoader.new(options)
   assert(self.configuration ~= nil, "project loader requires a project configuration")
 
   self.type_catalog = self.configuration:get_type_catalog()
-  self.definitions = DefinitionRegistry.new()
   self.event_action_bindings = EventActionBindings.new()
   self.event_factory = EventFactory.new(self.type_catalog, self.event_action_bindings)
 
@@ -56,7 +54,6 @@ end
 -- Creates an entity factory configured with loaded project resources and type registries.
 function ProjectLoader:_create_entity_factory(registries)
   local factory = EntityFactory.new(
-    self.definitions,
     self.event_factory,
     self.type_catalog
   )
@@ -213,8 +210,6 @@ function ProjectLoader:validate(definition)
   local temporary_resources = {}
   if #resource_errors == 0 then temporary_resources = self:_load_resources(definition.resources) end
 
-  self:_create_entity_factory(temporary_resources)
-
   local entity_errors = self:_validate_entities(definition.entities, temporary_resources)
   for _, validation_error in ipairs(entity_errors) do table.insert(errors, validation_error) end
 
@@ -255,7 +250,6 @@ function ProjectLoader:load(definition)
 
   return {
     definition = definition,
-    definitions = self.definitions,
     configuration = self.configuration,
     resources = resources,
     entity_factory = entity_factory,

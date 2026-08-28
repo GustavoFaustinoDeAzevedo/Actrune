@@ -1,15 +1,13 @@
 local Entity = require("engine.world.entity")
-local DefinitionRegistry = require("engine.core.definitions.definition_registry")
 
 local EntityFactory = {}
 EntityFactory.__index = EntityFactory
 
 -- Creates an entity factory backed by an extensible project type catalog.
-function EntityFactory.new(definitions, event_factory, type_catalog)
+function EntityFactory.new(event_factory, type_catalog)
   local self = setmetatable({}, EntityFactory)
 
   self.resources = {}
-  self.definitions = definitions or DefinitionRegistry.new()
   self.event_factory = event_factory
   self.type_catalog = type_catalog
 
@@ -45,11 +43,6 @@ function EntityFactory:get_resource(type_name, name)
   if registry == nil then return nil end
 
   return registry:get(name)
-end
-
--- Returns the definition registry used by this factory.
-function EntityFactory:get_definitions()
-  return self.definitions
 end
 
 -- Builds one spatial shape from its serializable definition.
