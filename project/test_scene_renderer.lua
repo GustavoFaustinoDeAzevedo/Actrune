@@ -4,7 +4,8 @@ local CameraPositionControl = require("engine.render.camera_position_control")
 local EntityPositionPolicy = require("engine.render.camera_position.entity_position_policy")
 local SpatialDebugRenderer = require("engine.debug.spatial_debug_renderer")
 local PositionResponse = require("engine.render.camera_position.position_response")
-local AxisAlignedBoundsConstraint = require("engine.render.camera_position.axis_aligned_bounds_constraint")
+local RenderLayer = require("engine.render.render_layer")
+local RenderLayerStack = require("engine.render.render_layer_stack")
 
 local TestSceneRenderer = {}
 TestSceneRenderer.__index = TestSceneRenderer
@@ -56,6 +57,43 @@ function TestSceneRenderer.new(options)
       response = self.camera_position_response
     }
   )
+
+  self.layers = RenderLayerStack.new()
+
+  self.layers:add(RenderLayer.new({
+    name = "ground",
+    order = 100,
+    view = self.camera,
+    draw = function()
+      self:_draw_ground()
+    end
+  }))
+
+  self.layers:add(RenderLayer.new({
+    name = "world",
+    order = 200,
+    view = self.camera,
+    draw = function()
+      self:_draw_world()
+    end
+  }))
+
+  self.layers:add(RenderLayer.new({
+    name = "world_debug",
+    order = 300,
+    view = self.camera,
+    draw = function()
+      self:_draw_world_debug()
+    end
+  }))
+
+  self.layers:add(RenderLayer.new({
+    name = "screen",
+    order = 1000,
+    draw = function()
+      self:_draw_diagnostics()
+    end
+  }))
   return self
 end
 
@@ -81,28 +119,26 @@ function TestSceneRenderer:_draw_physics()
   SpatialDebugRenderer.draw_circle_rotation(self.bounce_ball, "physics")
 end
 
--- Draws the current interaction and player test shapes.
-function TestSceneRenderer:_draw_entities()
+-- Draws world surfaces that conceptually belong below regular entities.
+function TestSceneRenderer:_draw_ground()
+  SpatialDebugRenderer.draw_shape(self.floor, "physics")
+end
+
+-- Draws regular world entities.
+function TestSceneRenderer:_draw_world()
+  SpatialDebugRenderer.draw_shape(self.bounce_ball, "physics")
+  SpatialDebugRenderer.draw_circle_rotation(self.bounce_ball, "physics")
   SpatialDebugRenderer.draw_shape(self.door, "interaction")
   SpatialDebugRenderer.draw_shape(self.door, "collision")
   SpatialDebugRenderer.draw_shape(self.player, "collision")
   SpatialDebugRenderer.draw_shape(self.step_player, "collision")
 end
 
--- Draws the contextual grid test areas.
-function TestSceneRenderer:_draw_grid_areas()
+-- Draws world-space development overlays above regular entities.
+function TestSceneRenderer:_draw_world_debug()
   SpatialDebugRenderer.draw_shape(self.small_grid_area, "area")
   SpatialDebugRenderer.draw_shape(self.large_grid_area, "area")
   SpatialDebugRenderer.draw_shape(self.free_area, "area")
-end
-
--- Draws all world-space test content through the active camera.
-function TestSceneRenderer:_draw_world()
-  self.camera:begin()
-  self:_draw_physics()
-  self:_draw_entities()
-  self:_draw_grid_areas()
-  self.camera:finish()
 end
 
 -- Updates time-dependent rendering behavior before drawing.
@@ -110,10 +146,11 @@ function TestSceneRenderer:update(dt)
   self.camera_position:update(dt)
 end
 
--- Draws the complete current Actrune test scene.
+-- Draws all configured render layers in their current order.
 function TestSceneRenderer:draw()
-  self:_draw_world()
-  self:_draw_diagnostics()
+  self.layers:draw({
+    renderer = self
+  })
 end
 
 return TestSceneRenderer
