@@ -4,6 +4,7 @@ local DefinitionValidator = require("engine.core.definitions.definition_validato
 local EntityFactory = require("engine.world.entity_factory")
 local EventFactory = require("engine.events.event_factory")
 local EventDefinitionValidator = require("engine.events.event_definition_validator")
+local EventActionBindings = require("engine.events.event_action_bindings")
 
 local ProjectLoader = {}
 ProjectLoader.__index = ProjectLoader
@@ -20,14 +21,15 @@ function ProjectLoader.new(options)
 
   self.type_catalog = self.configuration:get_type_catalog()
   self.definitions = DefinitionRegistry.new()
-  self.event_factory = EventFactory.new(self.type_catalog)
+  self.event_action_bindings = EventActionBindings.new()
+  self.event_factory = EventFactory.new(self.type_catalog, self.event_action_bindings)
 
   return self
 end
 
--- Registers a named runtime action available to serialized event commands.
+-- Binds a named runtime callback to a serialized project event action.
 function ProjectLoader:register_event_action(name, callback)
-  self.event_factory:register_action(name, callback)
+  self.event_action_bindings:bind(name, callback)
 end
 
 -- Builds all resources declared by one project definition.
@@ -188,7 +190,7 @@ function ProjectLoader:_validate_entities(entity_definitions, resources)
         shapes = shapes,
         type_catalog = self.type_catalog,
         action_exists = function(name)
-          return self.event_factory:has_action(name)
+          return self.event_action_bindings:has(name)
         end
       }
     )

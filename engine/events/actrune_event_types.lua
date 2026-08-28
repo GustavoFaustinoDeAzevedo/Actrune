@@ -36,9 +36,9 @@ function ActruneEventTypes.register(catalog)
   })
 
   catalog:register("command", "call", function(definition, context)
-    assert(context.event_factory ~= nil, "call command requires an event factory")
+    assert(context.action_bindings ~= nil, "call command requires event action bindings")
 
-    local action = context.event_factory:get_action(definition.action)
+    local action = context.action_bindings:get(definition.action)
     assert(action ~= nil, "unknown event action: " .. tostring(definition.action))
 
     return CallCommand.new(action)

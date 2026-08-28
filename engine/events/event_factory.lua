@@ -4,14 +4,15 @@ local EventPage = require("engine.events.event_page")
 local EventFactory = {}
 EventFactory.__index = EventFactory
 
--- Creates an event factory backed by an extensible project type catalog.
-function EventFactory.new(type_catalog)
+-- Creates an event factory backed by project types and runtime action bindings.
+function EventFactory.new(type_catalog, action_bindings)
   local self = setmetatable({}, EventFactory)
 
   self.type_catalog = type_catalog
-  self.actions = {}
+  self.action_bindings = action_bindings
 
   assert(self.type_catalog ~= nil, "event factory requires a type catalog")
+  assert(self.action_bindings ~= nil, "event factory requires event action bindings")
   assert(self.type_catalog:has_registry("trigger"), "event factory requires a trigger registry")
   assert(self.type_catalog:has_registry("command"), "event factory requires a command registry")
 
@@ -28,30 +29,13 @@ function EventFactory:register_command_type(type_name, builder, definition)
   self.type_catalog:register("command", type_name, builder, definition)
 end
 
--- Registers a named runtime action callable by serialized event commands.
-function EventFactory:register_action(name, callback)
-  assert(type(name) == "string", "event action name must be a string")
-  assert(type(callback) == "function", "event action callback must be a function")
-  self.actions[name] = callback
-end
-
--- Returns a named runtime action registered for serialized event commands.
-function EventFactory:get_action(name)
-  return self.actions[name]
-end
-
--- Returns whether a named runtime event action is registered.
-function EventFactory:has_action(name)
-  return self.actions[name] ~= nil
-end
-
 -- Builds one runtime event trigger from its serializable definition.
 function EventFactory:_build_trigger(definition)
   assert(type(definition) == "table", "trigger definition must be a table")
   assert(type(definition.type) == "string", "trigger definition requires a type")
 
   return self.type_catalog:create("trigger", definition, {
-    event_factory = self
+    action_bindings = self.action_bindings
   })
 end
 
@@ -61,7 +45,7 @@ function EventFactory:_build_command(definition)
   assert(type(definition.type) == "string", "command definition requires a type")
 
   return self.type_catalog:create("command", definition, {
-    event_factory = self
+    action_bindings = self.action_bindings
   })
 end
 
