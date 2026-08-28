@@ -17,6 +17,11 @@ function TypeRegister.new(catalog, options)
   return self
 end
 
+-- Returns the provider associated with this type register.
+function TypeRegister:get_provider()
+  return self.provider
+end
+
 -- Returns whether a named type family already exists.
 function TypeRegister:has_registry(kind)
   return self.catalog:has_registry(kind)

@@ -71,6 +71,16 @@ function ActruneProjectLoader:get_type_catalog()
   return self.type_catalog
 end
 
+-- Creates a provider-scoped type register for extending this project's type catalog.
+function ActruneProjectLoader:create_type_register(provider)
+  assert(type(provider) == "string", "type register provider must be a string")
+  assert(provider ~= "", "type register provider must not be empty")
+
+  return self.type_catalog:create_register({
+    provider = provider
+  })
+end
+
 -- Loads and validates one Actrune project definition.
 function ActruneProjectLoader:load(definition)
   return self.loader:load(definition)
