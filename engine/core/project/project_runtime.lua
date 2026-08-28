@@ -96,7 +96,7 @@ function ProjectRuntime:get_system_provider(name)
   return self.system_registry:get_provider(name)
 end
 
--- Advances all registered runtime systems and the underlying Actrune runtime.
+-- Advances all registered runtime systems, the underlying Actrune runtime, and render behavior.
 function ProjectRuntime:update(dt)
   local context = self:_create_context()
 
@@ -106,6 +106,10 @@ function ProjectRuntime:update(dt)
   end
 
   self.runtime:update(dt)
+
+  if self.renderer ~= nil and type(self.renderer.update) == "function" then
+    self.renderer:update(dt)
+  end
 end
 
 -- Draws registered runtime systems and the optional project renderer.
