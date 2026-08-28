@@ -1,4 +1,5 @@
 local love = require "love"
+local Camera2D = require("engine.render.camera_2d")
 local SpatialDebugRenderer = require("engine.debug.spatial_debug_renderer")
 
 local TestSceneRenderer = {}
@@ -19,7 +20,6 @@ function TestSceneRenderer.new(options)
   assert(options.project_runtime ~= nil, "test scene renderer requires a project runtime")
 
   local physics_system = options.project_runtime:get_system("physics")
-
   assert(physics_system ~= nil, "test scene renderer requires the physics runtime system")
 
   self.box2d = physics_system:get_backend()
@@ -34,10 +34,11 @@ function TestSceneRenderer.new(options)
   self.large_grid_area = self.project.entities_by_id["large_grid_area"]
   self.free_area = self.project.entities_by_id["free_area"]
 
+  local player_x, player_y = self.player:get_position()
   return self
 end
 
--- Draws the current runtime diagnostic information.
+-- Draws the current runtime diagnostic information in screen space.
 function TestSceneRenderer:_draw_diagnostics()
   love.graphics.print(table.concat(self.messages, "\n"), 20, 20)
   love.graphics.print("Active events: " .. self.runtime:get_active_event_count(), 20, 100)
@@ -74,12 +75,25 @@ function TestSceneRenderer:_draw_grid_areas()
   SpatialDebugRenderer.draw_shape(self.free_area, "area")
 end
 
--- Draws the complete current Actrune test scene.
-function TestSceneRenderer:draw()
-  self:_draw_diagnostics()
+-- Draws all world-space test content through the active camera.
+function TestSceneRenderer:_draw_world()
+  self.camera:begin()
   self:_draw_physics()
   self:_draw_entities()
   self:_draw_grid_areas()
+  self.camera:finish()
+end
+
+-- Updates the development camera to follow the continuous-movement player.
+function TestSceneRenderer:_update_camera()
+  self.camera:set_position(self.player:get_position())
+end
+
+-- Draws the complete current Actrune test scene.
+function TestSceneRenderer:draw()
+  self:_update_camera()
+  self:_draw_world()
+  self:_draw_diagnostics()
 end
 
 return TestSceneRenderer
