@@ -86,6 +86,11 @@ function ProjectRuntime:get_system(name)
   return self.systems_by_name[name]
 end
 
+-- Returns the provider that registered one runtime system.
+function ProjectRuntime:get_system_provider(name)
+  return self.system_registry:get_provider(name)
+end
+
 -- Advances all registered runtime systems and the underlying Actrune runtime.
 function ProjectRuntime:update(dt)
   local context = self:_create_context()

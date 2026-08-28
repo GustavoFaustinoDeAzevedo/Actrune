@@ -10,15 +10,19 @@ local ActruneRuntimeConfiguration = {}
 function ActruneRuntimeConfiguration.create()
   local systems = RuntimeSystemRegistry.new()
 
-  systems:register("grid_context", function()
+  local actrune = systems:create_register({
+    provider = "actrune"
+  })
+
+  actrune:register("grid_context", function()
     return GridContextRuntimeSystem.new()
   end, 100)
 
-  systems:register("controls", function()
+  actrune:register("controls", function()
     return ControlRuntimeSystem.new()
   end, 200)
 
-  systems:register("physics", function()
+  actrune:register("physics", function()
     return PhysicsRuntimeSystem.new({
       gravity_x = 0,
       gravity_y = 980,
