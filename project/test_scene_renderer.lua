@@ -1,5 +1,7 @@
 local love = require "love"
 local Camera2D = require("engine.render.camera_2d")
+local CameraPositionControl = require("engine.render.camera_position_control")
+local EntityPositionPolicy = require("engine.render.camera_position.entity_position_policy")
 local SpatialDebugRenderer = require("engine.debug.spatial_debug_renderer")
 
 local TestSceneRenderer = {}
@@ -35,6 +37,16 @@ function TestSceneRenderer.new(options)
   self.free_area = self.project.entities_by_id["free_area"]
 
   local player_x, player_y = self.player:get_position()
+
+  self.camera = Camera2D.new({
+    x = player_x,
+    y = player_y
+  })
+
+  self.camera_position = CameraPositionControl.new(
+    self.camera,
+    EntityPositionPolicy.new(self.player)
+  )
   return self
 end
 
@@ -84,14 +96,9 @@ function TestSceneRenderer:_draw_world()
   self.camera:finish()
 end
 
--- Updates the development camera to follow the continuous-movement player.
-function TestSceneRenderer:_update_camera()
-  self.camera:set_position(self.player:get_position())
-end
-
 -- Draws the complete current Actrune test scene.
 function TestSceneRenderer:draw()
-  self:_update_camera()
+  self.camera_position:update()
   self:_draw_world()
   self:_draw_diagnostics()
 end
