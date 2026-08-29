@@ -18,8 +18,11 @@ function CanvasRenderView.new(options)
     "canvas render view width must be nil or greater than zero")
   assert(self.height == nil or type(self.height) == "number" and self.height > 0,
     "canvas render view height must be nil or greater than zero")
-  assert(self.presenter == nil or type(self.presenter) == "function",
-    "canvas render view presenter must be nil or a function")
+  assert(
+    self.presenter == nil or type(self.presenter) == "function" or
+    type(self.presenter) == "table" and type(self.presenter.present) == "function",
+    "canvas render view presenter must be nil, a function, or expose present"
+  )
 
   return self
 end
@@ -67,8 +70,10 @@ function CanvasRenderView:finish(context)
   love.graphics.push("all")
   love.graphics.origin()
 
-  if self.presenter ~= nil then
+  if type(self.presenter) == "function" then
     self.presenter(self.canvas, context)
+  elseif self.presenter ~= nil then
+    self.presenter:present(self.canvas, context)
   else
     love.graphics.setColor(1, 1, 1, 1)
     love.graphics.draw(self.canvas, 0, 0)

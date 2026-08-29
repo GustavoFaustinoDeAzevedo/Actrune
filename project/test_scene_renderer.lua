@@ -9,6 +9,7 @@ local RenderLayerStack = require("engine.render.render_layer_stack")
 local LayerTransform2D = require("engine.render.layer_transform_2d")
 local RenderViewStack = require("engine.render.render_view_stack")
 local CanvasRenderView = require("engine.render.canvas_render_view")
+local ShaderCanvasPresenter = require("engine.render.shader_canvas_presenter")
 
 local TestSceneRenderer = {}
 TestSceneRenderer.__index = TestSceneRenderer
@@ -61,9 +62,25 @@ function TestSceneRenderer.new(options)
     }
   )
 
+
+
   self.ground_transform = LayerTransform2D.new()
   self.layers = RenderLayerStack.new()
-  self.ground_canvas = CanvasRenderView.new()
+  local test_shader = love.graphics.newShader([[
+        vec4 effect(vec4 color, Image texture, vec2 texture_coords, vec2 screen_coords)
+        {
+          vec4 pixel = Texel(texture, texture_coords);
+          return pixel * color;
+        }
+        ]])
+
+  self.ground_presenter = ShaderCanvasPresenter.new({
+    shader = test_shader
+  })
+
+  self.ground_canvas = CanvasRenderView.new({
+    presenter = self.ground_presenter
+  })
 
   self.layers:add(RenderLayer.new({
     name = "ground",
