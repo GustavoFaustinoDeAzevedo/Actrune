@@ -6,6 +6,8 @@ local SpatialDebugRenderer = require("engine.debug.spatial_debug_renderer")
 local PositionResponse = require("engine.render.camera_position.position_response")
 local RenderLayer = require("engine.render.render_layer")
 local RenderLayerStack = require("engine.render.render_layer_stack")
+local LayerTransform2D = require("engine.render.layer_transform_2d")
+local RenderViewStack = require("engine.render.render_view_stack")
 
 local TestSceneRenderer = {}
 TestSceneRenderer.__index = TestSceneRenderer
@@ -58,16 +60,22 @@ function TestSceneRenderer.new(options)
     }
   )
 
+  self.ground_transform = LayerTransform2D.new()
   self.layers = RenderLayerStack.new()
 
   self.layers:add(RenderLayer.new({
     name = "ground",
     order = 100,
-    view = self.camera,
+    view = RenderViewStack.new({
+      self.camera,
+      self.ground_transform
+    }),
     draw = function()
       self:_draw_ground()
     end
   }))
+
+  self.ground_transform:set_rotation(math.rad(20))
 
   self.layers:add(RenderLayer.new({
     name = "world",
