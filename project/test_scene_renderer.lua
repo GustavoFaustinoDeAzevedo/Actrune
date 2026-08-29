@@ -8,6 +8,7 @@ local RenderLayer = require("engine.render.render_layer")
 local RenderLayerStack = require("engine.render.render_layer_stack")
 local LayerTransform2D = require("engine.render.layer_transform_2d")
 local RenderViewStack = require("engine.render.render_view_stack")
+local CanvasRenderView = require("engine.render.canvas_render_view")
 
 local TestSceneRenderer = {}
 TestSceneRenderer.__index = TestSceneRenderer
@@ -62,11 +63,13 @@ function TestSceneRenderer.new(options)
 
   self.ground_transform = LayerTransform2D.new()
   self.layers = RenderLayerStack.new()
+  self.ground_canvas = CanvasRenderView.new()
 
   self.layers:add(RenderLayer.new({
     name = "ground",
     order = 100,
     view = RenderViewStack.new({
+      self.ground_canvas,
       self.camera,
       self.ground_transform
     }),
