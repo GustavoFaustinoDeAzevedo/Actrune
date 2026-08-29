@@ -42,6 +42,11 @@ vec4 effect(vec4 color, Image texture, vec2 texture_coords, vec2 screen_coords)
 }
 ]]
 
+-- Resolves the forward and right vectors for one projection rotation.
+local function resolve_basis(rotation)
+  return math.sin(rotation), -math.cos(rotation), math.cos(rotation), math.sin(rotation)
+end
+
 -- Creates a perspective presenter that samples a top-down world region as a navigable plane.
 function ProjectedWorldPlane.new(options)
   options = options or {}
@@ -75,6 +80,11 @@ function ProjectedWorldPlane.new(options)
   return self
 end
 
+-- Returns the effective world-space viewing rotation.
+function ProjectedWorldPlane:get_rotation()
+  return self.camera.rotation + self.rotation_offset
+end
+
 -- Returns the current projection values consumed by the shader.
 function ProjectedWorldPlane:_get_uniforms()
   local camera_x, camera_y = self.camera:get_position()
@@ -90,6 +100,85 @@ function ProjectedWorldPlane:_get_uniforms()
     horizontal_fov = self.horizontal_fov,
     world_bounds = { min_x, min_y, max_x, max_y }
   }
+end
+
+-- Projects one world-space point into the projected output surface.
+function ProjectedWorldPlane:project_world_point(x, y, width, height)
+  assert(type(x) == "number" and type(y) == "number", "projected world point coordinates must be numeric")
+  assert(type(width) == "number" and width > 0, "projection output width must be greater than zero")
+  assert(type(height) == "number" and height > 0, "projection output height must be greater than zero")
+
+  local camera_x, camera_y = self.camera:get_position()
+  local forward_x, forward_y, right_x, right_y = resolve_basis(self:get_rotation())
+  local relative_x = x - camera_x
+  local relative_y = y - camera_y
+  local distance = relative_x * forward_x + relative_y * forward_y
+  local lateral = relative_x * right_x + relative_y * right_y
+
+  local result = {
+    distance = distance,
+    lateral = lateral,
+    visible = false
+  }
+
+  if distance <= 0 then return result end
+
+  local scale = self.near_distance / distance
+  local horizontal = lateral / (distance * math.tan(self.horizontal_fov * 0.5))
+  local u = 0.5 + horizontal * 0.5
+  local v = self.horizon + scale * (1 - self.horizon)
+
+  result.x = u * width
+  result.y = v * height
+  result.u = u
+  result.v = v
+  result.scale = scale
+  result.visible = distance >= self.near_distance
+      and distance <= self.far_distance
+      and u >= 0 and u <= 1
+      and v >= self.horizon and v <= 1
+
+  return result
+end
+
+-- Resolves one output-space point back onto the projected world plane.
+function ProjectedWorldPlane:unproject_screen_point(x, y, width, height)
+  assert(type(x) == "number" and type(y) == "number", "projected screen point coordinates must be numeric")
+  assert(type(width) == "number" and width > 0, "projection output width must be greater than zero")
+  assert(type(height) == "number" and height > 0, "projection output height must be greater than zero")
+
+  local u = x / width
+  local v = y / height
+
+  local result = {
+    u = u,
+    v = v,
+    visible = false
+  }
+
+  if v <= self.horizon then return result end
+
+  local normalized_y = (v - self.horizon) / (1 - self.horizon)
+  if normalized_y <= 0 then return result end
+
+  local distance = self.near_distance / normalized_y
+  local horizontal = (u - 0.5) * 2
+  local lateral = horizontal * distance * math.tan(self.horizontal_fov * 0.5)
+
+  local camera_x, camera_y = self.camera:get_position()
+  local forward_x, forward_y, right_x, right_y = resolve_basis(self:get_rotation())
+
+  result.x = camera_x + forward_x * distance + right_x * lateral
+  result.y = camera_y + forward_y * distance + right_y * lateral
+  result.distance = distance
+  result.lateral = lateral
+  result.scale = normalized_y
+  result.visible = distance >= self.near_distance
+      and distance <= self.far_distance
+      and u >= 0 and u <= 1
+      and v <= 1
+
+  return result
 end
 
 -- Enables or disables perspective presentation.

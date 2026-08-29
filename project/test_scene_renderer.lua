@@ -87,7 +87,8 @@ function TestSceneRenderer.new(options)
     horizon = 0.3,
     near_distance = 32,
     far_distance = 800,
-    horizontal_fov = math.rad(75)
+    horizontal_fov = math.rad(90),
+    rotation_offset = math.pi
   })
 
   self.ground_canvas = CanvasRenderView.new({
@@ -132,6 +133,14 @@ function TestSceneRenderer.new(options)
   }))
 
   self.layers:add(RenderLayer.new({
+    name = "projection_debug",
+    order = 150,
+    draw = function()
+      self:_draw_projection_debug()
+    end
+  }))
+
+  self.layers:add(RenderLayer.new({
     name = "screen",
     order = 1000,
     draw = function()
@@ -141,6 +150,43 @@ function TestSceneRenderer.new(options)
 
 
   return self
+end
+
+-- Draws one screen-space marker obtained by projecting a world-space point.
+function TestSceneRenderer:_draw_projection_debug()
+  local canvas = self.ground_canvas:get_canvas()
+  local width, height = canvas:getDimensions()
+  local world_x, world_y = self.floor:get_position()
+  local projected = self.ground_projection:project_world_point(world_x, world_y, width, height)
+  local restored = self.ground_projection:unproject_screen_point(
+    projected.x,
+    projected.y,
+    width,
+    height
+  )
+
+  if restored.visible then
+    love.graphics.print(
+      string.format(
+        "Projection round-trip: %.2f, %.2f",
+        restored.x - world_x,
+        restored.y - world_y
+      ),
+      20,
+      260
+    )
+  end
+
+  if not projected.visible then return end
+
+  local marker_height = math.max(10, 40 * projected.scale)
+  local marker_radius = math.max(2, 6 * projected.scale)
+
+  love.graphics.push("all")
+  love.graphics.setColor(1, 1, 1, 1)
+  love.graphics.line(projected.x, projected.y, projected.x, projected.y - marker_height)
+  love.graphics.circle("line", projected.x, projected.y - marker_height, marker_radius)
+  love.graphics.pop()
 end
 
 -- Draws the current runtime diagnostic information in screen space.
