@@ -9,7 +9,8 @@ local RenderLayerStack = require("engine.render.render_layer_stack")
 local LayerTransform2D = require("engine.render.layer_transform_2d")
 local RenderViewStack = require("engine.render.render_view_stack")
 local CanvasRenderView = require("engine.render.canvas_render_view")
-local ShaderCanvasPresenter = require("engine.render.shader_canvas_presenter")
+local ProjectedPlane = require("project.render.projections.projected_plane")
+
 
 local TestSceneRenderer = {}
 TestSceneRenderer.__index = TestSceneRenderer
@@ -66,20 +67,16 @@ function TestSceneRenderer.new(options)
 
   self.ground_transform = LayerTransform2D.new()
   self.layers = RenderLayerStack.new()
-  local test_shader = love.graphics.newShader([[
-        vec4 effect(vec4 color, Image texture, vec2 texture_coords, vec2 screen_coords)
-        {
-          vec4 pixel = Texel(texture, texture_coords);
-          return pixel * color;
-        }
-        ]])
-
-  self.ground_presenter = ShaderCanvasPresenter.new({
-    shader = test_shader
+  self.ground_projection = ProjectedPlane.new({
+    horizon = 0.2,
+    vanishing_x = 0.5,
+    near_scale = 1,
+    far_scale = 0.15,
+    depth_curve = 1.5
   })
 
   self.ground_canvas = CanvasRenderView.new({
-    presenter = self.ground_presenter
+    presenter = self.ground_projection
   })
 
   self.layers:add(RenderLayer.new({
@@ -94,8 +91,6 @@ function TestSceneRenderer.new(options)
       self:_draw_ground()
     end
   }))
-
-  self.ground_transform:set_rotation(math.rad(20))
 
   self.layers:add(RenderLayer.new({
     name = "world",
