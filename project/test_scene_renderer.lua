@@ -9,7 +9,8 @@ local RenderLayerStack = require("engine.render.render_layer_stack")
 local LayerTransform2D = require("engine.render.layer_transform_2d")
 local RenderViewStack = require("engine.render.render_view_stack")
 local CanvasRenderView = require("engine.render.canvas_render_view")
-local ProjectedPlane = require("project.render.projections.projected_plane")
+local WorldRegionView = require("engine.render.world_region_view")
+local ProjectedWorldPlane = require("project.render.projections.projected_world_plane")
 
 
 local TestSceneRenderer = {}
@@ -67,12 +68,25 @@ function TestSceneRenderer.new(options)
 
   self.ground_transform = LayerTransform2D.new()
   self.layers = RenderLayerStack.new()
-  self.ground_projection = ProjectedPlane.new({
-    horizon = 0.2,
-    vanishing_x = 0.5,
-    near_scale = 1,
-    far_scale = 0.15,
-    depth_curve = 1.5
+  self.ground_region_size = 2048
+
+  local camera_x, camera_y = self.camera:get_position()
+  local half_region = self.ground_region_size * 0.5
+
+  self.ground_world_region = WorldRegionView.new({
+    min_x = camera_x - half_region,
+    min_y = camera_y - half_region,
+    max_x = camera_x + half_region,
+    max_y = camera_y + half_region
+  })
+
+  self.ground_projection = ProjectedWorldPlane.new({
+    camera = self.camera,
+    source_region = self.ground_world_region,
+    horizon = 0.3,
+    near_distance = 32,
+    far_distance = 800,
+    horizontal_fov = math.rad(75)
   })
 
   self.ground_canvas = CanvasRenderView.new({
@@ -117,6 +131,8 @@ function TestSceneRenderer.new(options)
       self:_draw_diagnostics()
     end
   }))
+
+
   return self
 end
 
@@ -164,9 +180,19 @@ function TestSceneRenderer:_draw_world_debug()
   SpatialDebugRenderer.draw_shape(self.free_area, "area")
 end
 
--- Updates time-dependent rendering behavior before drawing.
+-- Updates time-dependent rendering behavior and the captured ground region.
 function TestSceneRenderer:update(dt)
   self.camera_position:update(dt)
+
+  local camera_x, camera_y = self.camera:get_position()
+  local half_region = self.ground_region_size * 0.5
+
+  self.ground_world_region:set_bounds(
+    camera_x - half_region,
+    camera_y - half_region,
+    camera_x + half_region,
+    camera_y + half_region
+  )
 end
 
 -- Draws all configured render layers in their current order.
