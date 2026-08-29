@@ -11,6 +11,7 @@ local RenderViewStack = require("engine.render.render_view_stack")
 local CanvasRenderView = require("engine.render.canvas_render_view")
 local WorldRegionView = require("engine.render.world_region_view")
 local ProjectedWorldPlane = require("project.render.projections.projected_world_plane")
+local RenderLayerGroup = require("engine.render.render_layer_group")
 
 
 local TestSceneRenderer = {}
@@ -93,18 +94,33 @@ function TestSceneRenderer.new(options)
     presenter = self.ground_projection
   })
 
-  self.layers:add(RenderLayer.new({
-    name = "ground",
+  self.projected_world = RenderLayerGroup.new({
+    name = "projected_world",
     order = 100,
     view = RenderViewStack.new({
       self.ground_canvas,
-      self.camera,
-      self.ground_transform
-    }),
+      self.ground_world_region
+    })
+  })
+
+  self.projected_world:add(RenderLayer.new({
+    name = "ground",
+    order = 100,
+    view = self.ground_transform,
     draw = function()
       self:_draw_ground()
     end
   }))
+
+  self.projected_world:add(RenderLayer.new({
+    name = "ground_debug",
+    order = 200,
+    draw = function()
+      self:_draw_ground_debug()
+    end
+  }))
+
+  self.layers:add(self.projected_world)
 
   self.layers:add(RenderLayer.new({
     name = "world",
@@ -112,15 +128,6 @@ function TestSceneRenderer.new(options)
     view = self.camera,
     draw = function()
       self:_draw_world()
-    end
-  }))
-
-  self.layers:add(RenderLayer.new({
-    name = "world_debug",
-    order = 300,
-    view = self.camera,
-    draw = function()
-      self:_draw_world_debug()
     end
   }))
 
@@ -173,8 +180,8 @@ function TestSceneRenderer:_draw_world()
   SpatialDebugRenderer.draw_shape(self.step_player, "collision")
 end
 
--- Draws world-space development overlays above regular entities.
-function TestSceneRenderer:_draw_world_debug()
+-- Draws development overlays that share the projected world plane.
+function TestSceneRenderer:_draw_ground_debug()
   SpatialDebugRenderer.draw_shape(self.small_grid_area, "area")
   SpatialDebugRenderer.draw_shape(self.large_grid_area, "area")
   SpatialDebugRenderer.draw_shape(self.free_area, "area")
