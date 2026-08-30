@@ -25,6 +25,30 @@ local function resolve_position(entry)
   return entry.x, entry.y
 end
 
+-- Normalizes an angle to the signed range from -pi to pi.
+local function normalize_angle(angle)
+  return (angle + math.pi) % (math.pi * 2) - math.pi
+end
+
+-- Resolves how the viewpoint observes one oriented billboard.
+local function resolve_relative_rotation(projection, entry, x, y)
+  if entry.rotation_provider == nil then return nil end
+
+  assert(type(entry.rotation_provider) == "function", "billboard rotation_provider must be a function")
+  assert(type(projection.get_view_position) == "function",
+    "directional billboard requires projection view position")
+
+  local rotation = entry.rotation_provider()
+  local view_x, view_y = projection:get_view_position()
+
+  assert(type(rotation) == "number", "billboard rotation provider must return a numeric rotation")
+  assert(type(view_x) == "number" and type(view_y) == "number",
+    "projection view position must contain numeric coordinates")
+
+  local viewer_angle = math.atan(view_y - y, view_x - x)
+  return normalize_angle(viewer_angle - rotation)
+end
+
 -- Sorts projected billboards from farthest to nearest with deterministic ties.
 local function compare_billboards(a, b)
   if a.projected.distance ~= b.projected.distance then return a.projected.distance > b.projected.distance end
@@ -35,6 +59,17 @@ local function compare_billboards(a, b)
   if order_a ~= order_b then return order_a < order_b end
 
   return tostring(a.entry.id or "") < tostring(b.entry.id or "")
+end
+
+-- Validates one visible projection result before it enters the drawing queue.
+local function validate_visible_projection(projected, entry)
+  local id = tostring(entry.id or "<unnamed>")
+
+  assert(type(projected.x) == "number", "visible billboard projection requires numeric x for entry: " .. id)
+  assert(type(projected.y) == "number", "visible billboard projection requires numeric y for entry: " .. id)
+  assert(type(projected.distance) == "number", "visible billboard projection requires numeric distance for entry: " .. id)
+  assert(projected.scale == nil or type(projected.scale) == "number" and projected.scale > 0,
+    "billboard projection scale must be nil or greater than zero for entry: " .. id)
 end
 
 -- Projects, depth-sorts, and draws a collection of billboard entries.
@@ -52,14 +87,22 @@ function ProjectedBillboardRenderer:draw(entries, width, height, context)
     assert(entry.scale == nil or type(entry.scale) == "number" and entry.scale > 0,
       "projected billboard scale must be nil or greater than zero")
 
-    local x, y = resolve_position(entry)
-    local projected = self.projection:project_world_point(x, y, width, height)
+    if entry.enabled ~= false then
+      local x, y = resolve_position(entry)
+      local projected = self.projection:project_world_point(x, y, width, height)
 
-    if projected.visible and entry.enabled ~= false then
-      table.insert(visible, {
-        entry = entry,
-        projected = projected
-      })
+      assert(type(projected) == "table", "world-to-screen projection must return a table")
+      assert(type(projected.visible) == "boolean", "world-to-screen projection must return boolean visible")
+
+      if projected.visible then
+        validate_visible_projection(projected, entry)
+
+        table.insert(visible, {
+          entry = entry,
+          projected = projected,
+          relative_rotation = resolve_relative_rotation(self.projection, entry, x, y)
+        })
+      end
     end
   end
 
@@ -68,7 +111,7 @@ function ProjectedBillboardRenderer:draw(entries, width, height, context)
   for _, item in ipairs(visible) do
     local entry = item.entry
     local projected = item.projected
-    local scale = projected.scale * (entry.scale or 1)
+    local scale = (projected.scale or 1) * (entry.scale or 1)
 
     love.graphics.push("all")
     love.graphics.origin()
@@ -79,6 +122,7 @@ function ProjectedBillboardRenderer:draw(entries, width, height, context)
       entry = entry,
       projected = projected,
       projection = self.projection,
+      relative_rotation = item.relative_rotation,
       context = context
     })
 

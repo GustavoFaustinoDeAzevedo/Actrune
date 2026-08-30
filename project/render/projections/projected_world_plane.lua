@@ -92,6 +92,11 @@ function ProjectedWorldPlane:get_rotation()
   return self.viewpoint:get_rotation() + self.rotation_offset
 end
 
+-- Returns the current world-space viewpoint position.
+function ProjectedWorldPlane:get_view_position()
+  return self.viewpoint:get_position()
+end
+
 -- Returns the current projection values consumed by the shader.
 function ProjectedWorldPlane:_get_uniforms()
   local view_x, view_y = self.viewpoint:get_position()

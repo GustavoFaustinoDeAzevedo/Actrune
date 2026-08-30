@@ -18,6 +18,16 @@ local CameraRotationControl = require("engine.render.camera_rotation_control")
 local EntityRotationPolicy = require("engine.render.camera_rotation.entity_rotation_policy")
 local RotationResponse = require("engine.render.camera_rotation.rotation_response")
 local BillboardVisual = require("engine.render.billboard_visual")
+local DirectionalBillboardVisual = require("engine.render.directional_billboard_visual")
+local ImageBillboardVisual = require("engine.render.image_billboard_visual")
+
+local test_image = love.graphics.newImage("project/default_img.png")
+
+local test_visual = ImageBillboardVisual.new({
+  image = test_image,
+  width = 500,
+  height = 800
+})
 
 
 local TestSceneRenderer = {}
@@ -192,21 +202,66 @@ function TestSceneRenderer.new(options)
     end
   }))
 
+  local player_front = BillboardVisual.new({
+    width = 24,
+    height = 48,
+    draw = function(width, height)
+      love.graphics.setColor(1, 1, 1, 1)
+      love.graphics.rectangle("line", 0, 0, width, height)
+      love.graphics.circle("line", width * 0.5, 10, 4)
+    end
+  })
+
+  local player_right = BillboardVisual.new({
+    width = 24,
+    height = 48,
+    draw = function(width, height)
+      love.graphics.setColor(1, 1, 1, 1)
+      love.graphics.rectangle("line", 0, 0, width, height)
+      love.graphics.line(width * 0.5, 10, width - 2, 10)
+    end
+  })
+
+  local player_back = BillboardVisual.new({
+    width = 24,
+    height = 48,
+    draw = function(width, height)
+      love.graphics.setColor(1, 1, 1, 1)
+      love.graphics.rectangle("line", 0, 0, width, height)
+      love.graphics.line(4, 10, width - 4, 10)
+      love.graphics.line(4, 14, width - 4, 14)
+    end
+  })
+
+  local player_left = BillboardVisual.new({
+    width = 24,
+    height = 48,
+    draw = function(width, height)
+      love.graphics.setColor(1, 1, 1, 1)
+      love.graphics.rectangle("line", 0, 0, width, height)
+      love.graphics.line(width * 0.5, 10, 2, 10)
+    end
+  })
+
+  local player_directional_visual = DirectionalBillboardVisual.new({
+    directions = {
+      player_front,
+      player_right,
+      player_back,
+      player_left
+    }
+  })
+
   self.projected_billboards = {
     {
       id = "player",
       position_provider = function()
         return self.player:get_position()
       end,
-      visual = BillboardVisual.new({
-        width = 24,
-        height = 48,
-        draw = function(width, height)
-          love.graphics.setColor(1, 1, 1, 1)
-          love.graphics.rectangle("line", 0, 0, width, height)
-          love.graphics.line(4, 12, width - 4, 12)
-        end
-      })
+      rotation_provider = function()
+        return self.player:get_rotation()
+      end,
+      visual = player_directional_visual
     },
 
     {
@@ -230,16 +285,20 @@ function TestSceneRenderer.new(options)
       position_provider = function()
         return self.door:get_position()
       end,
-      visual = BillboardVisual.new({
-        width = 500,
-        height = 800,
-        draw = function(width, height)
-          love.graphics.setColor(0, 0, 1, 1)
-          love.graphics.rectangle("fill", 0, 0, width, height)
-          love.graphics.setColor(1, 1, 1, 1)
-          love.graphics.circle("fill", width - 30, height * 0.5, 20)
-        end
-      })
+      visual = test_visual
+
+
+
+      -- BillboardVisual.new({
+      --   width = 500,
+      --   height = 800,
+      --   draw = function(width, height)
+      --     love.graphics.setColor(0, 0, 1, 1)
+      --     love.graphics.rectangle("fill", 0, 0, width, height)
+      --     love.graphics.setColor(1, 1, 1, 1)
+      --     love.graphics.circle("fill", width - 30, height * 0.5, 20)
+      --   end
+      -- })
     },
 
     {
