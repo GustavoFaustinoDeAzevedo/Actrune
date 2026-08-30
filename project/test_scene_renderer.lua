@@ -17,6 +17,7 @@ local OrientedOffsetPositionPolicy = require("engine.render.camera_position.orie
 local CameraRotationControl = require("engine.render.camera_rotation_control")
 local EntityRotationPolicy = require("engine.render.camera_rotation.entity_rotation_policy")
 local RotationResponse = require("engine.render.camera_rotation.rotation_response")
+local BillboardVisual = require("engine.render.billboard_visual")
 
 
 local TestSceneRenderer = {}
@@ -197,22 +198,31 @@ function TestSceneRenderer.new(options)
       position_provider = function()
         return self.player:get_position()
       end,
-      draw = function()
-        love.graphics.setColor(1, 1, 1, 1)
-        love.graphics.rectangle("line", -12, -48, 24, 48)
-        love.graphics.line(-8, -36, 8, -36)
-      end
+      visual = BillboardVisual.new({
+        width = 24,
+        height = 48,
+        draw = function(width, height)
+          love.graphics.setColor(1, 1, 1, 1)
+          love.graphics.rectangle("line", 0, 0, width, height)
+          love.graphics.line(4, 12, width - 4, 12)
+        end
+      })
     },
+
     {
       id = "floor_marker",
       position_provider = function()
         return self.floor:get_position()
       end,
-      draw = function()
-        love.graphics.setColor(1, 1, 1, 1)
-        love.graphics.line(0, 0, 0, -48)
-        love.graphics.circle("line", 0, -48, 8)
-      end
+      visual = BillboardVisual.new({
+        width = 16,
+        height = 48,
+        draw = function(width, height)
+          love.graphics.setColor(1, 1, 1, 1)
+          love.graphics.line(width * 0.5, height, width * 0.5, 0)
+          love.graphics.circle("line", width * 0.5, 0, width * 0.5)
+        end
+      })
     },
 
     {
@@ -220,11 +230,16 @@ function TestSceneRenderer.new(options)
       position_provider = function()
         return self.door:get_position()
       end,
-      draw = function()
-        love.graphics.setColor(1, 1, 1, 1)
-        love.graphics.rectangle("line", -12, -48, 24, 48)
-        love.graphics.circle("fill", 7, -24, 2)
-      end
+      visual = BillboardVisual.new({
+        width = 500,
+        height = 800,
+        draw = function(width, height)
+          love.graphics.setColor(0, 0, 1, 1)
+          love.graphics.rectangle("fill", 0, 0, width, height)
+          love.graphics.setColor(1, 1, 1, 1)
+          love.graphics.circle("fill", width - 30, height * 0.5, 20)
+        end
+      })
     },
 
     {
@@ -232,13 +247,17 @@ function TestSceneRenderer.new(options)
       position_provider = function()
         return self.bounce_ball:get_position()
       end,
-      draw = function()
-        love.graphics.setColor(1, 1, 1, 1)
-        love.graphics.circle("line", 0, -10, 10)
-      end
+      visual = BillboardVisual.new({
+        width = 20,
+        height = 20,
+        draw = function(width, height)
+          love.graphics.setColor(1, 1, 1, 1)
+          love.graphics.circle("line", width * 0.5, height * 0.5, math.min(width, height) * 0.5)
+        end
+      })
     }
   }
-  
+
   return self
 end
 

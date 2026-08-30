@@ -37,7 +37,7 @@ local function compare_billboards(a, b)
   return tostring(a.entry.id or "") < tostring(b.entry.id or "")
 end
 
--- Projects, depth-sorts, and draws a collection of vertical billboard entries.
+-- Projects, depth-sorts, and draws a collection of billboard entries.
 function ProjectedBillboardRenderer:draw(entries, width, height, context)
   assert(type(entries) == "table", "projected billboard renderer entries must be a table")
   assert(type(width) == "number" and width > 0, "projected billboard renderer width must be greater than zero")
@@ -47,7 +47,10 @@ function ProjectedBillboardRenderer:draw(entries, width, height, context)
 
   for _, entry in ipairs(entries) do
     assert(type(entry) == "table", "projected billboard entry must be a table")
-    assert(type(entry.draw) == "function", "projected billboard entry requires a draw callback")
+    assert(entry.visual ~= nil and type(entry.visual.draw) == "function",
+      "projected billboard entry requires a drawable visual")
+    assert(entry.scale == nil or type(entry.scale) == "number" and entry.scale > 0,
+      "projected billboard scale must be nil or greater than zero")
 
     local x, y = resolve_position(entry)
     local projected = self.projection:project_world_point(x, y, width, height)
@@ -69,10 +72,10 @@ function ProjectedBillboardRenderer:draw(entries, width, height, context)
 
     love.graphics.push("all")
     love.graphics.origin()
-    love.graphics.translate(projected.x + (entry.offset_x or 0), projected.y + (entry.offset_y or 0))
+    love.graphics.translate(projected.x, projected.y)
     love.graphics.scale(scale)
 
-    entry.draw({
+    entry.visual:draw({
       entry = entry,
       projected = projected,
       projection = self.projection,
