@@ -3,6 +3,7 @@ local GridMetricsFactory = require("engine.world.grid.grid_metrics_factory")
 local ControlProfileFactory = require("engine.world.control.control_profile_factory")
 local PhysicalMaterialFactory = require("engine.world.physics.physical_material_factory")
 local ImageResourceFactory = require("engine.render.image_resource_factory")
+local ImageRegionFactory = require("engine.render.image_region_factory")
 
 local ActruneResourceTypes = {}
 
@@ -13,6 +14,41 @@ function ActruneResourceTypes.register(register)
   register:register_resource_type("image", ImageResourceFactory.create, {
     fields = {
       { name = "path", type = "string", required = true }
+    }
+  })
+
+  register:register_resource_type("image_region", ImageRegionFactory.create, {
+    fields = {
+      {
+        name = "image",
+        type = "resource_reference",
+        resource_type = "image",
+        required = true
+      },
+      {
+        name = "x",
+        type = "number",
+        min = 0,
+        default = 0
+      },
+      {
+        name = "y",
+        type = "number",
+        min = 0,
+        default = 0
+      },
+      {
+        name = "width",
+        type = "number",
+        required = true,
+        min_exclusive = 0
+      },
+      {
+        name = "height",
+        type = "number",
+        required = true,
+        min_exclusive = 0
+      }
     }
   })
 
