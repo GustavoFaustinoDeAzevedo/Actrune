@@ -255,8 +255,8 @@ function TestSceneRenderer.new(options)
     width = 20,
     height = 20,
     draw = function(width, height)
-      love.graphics.setColor(1, 1, 1, 1)
-      love.graphics.circle("line", width * 0.5, height * 0.5, 6)
+      love.graphics.setColor(1, 1, 1, 0.7)
+      love.graphics.circle("fill", width * 0.5, height * 0.5, 50)
     end
   })
 
@@ -264,8 +264,8 @@ function TestSceneRenderer.new(options)
     width = 20,
     height = 20,
     draw = function(width, height)
-      love.graphics.setColor(1, 1, 1, 1)
-      love.graphics.circle("line", width * 0.5, height * 0.5, 8)
+      love.graphics.setColor(1, 1, 1, 0.8)
+      love.graphics.circle("fill", width * 0.5, height * 0.5, 60)
     end
   })
 
@@ -273,15 +273,19 @@ function TestSceneRenderer.new(options)
     width = 20,
     height = 20,
     draw = function(width, height)
-      love.graphics.setColor(1, 1, 1, 1)
-      love.graphics.circle("line", width * 0.5, height * 0.5, 10)
+      love.graphics.setColor(1, 1, 1, 0.9)
+      love.graphics.circle("fill", width * 0.5, height * 0.5, 55)
     end
   })
 
   self.ball_animation = AnimationPlayer.new(
     AnimationClip.new({
-      frame_count = 4,
-      frame_duration = 0.12,
+      frame_durations = {
+        0.3,
+        0.05,
+        0.05,
+        0.2
+      },
       loop = true
     })
   )
@@ -291,7 +295,7 @@ function TestSceneRenderer.new(options)
       ball_frame_a,
       ball_frame_b,
       ball_frame_c,
-      ball_frame_b
+      ball_frame_b,
     },
     index_provider = function()
       return self.ball_animation:get_frame_index()
