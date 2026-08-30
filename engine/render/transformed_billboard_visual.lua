@@ -72,9 +72,4 @@ function TransformedBillboardVisual:draw(context)
   love.graphics.pop()
 end
 
--- Updates the wrapped visual when it exposes time-dependent behavior.
-function TransformedBillboardVisual:update(dt, context)
-  if type(self.visual.update) == "function" then self.visual:update(dt, context) end
-end
-
 return TransformedBillboardVisual

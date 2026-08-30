@@ -21,7 +21,9 @@ local BillboardVisual = require("engine.render.billboard_visual")
 local DirectionalBillboardVisual = require("engine.render.directional_billboard_visual")
 local ImageBillboardVisual = require("engine.render.image_billboard_visual")
 local TransformedBillboardVisual = require("engine.render.transformed_billboard_visual")
-local AnimatedBillboardVisual = require("engine.render.animated_billboard_visual")
+local AnimationClip = require("engine.core.animation.animation_clip")
+local AnimationPlayer = require("engine.core.animation.animation_player")
+local IndexedBillboardVisual = require("engine.render.indexed_billboard_visual")
 
 local test_image = love.graphics.newImage("project/default_img.png")
 
@@ -276,14 +278,24 @@ function TestSceneRenderer.new(options)
     end
   })
 
-  local ball_animation = AnimatedBillboardVisual.new({
-    frames = {
+  self.ball_animation = AnimationPlayer.new(
+    AnimationClip.new({
+      frame_count = 4,
+      frame_duration = 0.12,
+      loop = true
+    })
+  )
+
+  local ball_animation_visual = IndexedBillboardVisual.new({
+    visuals = {
       ball_frame_a,
       ball_frame_b,
       ball_frame_c,
       ball_frame_b
     },
-    frame_duration = 0.12
+    index_provider = function()
+      return self.ball_animation:get_frame_index()
+    end
   })
 
   self.projected_billboards = {
@@ -340,7 +352,7 @@ function TestSceneRenderer.new(options)
       position_provider = function()
         return self.bounce_ball:get_position()
       end,
-      visual = ball_animation
+      visual = ball_animation_visual
 
       -- BillboardVisual.new({
       --   width = 20,
@@ -427,9 +439,7 @@ function TestSceneRenderer:update(dt)
     projected_y + half_region
   )
 
-  self.billboard_renderer:update(self.projected_billboards, dt, {
-    renderer = self
-  })
+  self.ball_animation:update(dt)
 end
 
 -- Draws all configured render layers in their current order.

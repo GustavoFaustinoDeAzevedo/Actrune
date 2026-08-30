@@ -72,28 +72,6 @@ local function validate_visible_projection(projected, entry)
     "billboard projection scale must be nil or greater than zero for entry: " .. id)
 end
 
--- Updates every unique billboard visual that exposes time-dependent behavior.
-function ProjectedBillboardRenderer:update(entries, dt, context)
-  assert(type(entries) == "table", "projected billboard renderer entries must be a table")
-  assert(type(dt) == "number", "projected billboard renderer dt must be numeric")
-
-  local updated = {}
-
-  for _, entry in ipairs(entries) do
-    local visual = entry.visual
-
-    if visual ~= nil and type(visual.update) == "function" and not updated[visual] then
-      visual:update(dt, {
-        entry = entry,
-        projection = self.projection,
-        context = context
-      })
-
-      updated[visual] = true
-    end
-  end
-end
-
 -- Projects, depth-sorts, and draws a collection of billboard entries.
 function ProjectedBillboardRenderer:draw(entries, width, height, context)
   assert(type(entries) == "table", "projected billboard renderer entries must be a table")

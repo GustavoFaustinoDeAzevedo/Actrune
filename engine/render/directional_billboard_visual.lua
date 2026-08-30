@@ -54,16 +54,4 @@ function DirectionalBillboardVisual:draw(context)
   })
 end
 
--- Updates each unique directional child visual that exposes time-dependent behavior.
-function DirectionalBillboardVisual:update(dt, context)
-  local updated = {}
-
-  for _, visual in ipairs(self.directions) do
-    if type(visual.update) == "function" and not updated[visual] then
-      visual:update(dt, context)
-      updated[visual] = true
-    end
-  end
-end
-
 return DirectionalBillboardVisual
