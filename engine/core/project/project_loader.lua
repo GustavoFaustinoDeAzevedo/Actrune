@@ -1,4 +1,4 @@
-local ResourceRegistry = require("engine.core.resources.resource_registry")
+local ResourceResolver = require("engine.core.resources.resource_resolver")
 local DefinitionValidator = require("engine.core.definitions.definition_validator")
 local EntityFactory = require("engine.world.entity_factory")
 local EventFactory = require("engine.events.event_factory")
@@ -30,25 +30,14 @@ function ProjectLoader:register_event_action(name, callback)
   self.event_action_bindings:bind(name, callback)
 end
 
--- Builds all resources declared by one project definition.
-function ProjectLoader:_load_resources(resource_definitions)
-  local registries = {}
+-- Builds all runtime project resources with dependency-aware lazy resolution.
+function ProjectLoader:_load_resources(definitions)
+  local resolver = ResourceResolver.new(
+    self.configuration,
+    definitions or {}
+  )
 
-  for type_name, definitions in pairs(resource_definitions or {}) do
-    assert(self.configuration:has_resource_type(type_name), "unknown project resource type: " .. type_name)
-
-    local registry = ResourceRegistry.new()
-
-    for name, definition in pairs(definitions) do
-      registry:register(name, self.configuration:create_resource(type_name, definition, {
-        project_loader = self
-      }))
-    end
-
-    registries[type_name] = registry
-  end
-
-  return registries
+  return resolver:resolve_all()
 end
 
 -- Creates an entity factory configured with loaded project resources and type registries.

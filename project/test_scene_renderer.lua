@@ -25,14 +25,6 @@ local AnimationClip = require("engine.core.animation.animation_clip")
 local AnimationPlayer = require("engine.core.animation.animation_player")
 local IndexedBillboardVisual = require("engine.render.indexed_billboard_visual")
 
-local test_image = love.graphics.newImage("project/default_img.png")
-
-local test_visual = ImageBillboardVisual.new({
-  image = test_image,
-  width = 500,
-  height = 800
-})
-
 
 local TestSceneRenderer = {}
 TestSceneRenderer.__index = TestSceneRenderer
@@ -206,40 +198,112 @@ function TestSceneRenderer.new(options)
     end
   }))
 
-  local player_front = BillboardVisual.new({
+  self.player_animation = AnimationPlayer.new(
+    AnimationClip.new({
+      frame_count = 2,
+      frame_duration = 0.18,
+      loop = true
+    })
+  )
+
+  local function player_frame_index()
+    return self.player_animation:get_frame_index()
+  end
+
+  local player_front_1 = BillboardVisual.new({
     width = 24,
     height = 48,
     draw = function(width, height)
       love.graphics.setColor(1, 1, 1, 1)
       love.graphics.rectangle("line", 0, 0, width, height)
       love.graphics.circle("line", width * 0.5, 10, 4)
+      love.graphics.line(4, height, 8, height - 8)
     end
   })
 
-  local player_right = BillboardVisual.new({
+  local player_front_2 = BillboardVisual.new({
+    width = 24,
+    height = 48,
+    draw = function(width, height)
+      love.graphics.setColor(1, 1, 1, 1)
+      love.graphics.rectangle("line", 0, 0, width, height)
+      love.graphics.circle("line", width * 0.5, 10, 4)
+      love.graphics.line(width - 4, height, width - 8, height - 8)
+    end
+  })
+
+  local player_right_1 = BillboardVisual.new({
     width = 24,
     height = 48,
     draw = function(width, height)
       love.graphics.setColor(1, 1, 1, 1)
       love.graphics.rectangle("line", 0, 0, width, height)
       love.graphics.line(width * 0.5, 10, width - 2, 10)
+      love.graphics.line(4, height, 8, height - 8)
     end
   })
 
-  local player_left = TransformedBillboardVisual.new({
-    visual = player_right,
-    scale_x = -1
+  local player_right_2 = BillboardVisual.new({
+    width = 24,
+    height = 48,
+    draw = function(width, height)
+      love.graphics.setColor(1, 1, 1, 1)
+      love.graphics.rectangle("line", 0, 0, width, height)
+      love.graphics.line(width * 0.5, 10, width - 2, 10)
+      love.graphics.line(width - 4, height, width - 8, height - 8)
+    end
   })
 
-  local player_back = BillboardVisual.new({
+  local player_back_1 = BillboardVisual.new({
     width = 24,
     height = 48,
     draw = function(width, height)
       love.graphics.setColor(1, 1, 1, 1)
       love.graphics.rectangle("line", 0, 0, width, height)
       love.graphics.line(4, 10, width - 4, 10)
-      love.graphics.line(4, 14, width - 4, 14)
+      love.graphics.line(4, height, 8, height - 8)
     end
+  })
+
+  local player_back_2 = BillboardVisual.new({
+    width = 24,
+    height = 48,
+    draw = function(width, height)
+      love.graphics.setColor(1, 1, 1, 1)
+      love.graphics.rectangle("line", 0, 0, width, height)
+      love.graphics.line(4, 10, width - 4, 10)
+      love.graphics.line(width - 4, height, width - 8, height - 8)
+    end
+  })
+
+  local player_left_1 = TransformedBillboardVisual.new({
+    visual = player_right_1,
+    scale_x = -1
+  })
+
+  local player_left_2 = TransformedBillboardVisual.new({
+    visual = player_right_2,
+    scale_x = -1
+  })
+
+  local player_front = IndexedBillboardVisual.new({
+    visuals = { player_front_1, player_front_2 },
+    index_provider = player_frame_index
+  })
+
+  local player_right = IndexedBillboardVisual.new({
+    visuals = { player_right_1, player_right_2 },
+    index_provider = player_frame_index
+  })
+
+  local player_back = IndexedBillboardVisual.new({
+    visuals = { player_back_1, player_back_2 },
+    index_provider = player_frame_index
+  })
+
+  local player_left = IndexedBillboardVisual.new({
+    visuals = { player_left_1, player_left_2 },
+    index_provider = player_frame_index
   })
 
   local player_directional_visual = DirectionalBillboardVisual.new({
@@ -335,20 +399,16 @@ function TestSceneRenderer.new(options)
       position_provider = function()
         return self.door:get_position()
       end,
-      visual = test_visual
-
-
-
-      -- BillboardVisual.new({
-      --   width = 500,
-      --   height = 800,
-      --   draw = function(width, height)
-      --     love.graphics.setColor(0, 0, 1, 1)
-      --     love.graphics.rectangle("fill", 0, 0, width, height)
-      --     love.graphics.setColor(1, 1, 1, 1)
-      --     love.graphics.circle("fill", width - 30, height * 0.5, 20)
-      --   end
-      -- })
+      visual = BillboardVisual.new({
+        width = 500,
+        height = 800,
+        draw = function(width, height)
+          love.graphics.setColor(0, 0, 1, 1)
+          love.graphics.rectangle("fill", 0, 0, width, height)
+          love.graphics.setColor(1, 1, 1, 1)
+          love.graphics.circle("fill", width - 30, height * 0.5, 20)
+        end
+      })
     },
 
     {
@@ -444,6 +504,7 @@ function TestSceneRenderer:update(dt)
   )
 
   self.ball_animation:update(dt)
+  self.player_animation:update(dt)
 end
 
 -- Draws all configured render layers in their current order.
