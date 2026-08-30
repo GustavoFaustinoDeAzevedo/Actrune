@@ -13,6 +13,7 @@ local WorldRegionView = require("engine.render.world_region_view")
 local ProjectedWorldPlane = require("project.render.projections.projected_world_plane")
 local RenderLayerGroup = require("engine.render.render_layer_group")
 local ProjectedBillboardRenderer = require("engine.render.projected_billboard_renderer")
+local OrientedOffsetPositionPolicy = require("engine.render.camera_position.oriented_offset_position_policy")
 
 
 local TestSceneRenderer = {}
@@ -54,6 +55,32 @@ function TestSceneRenderer.new(options)
     y = player_y
   })
 
+  self.projected_camera = Camera2D.new({
+    x = player_x,
+    y = player_y,
+    rotation = math.pi
+  })
+
+  self.projected_camera_offset = OrientedOffsetPositionPolicy.new(
+    EntityPositionPolicy.new(self.player),
+    function()
+      return self.projected_camera:get_rotation()
+    end,
+    {
+      forward = -96
+    }
+  )
+
+  self.projected_camera_position = CameraPositionControl.new(
+    self.projected_camera,
+    self.projected_camera_offset,
+    {
+      response = PositionResponse.new({
+        half_life = 0.08
+      })
+    }
+  )
+
   self.camera_position_response = PositionResponse.new({
     half_life = 0.08
   })
@@ -67,29 +94,27 @@ function TestSceneRenderer.new(options)
   )
 
 
-
   self.ground_transform = LayerTransform2D.new()
   self.layers = RenderLayerStack.new()
   self.ground_region_size = 2048
 
-  local camera_x, camera_y = self.camera:get_position()
+  local projected_x, projected_y = self.projected_camera:get_position()
   local half_region = self.ground_region_size * 0.5
 
   self.ground_world_region = WorldRegionView.new({
-    min_x = camera_x - half_region,
-    min_y = camera_y - half_region,
-    max_x = camera_x + half_region,
-    max_y = camera_y + half_region
+    min_x = projected_x - half_region,
+    min_y = projected_y - half_region,
+    max_x = projected_x + half_region,
+    max_y = projected_y + half_region
   })
 
   self.ground_projection = ProjectedWorldPlane.new({
-    camera = self.camera,
+    viewpoint = self.projected_camera,
     source_region = self.ground_world_region,
     horizon = 0.3,
     near_distance = 32,
     far_distance = 800,
-    horizontal_fov = math.rad(90),
-    rotation_offset = math.pi
+    horizontal_fov = math.rad(75)
   })
 
   self.billboard_renderer = ProjectedBillboardRenderer.new(self.ground_projection)
@@ -152,6 +177,17 @@ function TestSceneRenderer.new(options)
   }))
 
   self.projected_billboards = {
+    {
+      id = "player",
+      position_provider = function()
+        return self.player:get_position()
+      end,
+      draw = function()
+        love.graphics.setColor(1, 1, 1, 1)
+        love.graphics.rectangle("line", -12, -48, 24, 48)
+        love.graphics.line(-8, -36, 8, -36)
+      end
+    },
     {
       id = "floor_marker",
       position_provider = function()
@@ -234,9 +270,8 @@ function TestSceneRenderer:_draw_ground()
   SpatialDebugRenderer.draw_shape(self.floor, "physics")
 end
 
--- Draws regular world entities.
+-- Draws regular world entities that are not currently part of the projected billboard space.
 function TestSceneRenderer:_draw_world()
-  SpatialDebugRenderer.draw_shape(self.player, "collision")
   SpatialDebugRenderer.draw_shape(self.step_player, "collision")
 end
 
@@ -247,18 +282,19 @@ function TestSceneRenderer:_draw_ground_debug()
   SpatialDebugRenderer.draw_shape(self.free_area, "area")
 end
 
--- Updates time-dependent rendering behavior and the captured ground region.
+-- Updates time-dependent rendering behavior and the captured projected world region.
 function TestSceneRenderer:update(dt)
   self.camera_position:update(dt)
+  self.projected_camera_position:update(dt)
 
-  local camera_x, camera_y = self.camera:get_position()
+  local projected_x, projected_y = self.projected_camera:get_position()
   local half_region = self.ground_region_size * 0.5
 
   self.ground_world_region:set_bounds(
-    camera_x - half_region,
-    camera_y - half_region,
-    camera_x + half_region,
-    camera_y + half_region
+    projected_x - half_region,
+    projected_y - half_region,
+    projected_x + half_region,
+    projected_y + half_region
   )
 end
 

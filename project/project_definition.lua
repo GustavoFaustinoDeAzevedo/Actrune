@@ -4,14 +4,14 @@ local project_definition = {
       ball = {
         properties = {
           density = 1,
-          restitution = 0.6,
+          restitution = 0,
           friction = 0.3
         }
       },
 
       floor = {
         properties = {
-          restitution = 0.2,
+          restitution = 0,
           friction = 0.8
         }
       }
@@ -115,7 +115,7 @@ local project_definition = {
       id = "bounce_ball",
 
       transform = {
-        x = 320,
+        x = 280,
         y = 200
       },
 

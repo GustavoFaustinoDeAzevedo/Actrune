@@ -44,6 +44,11 @@ function Camera2D:set_rotation(rotation)
   self.rotation = rotation
 end
 
+-- Returns the camera rotation in radians.
+function Camera2D:get_rotation()
+  return self.rotation
+end
+
 -- Changes the camera zoom factor.
 function Camera2D:set_zoom(zoom)
   assert(type(zoom) == "number" and zoom > 0, "camera zoom must be greater than zero")

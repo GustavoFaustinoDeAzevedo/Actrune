@@ -5,8 +5,8 @@ local ProjectedWorldPlane = {}
 ProjectedWorldPlane.__index = ProjectedWorldPlane
 
 local shader_source = [[
-extern vec2 camera_position;
-extern number camera_rotation;
+extern vec2 view_position;
+extern number view_rotation;
 extern number rotation_offset;
 extern number horizon;
 extern number near_distance;
@@ -24,13 +24,13 @@ vec4 effect(vec4 color, Image texture, vec2 texture_coords, vec2 screen_coords)
   float distance = near_distance / normalized_y;
   if (distance > far_distance) return vec4(0.0);
 
-  float rotation = camera_rotation + rotation_offset;
+  float rotation = view_rotation + rotation_offset;
   float screen_x = (texture_coords.x - 0.5) * 2.0;
   float lateral = screen_x * distance * tan(horizontal_fov * 0.5);
 
   vec2 forward = vec2(sin(rotation), -cos(rotation));
   vec2 right = vec2(cos(rotation), sin(rotation));
-  vec2 world_position = camera_position + forward * distance + right * lateral;
+  vec2 world_position = view_position + forward * distance + right * lateral;
 
   vec2 world_min = world_bounds.xy;
   vec2 world_size = world_bounds.zw - world_bounds.xy;
@@ -51,11 +51,13 @@ end
 function ProjectedWorldPlane.new(options)
   options = options or {}
 
-  assert(options.camera ~= nil, "projected world plane requires a camera")
+  assert(options.viewpoint ~= nil, "projected world plane requires a viewpoint")
+  assert(type(options.viewpoint.get_position) == "function", "projected world plane viewpoint must expose get_position")
+  assert(type(options.viewpoint.get_rotation) == "function", "projected world plane viewpoint must expose get_rotation")
   assert(options.source_region ~= nil, "projected world plane requires a source world region")
 
   local self = setmetatable({}, ProjectedWorldPlane)
-  self.camera = options.camera
+  self.viewpoint = options.viewpoint
   self.source_region = options.source_region
   self.enabled = options.enabled ~= false
   self.horizon = options.horizon or 0.3
@@ -82,17 +84,17 @@ end
 
 -- Returns the effective world-space viewing rotation.
 function ProjectedWorldPlane:get_rotation()
-  return self.camera.rotation + self.rotation_offset
+  return self.viewpoint:get_rotation() + self.rotation_offset
 end
 
 -- Returns the current projection values consumed by the shader.
 function ProjectedWorldPlane:_get_uniforms()
-  local camera_x, camera_y = self.camera:get_position()
+  local view_x, view_y = self.viewpoint:get_position()
   local min_x, min_y, max_x, max_y = self.source_region:get_bounds()
 
   return {
-    camera_position = { camera_x, camera_y },
-    camera_rotation = self.camera.rotation,
+    view_position = { view_x, view_y },
+    view_rotation = self.viewpoint:get_rotation(),
     rotation_offset = self.rotation_offset,
     horizon = self.horizon,
     near_distance = self.near_distance,
@@ -108,10 +110,10 @@ function ProjectedWorldPlane:project_world_point(x, y, width, height)
   assert(type(width) == "number" and width > 0, "projection output width must be greater than zero")
   assert(type(height) == "number" and height > 0, "projection output height must be greater than zero")
 
-  local camera_x, camera_y = self.camera:get_position()
+  local view_x, view_y = self.viewpoint:get_position()
   local forward_x, forward_y, right_x, right_y = resolve_basis(self:get_rotation())
-  local relative_x = x - camera_x
-  local relative_y = y - camera_y
+  local relative_x = x - view_x
+  local relative_y = y - view_y
   local distance = relative_x * forward_x + relative_y * forward_y
   local lateral = relative_x * right_x + relative_y * right_y
 
@@ -165,11 +167,11 @@ function ProjectedWorldPlane:unproject_screen_point(x, y, width, height)
   local horizontal = (u - 0.5) * 2
   local lateral = horizontal * distance * math.tan(self.horizontal_fov * 0.5)
 
-  local camera_x, camera_y = self.camera:get_position()
+  local view_x, view_y = self.viewpoint:get_position()
   local forward_x, forward_y, right_x, right_y = resolve_basis(self:get_rotation())
 
-  result.x = camera_x + forward_x * distance + right_x * lateral
-  result.y = camera_y + forward_y * distance + right_y * lateral
+  result.x = view_x + forward_x * distance + right_x * lateral
+  result.y = view_y + forward_y * distance + right_y * lateral
   result.distance = distance
   result.lateral = lateral
   result.scale = normalized_y
