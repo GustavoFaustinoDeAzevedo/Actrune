@@ -20,6 +20,7 @@ local RotationResponse = require("engine.render.camera_rotation.rotation_respons
 local BillboardVisual = require("engine.render.billboard_visual")
 local DirectionalBillboardVisual = require("engine.render.directional_billboard_visual")
 local ImageBillboardVisual = require("engine.render.image_billboard_visual")
+local TransformedBillboardVisual = require("engine.render.transformed_billboard_visual")
 
 local test_image = love.graphics.newImage("project/default_img.png")
 
@@ -222,6 +223,11 @@ function TestSceneRenderer.new(options)
     end
   })
 
+  local player_left = TransformedBillboardVisual.new({
+    visual = player_right,
+    scale_x = -1
+  })
+
   local player_back = BillboardVisual.new({
     width = 24,
     height = 48,
@@ -230,16 +236,6 @@ function TestSceneRenderer.new(options)
       love.graphics.rectangle("line", 0, 0, width, height)
       love.graphics.line(4, 10, width - 4, 10)
       love.graphics.line(4, 14, width - 4, 14)
-    end
-  })
-
-  local player_left = BillboardVisual.new({
-    width = 24,
-    height = 48,
-    draw = function(width, height)
-      love.graphics.setColor(1, 1, 1, 1)
-      love.graphics.rectangle("line", 0, 0, width, height)
-      love.graphics.line(width * 0.5, 10, 2, 10)
     end
   })
 
