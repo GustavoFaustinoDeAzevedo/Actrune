@@ -12,6 +12,7 @@ local CanvasRenderView = require("engine.render.canvas_render_view")
 local WorldRegionView = require("engine.render.world_region_view")
 local ProjectedWorldPlane = require("project.render.projections.projected_world_plane")
 local RenderLayerGroup = require("engine.render.render_layer_group")
+local ProjectedBillboardRenderer = require("engine.render.projected_billboard_renderer")
 
 
 local TestSceneRenderer = {}
@@ -91,6 +92,8 @@ function TestSceneRenderer.new(options)
     rotation_offset = math.pi
   })
 
+  self.billboard_renderer = ProjectedBillboardRenderer.new(self.ground_projection)
+
   self.ground_canvas = CanvasRenderView.new({
     presenter = self.ground_projection
   })
@@ -124,19 +127,19 @@ function TestSceneRenderer.new(options)
   self.layers:add(self.projected_world)
 
   self.layers:add(RenderLayer.new({
+    name = "projected_billboards",
+    order = 150,
+    draw = function()
+      self:_draw_projected_billboards()
+    end
+  }))
+
+  self.layers:add(RenderLayer.new({
     name = "world",
     order = 200,
     view = self.camera,
     draw = function()
       self:_draw_world()
-    end
-  }))
-
-  self.layers:add(RenderLayer.new({
-    name = "projection_debug",
-    order = 150,
-    draw = function()
-      self:_draw_projection_debug()
     end
   }))
 
@@ -148,45 +151,60 @@ function TestSceneRenderer.new(options)
     end
   }))
 
+  self.projected_billboards = {
+    {
+      id = "floor_marker",
+      position_provider = function()
+        return self.floor:get_position()
+      end,
+      draw = function()
+        love.graphics.setColor(1, 1, 1, 1)
+        love.graphics.line(0, 0, 0, -48)
+        love.graphics.circle("line", 0, -48, 8)
+      end
+    },
+
+    {
+      id = "door",
+      position_provider = function()
+        return self.door:get_position()
+      end,
+      draw = function()
+        love.graphics.setColor(1, 1, 1, 1)
+        love.graphics.rectangle("line", -12, -48, 24, 48)
+        love.graphics.circle("fill", 7, -24, 2)
+      end
+    },
+
+    {
+      id = "bounce_ball",
+      position_provider = function()
+        return self.bounce_ball:get_position()
+      end,
+      draw = function()
+        love.graphics.setColor(1, 1, 1, 1)
+        love.graphics.circle("line", 0, -10, 10)
+      end
+    }
+  }
+
 
   return self
 end
 
--- Draws one screen-space marker obtained by projecting a world-space point.
-function TestSceneRenderer:_draw_projection_debug()
+-- Draws vertical world entities through the current perspective projection.
+function TestSceneRenderer:_draw_projected_billboards()
   local canvas = self.ground_canvas:get_canvas()
   local width, height = canvas:getDimensions()
-  local world_x, world_y = self.floor:get_position()
-  local projected = self.ground_projection:project_world_point(world_x, world_y, width, height)
-  local restored = self.ground_projection:unproject_screen_point(
-    projected.x,
-    projected.y,
+
+  self.billboard_renderer:draw(
+    self.projected_billboards,
     width,
-    height
+    height,
+    {
+      renderer = self
+    }
   )
-
-  if restored.visible then
-    love.graphics.print(
-      string.format(
-        "Projection round-trip: %.2f, %.2f",
-        restored.x - world_x,
-        restored.y - world_y
-      ),
-      20,
-      260
-    )
-  end
-
-  if not projected.visible then return end
-
-  local marker_height = math.max(10, 40 * projected.scale)
-  local marker_radius = math.max(2, 6 * projected.scale)
-
-  love.graphics.push("all")
-  love.graphics.setColor(1, 1, 1, 1)
-  love.graphics.line(projected.x, projected.y, projected.x, projected.y - marker_height)
-  love.graphics.circle("line", projected.x, projected.y - marker_height, marker_radius)
-  love.graphics.pop()
 end
 
 -- Draws the current runtime diagnostic information in screen space.
@@ -218,10 +236,6 @@ end
 
 -- Draws regular world entities.
 function TestSceneRenderer:_draw_world()
-  SpatialDebugRenderer.draw_shape(self.bounce_ball, "physics")
-  SpatialDebugRenderer.draw_circle_rotation(self.bounce_ball, "physics")
-  SpatialDebugRenderer.draw_shape(self.door, "interaction")
-  SpatialDebugRenderer.draw_shape(self.door, "collision")
   SpatialDebugRenderer.draw_shape(self.player, "collision")
   SpatialDebugRenderer.draw_shape(self.step_player, "collision")
 end
