@@ -130,6 +130,14 @@ local function validate_catalog_definition(errors, path, value, field_type, cont
   return true
 end
 
+-- Returns whether one named resource is known by the current validation context.
+local function resource_exists(context, type_name, name)
+  if context.resource_exists ~= nil then return context.resource_exists(type_name, name) end
+
+  local registry = context.resources and context.resources[type_name]
+  return registry ~= nil and registry:has(name)
+end
+
 -- Validates one field according to its registered metadata.
 local function validate_field(errors, path, value, field, context)
   if value == nil then
@@ -159,9 +167,7 @@ local function validate_field(errors, path, value, field, context)
   elseif field.type == "shape_reference_list" then
     validate_shape_references(errors, path, value, context)
   elseif field.type == "resource_reference" then
-    local registry = context.resources and context.resources[field.resource_type]
-
-    if registry == nil or not registry:has(value) then
+    if not resource_exists(context, field.resource_type, value) then
       add_error(errors, path,
         "references unknown " .. tostring(field.resource_type) .. " resource '" .. tostring(value) .. "'")
     end

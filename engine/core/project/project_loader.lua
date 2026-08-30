@@ -8,6 +8,16 @@ local EventActionBindings = require("engine.events.event_action_bindings")
 local ProjectLoader = {}
 ProjectLoader.__index = ProjectLoader
 
+-- Creates a resource existence query backed only by serialized project definitions.
+local function create_resource_exists(resource_definitions)
+  resource_definitions = resource_definitions or {}
+
+  return function(type_name, name)
+    local definitions = resource_definitions[type_name]
+    return type(definitions) == "table" and definitions[name] ~= nil
+  end
+end
+
 -- Creates a project loader backed by one complete project configuration.
 function ProjectLoader.new(options)
   options = options or {}
@@ -54,9 +64,10 @@ function ProjectLoader:_create_entity_factory(registries)
   return factory
 end
 
--- Validates all project resources against their registered factories and optional metadata.
+-- Validates all serialized project resources and their declared references without constructing them.
 function ProjectLoader:_validate_resources(resource_definitions)
   local errors = {}
+  local resource_exists = create_resource_exists(resource_definitions)
 
   for type_name, definitions in pairs(resource_definitions or {}) do
     if not self.configuration:has_resource_type(type_name) then
@@ -74,7 +85,8 @@ function ProjectLoader:_validate_resources(resource_definitions)
             metadata,
             "resources." .. type_name .. "." .. name,
             {
-              type_catalog = self.type_catalog
+              type_catalog = self.type_catalog,
+              resource_exists = resource_exists
             }
           )
 
@@ -88,8 +100,9 @@ function ProjectLoader:_validate_resources(resource_definitions)
 end
 
 -- Validates all project entities, shapes, components, events, and nested typed definitions.
-function ProjectLoader:_validate_entities(entity_definitions, resources)
+function ProjectLoader:_validate_entities(entity_definitions, resource_definitions)
   local errors = {}
+  local resource_exists = create_resource_exists(resource_definitions)
 
   for entity_index, entity_definition in ipairs(entity_definitions or {}) do
     local entity_path = "entities[" .. entity_index .. "]"
@@ -124,7 +137,7 @@ function ProjectLoader:_validate_entities(entity_definitions, resources)
             metadata,
             shape_path,
             {
-              resources = resources,
+              resource_exists = resource_exists,
               shapes = shapes,
               type_catalog = self.type_catalog
             }
@@ -157,7 +170,7 @@ function ProjectLoader:_validate_entities(entity_definitions, resources)
             metadata,
             component_path,
             {
-              resources = resources,
+              resource_exists = resource_exists,
               shapes = shapes,
               type_catalog = self.type_catalog
             }
@@ -172,7 +185,7 @@ function ProjectLoader:_validate_entities(entity_definitions, resources)
       entity_definition.events,
       entity_path .. ".events",
       {
-        resources = resources,
+        resources = resource_exists,
         shapes = shapes,
         type_catalog = self.type_catalog,
         action_exists = function(name)
@@ -187,7 +200,7 @@ function ProjectLoader:_validate_entities(entity_definitions, resources)
   return errors
 end
 
--- Validates a project definition before runtime objects are constructed.
+-- Validates a project definition without constructing runtime resources or entities.
 function ProjectLoader:validate(definition)
   assert(type(definition) == "table", "project definition must be a table")
 
@@ -196,10 +209,11 @@ function ProjectLoader:validate(definition)
   local resource_errors = self:_validate_resources(definition.resources)
   for _, validation_error in ipairs(resource_errors) do table.insert(errors, validation_error) end
 
-  local temporary_resources = {}
-  if #resource_errors == 0 then temporary_resources = self:_load_resources(definition.resources) end
+  local entity_errors = self:_validate_entities(
+    definition.entities,
+    definition.resources
+  )
 
-  local entity_errors = self:_validate_entities(definition.entities, temporary_resources)
   for _, validation_error in ipairs(entity_errors) do table.insert(errors, validation_error) end
 
   return errors
