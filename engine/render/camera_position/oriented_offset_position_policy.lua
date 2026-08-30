@@ -36,10 +36,10 @@ function OrientedOffsetPositionPolicy:resolve(context)
 
   assert(type(rotation) == "number", "oriented offset rotation provider must return a number")
 
-  local forward_x = math.sin(rotation)
-  local forward_y = -math.cos(rotation)
-  local right_x = math.cos(rotation)
-  local right_y = math.sin(rotation)
+  local forward_x = math.cos(rotation)
+  local forward_y = math.sin(rotation)
+  local right_x = -forward_y
+  local right_y = forward_x
 
   return x + forward_x * self.forward + right_x * self.right,
       y + forward_y * self.forward + right_y * self.right

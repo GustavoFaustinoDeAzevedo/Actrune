@@ -28,8 +28,8 @@ vec4 effect(vec4 color, Image texture, vec2 texture_coords, vec2 screen_coords)
   float screen_x = (texture_coords.x - 0.5) * 2.0;
   float lateral = screen_x * distance * tan(horizontal_fov * 0.5);
 
-  vec2 forward = vec2(sin(rotation), -cos(rotation));
-  vec2 right = vec2(cos(rotation), sin(rotation));
+  vec2 forward = vec2(cos(rotation), sin(rotation));
+  vec2 right = vec2(-sin(rotation), cos(rotation));
   vec2 world_position = view_position + forward * distance + right * lateral;
 
   vec2 world_min = world_bounds.xy;
@@ -42,9 +42,14 @@ vec4 effect(vec4 color, Image texture, vec2 texture_coords, vec2 screen_coords)
 }
 ]]
 
--- Resolves the forward and right vectors for one projection rotation.
+-- Resolves forward and right vectors using the Actrune world rotation convention.
 local function resolve_basis(rotation)
-  return math.sin(rotation), -math.cos(rotation), math.cos(rotation), math.sin(rotation)
+  local forward_x = math.cos(rotation)
+  local forward_y = math.sin(rotation)
+  local right_x = -forward_y
+  local right_y = forward_x
+
+  return forward_x, forward_y, right_x, right_y
 end
 
 -- Creates a perspective presenter that samples a top-down world region as a navigable plane.

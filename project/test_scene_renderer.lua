@@ -14,6 +14,9 @@ local ProjectedWorldPlane = require("project.render.projections.projected_world_
 local RenderLayerGroup = require("engine.render.render_layer_group")
 local ProjectedBillboardRenderer = require("engine.render.projected_billboard_renderer")
 local OrientedOffsetPositionPolicy = require("engine.render.camera_position.oriented_offset_position_policy")
+local CameraRotationControl = require("engine.render.camera_rotation_control")
+local EntityRotationPolicy = require("engine.render.camera_rotation.entity_rotation_policy")
+local RotationResponse = require("engine.render.camera_rotation.rotation_response")
 
 
 local TestSceneRenderer = {}
@@ -58,8 +61,20 @@ function TestSceneRenderer.new(options)
   self.projected_camera = Camera2D.new({
     x = player_x,
     y = player_y,
-    rotation = math.pi
+    rotation = self.player:get_rotation()
   })
+
+  self.projected_camera_rotation_response = RotationResponse.new({
+    half_life = 0.08
+  })
+
+  self.projected_camera_rotation = CameraRotationControl.new(
+    self.projected_camera,
+    EntityRotationPolicy.new(self.player),
+    {
+      response = self.projected_camera_rotation_response
+    }
+  )
 
   self.projected_camera_offset = OrientedOffsetPositionPolicy.new(
     EntityPositionPolicy.new(self.player),
@@ -223,8 +238,7 @@ function TestSceneRenderer.new(options)
       end
     }
   }
-
-
+  
   return self
 end
 
@@ -285,6 +299,8 @@ end
 -- Updates time-dependent rendering behavior and the captured projected world region.
 function TestSceneRenderer:update(dt)
   self.camera_position:update(dt)
+
+  self.projected_camera_rotation:update(dt)
   self.projected_camera_position:update(dt)
 
   local projected_x, projected_y = self.projected_camera:get_position()

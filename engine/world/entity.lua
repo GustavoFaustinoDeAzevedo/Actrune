@@ -36,6 +36,17 @@ function Entity:set_position(x, y)
     self.transform:set_position(x, y)
 end
 
+-- Returns the current rotation of this entity in radians.
+function Entity:get_rotation()
+    return self.transform.rotation
+end
+
+-- Changes the entity rotation in world space.
+function Entity:set_rotation(rotation)
+    assert(type(rotation) == "number", "entity rotation must be numeric")
+    self.transform:set_rotation(rotation)
+end
+
 -- Assigns a spatial shape to this entity under the given name.
 function Entity:set_shape(name, shape)
     assert(type(name) == "string", "shape name must be a string")
