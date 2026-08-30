@@ -21,6 +21,7 @@ local BillboardVisual = require("engine.render.billboard_visual")
 local DirectionalBillboardVisual = require("engine.render.directional_billboard_visual")
 local ImageBillboardVisual = require("engine.render.image_billboard_visual")
 local TransformedBillboardVisual = require("engine.render.transformed_billboard_visual")
+local AnimatedBillboardVisual = require("engine.render.animated_billboard_visual")
 
 local test_image = love.graphics.newImage("project/default_img.png")
 
@@ -248,6 +249,43 @@ function TestSceneRenderer.new(options)
     }
   })
 
+  local ball_frame_a = BillboardVisual.new({
+    width = 20,
+    height = 20,
+    draw = function(width, height)
+      love.graphics.setColor(1, 1, 1, 1)
+      love.graphics.circle("line", width * 0.5, height * 0.5, 6)
+    end
+  })
+
+  local ball_frame_b = BillboardVisual.new({
+    width = 20,
+    height = 20,
+    draw = function(width, height)
+      love.graphics.setColor(1, 1, 1, 1)
+      love.graphics.circle("line", width * 0.5, height * 0.5, 8)
+    end
+  })
+
+  local ball_frame_c = BillboardVisual.new({
+    width = 20,
+    height = 20,
+    draw = function(width, height)
+      love.graphics.setColor(1, 1, 1, 1)
+      love.graphics.circle("line", width * 0.5, height * 0.5, 10)
+    end
+  })
+
+  local ball_animation = AnimatedBillboardVisual.new({
+    frames = {
+      ball_frame_a,
+      ball_frame_b,
+      ball_frame_c,
+      ball_frame_b
+    },
+    frame_duration = 0.12
+  })
+
   self.projected_billboards = {
     {
       id = "player",
@@ -302,14 +340,16 @@ function TestSceneRenderer.new(options)
       position_provider = function()
         return self.bounce_ball:get_position()
       end,
-      visual = BillboardVisual.new({
-        width = 20,
-        height = 20,
-        draw = function(width, height)
-          love.graphics.setColor(1, 1, 1, 1)
-          love.graphics.circle("line", width * 0.5, height * 0.5, math.min(width, height) * 0.5)
-        end
-      })
+      visual = ball_animation
+
+      -- BillboardVisual.new({
+      --   width = 20,
+      --   height = 20,
+      --   draw = function(width, height)
+      --     love.graphics.setColor(1, 1, 1, 1)
+      --     love.graphics.circle("line", width * 0.5, height * 0.5, math.min(width, height) * 0.5)
+      --   end
+      -- })
     }
   }
 
@@ -386,6 +426,10 @@ function TestSceneRenderer:update(dt)
     projected_x + half_region,
     projected_y + half_region
   )
+
+  self.billboard_renderer:update(self.projected_billboards, dt, {
+    renderer = self
+  })
 end
 
 -- Draws all configured render layers in their current order.
