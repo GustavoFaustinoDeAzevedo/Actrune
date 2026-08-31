@@ -25,10 +25,12 @@ local function matches_type(value, field_type)
   if field_type == "boolean" then return type(value) == "boolean" end
   if field_type == "enum" then return type(value) == "string" end
   if field_type == "resource_reference" then return type(value) == "string" end
+  if field_type == "resource_reference_list" then return type(value) == "table" end
   if field_type == "shape_reference" then return type(value) == "string" end
   if field_type == "shape_reference_list" then return type(value) == "table" end
   if field_type == "action_reference" then return type(value) == "string" end
   if field_type == "string_list" then return type(value) == "table" end
+  if field_type == "number_list" then return type(value) == "table" end
   if field_type == "point_list" then return type(value) == "table" end
   if field_type == "property_map" then return type(value) == "table" end
 
@@ -100,6 +102,27 @@ local function validate_string_list(errors, path, values, field)
   end
 end
 
+-- Validates a list containing only numbers and its constraints.
+local function validate_number_list(errors, path, values, field)
+  if field.min_items ~= nil and #values < field.min_items then
+    add_error(errors, path, "must contain at least " .. tostring(field.min_items) .. " item(s)")
+  end
+
+  if field.max_items ~= nil and #values > field.max_items then
+    add_error(errors, path, "must contain at most " .. tostring(field.max_items) .. " item(s)")
+  end
+
+  for index, value in ipairs(values) do
+    local item_path = path .. "[" .. index .. "]"
+
+    if type(value) ~= "number" then
+      add_error(errors, item_path, "must be a number")
+    else
+      validate_number(errors, item_path, value, field)
+    end
+  end
+end
+
 -- Validates a nested typed definition using metadata from the active type catalog.
 local function validate_catalog_definition(errors, path, value, field_type, context)
   local type_catalog = context.type_catalog
@@ -138,6 +161,31 @@ local function resource_exists(context, type_name, name)
   return registry ~= nil and registry:has(name)
 end
 
+-- Validates a list of named resource references.
+local function validate_resource_reference_list(errors, path, values, field, context)
+  if field.min_items ~= nil and #values < field.min_items then
+    add_error(errors, path, "must contain at least " .. tostring(field.min_items) .. " item(s)")
+  end
+
+  if field.max_items ~= nil and #values > field.max_items then
+    add_error(errors, path, "must contain at most " .. tostring(field.max_items) .. " item(s)")
+  end
+
+  for index, reference in ipairs(values) do
+    local reference_path = path .. "[" .. index .. "]"
+
+    if type(reference) ~= "string" or reference == "" then
+      add_error(errors, reference_path, "must be a non-empty resource name")
+    elseif not resource_exists(context, field.resource_type, reference) then
+      add_error(
+        errors,
+        reference_path,
+        "references unknown " .. tostring(field.resource_type) .. " resource '" .. reference .. "'"
+      )
+    end
+  end
+end
+
 -- Validates one field according to its registered metadata.
 local function validate_field(errors, path, value, field, context)
   if value == nil then
@@ -158,6 +206,8 @@ local function validate_field(errors, path, value, field, context)
     if not contains(field.values, value) then add_error(errors, path, "invalid value '" .. tostring(value) .. "'") end
   elseif field.type == "string_list" then
     validate_string_list(errors, path, value, field)
+  elseif field.type == "number_list" then
+    validate_number_list(errors, path, value, field)
   elseif field.type == "point_list" then
     validate_point_list(errors, path, value, field)
   elseif field.type == "shape_reference" then
@@ -171,6 +221,8 @@ local function validate_field(errors, path, value, field, context)
       add_error(errors, path,
         "references unknown " .. tostring(field.resource_type) .. " resource '" .. tostring(value) .. "'")
     end
+  elseif field.type == "resource_reference_list" then
+    validate_resource_reference_list(errors, path, value, field, context)
   elseif field.type == "action_reference" then
     if context.action_exists ~= nil and not context.action_exists(value) then
       add_error(errors, path, "references unknown event action '" .. tostring(value) .. "'")

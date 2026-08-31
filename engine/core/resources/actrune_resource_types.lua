@@ -4,6 +4,8 @@ local ControlProfileFactory = require("engine.world.control.control_profile_fact
 local PhysicalMaterialFactory = require("engine.world.physics.physical_material_factory")
 local ImageResourceFactory = require("engine.render.image_resource_factory")
 local ImageRegionFactory = require("engine.render.image_region_factory")
+local ResourceSequenceFactory = require("engine.core.resources.resource_sequence_factory")
+local AnimationClipFactory = require("engine.core.animation.animation_clip_factory")
 
 local ActruneResourceTypes = {}
 
@@ -52,6 +54,18 @@ function ActruneResourceTypes.register(register)
     }
   })
 
+  register:register_resource_type("image_region_sequence", ResourceSequenceFactory.for_type("image_region"), {
+    fields = {
+      {
+        name = "items",
+        type = "resource_reference_list",
+        resource_type = "image_region",
+        required = true,
+        min_items = 1
+      }
+    }
+  })
+
   register:register_resource_type("physical_material", PhysicalMaterialFactory.create, {
     fields = {
       {
@@ -71,6 +85,23 @@ function ActruneResourceTypes.register(register)
     fields = {
       { name = "cell_width",  type = "number", required = true, min_exclusive = 0 },
       { name = "cell_height", type = "number", required = true, min_exclusive = 0 }
+    }
+  })
+
+  register:register_resource_type("animation_clip", AnimationClipFactory.create, {
+    fields = {
+      {
+        name = "frame_durations",
+        type = "number_list",
+        required = true,
+        min_items = 1,
+        min_exclusive = 0
+      },
+      {
+        name = "loop",
+        type = "boolean",
+        default = true
+      }
     }
   })
 

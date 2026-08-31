@@ -21,9 +21,9 @@ local BillboardVisual = require("engine.render.billboard_visual")
 local DirectionalBillboardVisual = require("engine.render.directional_billboard_visual")
 local ImageBillboardVisual = require("engine.render.image_billboard_visual")
 local TransformedBillboardVisual = require("engine.render.transformed_billboard_visual")
-local AnimationClip = require("engine.core.animation.animation_clip")
 local AnimationPlayer = require("engine.core.animation.animation_player")
 local IndexedBillboardVisual = require("engine.render.indexed_billboard_visual")
+
 
 
 local TestSceneRenderer = {}
@@ -57,6 +57,10 @@ function TestSceneRenderer.new(options)
   self.small_grid_area = self.project.entities_by_id["small_grid_area"]
   self.large_grid_area = self.project.entities_by_id["large_grid_area"]
   self.free_area = self.project.entities_by_id["free_area"]
+
+  local player_front_sequence = self.project.resources.image_region_sequence:get("player_front_walk")
+  local player_walk_clip = self.project.resources.animation_clip:get("player_walk")
+  local ball_pulse_clip = self.project.resources.animation_clip:get("ball_pulse")
 
   local player_x, player_y = self.player:get_position()
 
@@ -198,17 +202,24 @@ function TestSceneRenderer.new(options)
     end
   }))
 
-  self.player_animation = AnimationPlayer.new(
-    AnimationClip.new({
-      frame_count = 2,
-      frame_duration = 0.18,
-      loop = true
-    })
-  )
+  self.player_animation = AnimationPlayer.new(player_walk_clip)
 
   local function player_frame_index()
     return self.player_animation:get_frame_index()
   end
+
+  local player_front_image_visuals = {}
+
+  for index = 1, player_front_sequence:get_count() do
+    player_front_image_visuals[index] = ImageBillboardVisual.new({
+      source = player_front_sequence:get(index)
+    })
+  end
+
+  local player_front_image = IndexedBillboardVisual.new({
+    visuals = player_front_image_visuals,
+    index_provider = player_frame_index
+  })
 
   local player_front_1 = BillboardVisual.new({
     width = 24,
@@ -342,17 +353,7 @@ function TestSceneRenderer.new(options)
     end
   })
 
-  self.ball_animation = AnimationPlayer.new(
-    AnimationClip.new({
-      frame_durations = {
-        0.3,
-        0.05,
-        0.05,
-        0.2
-      },
-      loop = true
-    })
-  )
+  self.ball_animation = AnimationPlayer.new(ball_pulse_clip)
 
   local ball_animation_visual = IndexedBillboardVisual.new({
     visuals = {
@@ -375,7 +376,7 @@ function TestSceneRenderer.new(options)
       rotation_provider = function()
         return self.player:get_rotation()
       end,
-      visual = player_directional_visual
+      visual = player_front_image
     },
 
     {
