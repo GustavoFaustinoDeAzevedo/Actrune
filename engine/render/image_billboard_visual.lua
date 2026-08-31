@@ -3,17 +3,18 @@ local love = require "love"
 local ImageBillboardVisual = {}
 ImageBillboardVisual.__index = ImageBillboardVisual
 
--- Creates a billboard visual backed by one LÖVE image.
+-- Creates a billboard visual backed by any drawable image source.
 function ImageBillboardVisual.new(options)
   options = options or {}
 
-  assert(options.image ~= nil and type(options.image.getDimensions) == "function",
-    "image billboard visual requires an image")
+  assert(options.source ~= nil, "image billboard visual requires a source")
+  assert(type(options.source.get_dimensions) == "function", "image billboard source must expose get_dimensions")
+  assert(type(options.source.draw) == "function", "image billboard source must expose draw")
 
-  local source_width, source_height = options.image:getDimensions()
+  local source_width, source_height = options.source:get_dimensions()
 
   local self = setmetatable({}, ImageBillboardVisual)
-  self.image = options.image
+  self.source = options.source
   self.width = options.width or source_width
   self.height = options.height or source_height
   self.anchor_x = options.anchor_x or 0.5
@@ -21,16 +22,17 @@ function ImageBillboardVisual.new(options)
   self.flip_x = options.flip_x == true
   self.flip_y = options.flip_y == true
 
-  assert(self.width > 0 and self.height > 0, "image billboard dimensions must be greater than zero")
+  assert(type(self.width) == "number" and self.width > 0, "image billboard width must be greater than zero")
+  assert(type(self.height) == "number" and self.height > 0, "image billboard height must be greater than zero")
+  assert(type(self.anchor_x) == "number" and type(self.anchor_y) == "number", "image billboard anchor must be numeric")
 
   return self
 end
 
--- Changes the displayed local dimensions without modifying the source image.
+-- Changes the displayed local dimensions without modifying the source asset.
 function ImageBillboardVisual:set_size(width, height)
   assert(type(width) == "number" and width > 0, "image billboard width must be greater than zero")
   assert(type(height) == "number" and height > 0, "image billboard height must be greater than zero")
-
   self.width = width
   self.height = height
 end
@@ -38,20 +40,19 @@ end
 -- Changes the normalized point anchored to the projected world position.
 function ImageBillboardVisual:set_anchor(anchor_x, anchor_y)
   assert(type(anchor_x) == "number" and type(anchor_y) == "number", "image billboard anchor must be numeric")
-
   self.anchor_x = anchor_x
   self.anchor_y = anchor_y
 end
 
--- Changes horizontal and vertical visual mirroring.
+-- Changes optional horizontal and vertical source mirroring.
 function ImageBillboardVisual:set_flip(flip_x, flip_y)
   self.flip_x = flip_x == true
   self.flip_y = flip_y == true
 end
 
--- Draws the source image with the configured dimensions, anchor, and mirroring.
+-- Draws the image source using the configured billboard dimensions and anchor.
 function ImageBillboardVisual:draw(context)
-  local source_width, source_height = self.image:getDimensions()
+  local source_width, source_height = self.source:get_dimensions()
   local scale_x = self.width / source_width
   local scale_y = self.height / source_height
 
@@ -61,8 +62,7 @@ function ImageBillboardVisual:draw(context)
   love.graphics.push("all")
   love.graphics.setColor(1, 1, 1, 1)
 
-  love.graphics.draw(
-    self.image,
+  self.source:draw(
     0,
     0,
     0,
