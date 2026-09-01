@@ -7,6 +7,7 @@ local ImageRegionFactory = require("engine.render.image_region_factory")
 local ResourceSequenceFactory = require("engine.core.resources.resource_sequence_factory")
 local AnimationClipFactory = require("engine.core.animation.animation_clip_factory")
 local AnimationFrameTrackFactory = require("engine.core.animation.animation_frame_track_factory")
+local AnimationFrameTrackSetFactory = require("engine.core.animation.animation_frame_track_set_factory")
 
 local ActruneResourceTypes = {}
 
@@ -108,22 +109,34 @@ function ActruneResourceTypes.register(register)
 
   register:register_resource_type("image_animation_track",
     AnimationFrameTrackFactory.for_sequence_type("image_region_sequence"), {
-    fields = {
-      {
-        name = "clip",
-        type = "resource_reference",
-        resource_type = "animation_clip",
-        required = true
-      },
-      {
-        name = "sequence",
-        type = "resource_reference",
-        resource_type = "image_region_sequence",
-        required = true
+      fields = {
+        {
+          name = "clip",
+          type = "resource_reference",
+          resource_type = "animation_clip",
+          required = true
+        },
+        {
+          name = "sequence",
+          type = "resource_reference",
+          resource_type = "image_region_sequence",
+          required = true
+        }
       }
-    }
-  }
-  )
+    })
+
+  register:register_resource_type("image_animation_track_set",
+    AnimationFrameTrackSetFactory.for_track_type("image_animation_track"), {
+      fields = {
+        {
+          name = "tracks",
+          type = "resource_reference_list",
+          resource_type = "image_animation_track",
+          required = true,
+          min_items = 1
+        }
+      }
+    })
 
   register:register_resource_type("input_map", InputMapFactory.create)
   register:register_resource_type("control_profile", ControlProfileFactory.create)

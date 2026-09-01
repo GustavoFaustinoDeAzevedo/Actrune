@@ -58,10 +58,7 @@ function TestSceneRenderer.new(options)
   self.large_grid_area = self.project.entities_by_id["large_grid_area"]
   self.free_area = self.project.entities_by_id["free_area"]
 
-  local player_front_track = self.project.resources.image_animation_track:get("player_front_walk")
-  local player_right_track = self.project.resources.image_animation_track:get("player_right_walk")
-  local player_back_track = self.project.resources.image_animation_track:get("player_back_walk")
-  local player_left_track = self.project.resources.image_animation_track:get("player_left_walk")
+  local player_walk_tracks = self.project.resources.image_animation_track_set:get("player_walk")
   local ball_pulse_clip = self.project.resources.animation_clip:get("ball_pulse")
 
   local player_x, player_y = self.player:get_position()
@@ -204,24 +201,23 @@ function TestSceneRenderer.new(options)
     end
   }))
 
-  self.player_animation = AnimationPlayer.new(player_front_track:get_clip())
+  self.player_animation = AnimationPlayer.new(player_walk_tracks:get_clip())
 
   local function player_frame_index()
     return self.player_animation:get_frame_index()
   end
 
-  local player_front = ImageAnimationVisualFactory.create(player_front_track, player_frame_index)
-  local player_right = ImageAnimationVisualFactory.create(player_right_track, player_frame_index)
-  local player_back = ImageAnimationVisualFactory.create(player_back_track, player_frame_index)
-  local player_left = ImageAnimationVisualFactory.create(player_left_track, player_frame_index)
+  local player_directional_visuals = {}
+
+  for index = 1, player_walk_tracks:get_count() do
+    player_directional_visuals[index] = ImageAnimationVisualFactory.create(
+      player_walk_tracks:get(index),
+      player_frame_index
+    )
+  end
 
   local player_directional_visual = DirectionalBillboardVisual.new({
-    directions = {
-      player_front,
-      player_right,
-      player_back,
-      player_left
-    }
+    directions = player_directional_visuals
   })
 
   local ball_frame_a = BillboardVisual.new({

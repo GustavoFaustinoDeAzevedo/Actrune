@@ -162,6 +162,16 @@ local project_definition = {
         sequence = "player_left_walk"
       }
     },
+    image_animation_track_set = {
+      player_walk = {
+        tracks = {
+          "player_front_walk",
+          "player_right_walk",
+          "player_back_walk",
+          "player_left_walk"
+        }
+      }
+    },
     physical_material = {
       ball = {
         properties = {
