@@ -23,6 +23,8 @@ local ImageBillboardVisual = require("engine.render.image_billboard_visual")
 local TransformedBillboardVisual = require("engine.render.transformed_billboard_visual")
 local AnimationPlayer = require("engine.core.animation.animation_player")
 local IndexedBillboardVisual = require("engine.render.indexed_billboard_visual")
+local AnimationFrameTrack = require("engine.core.animation.animation_frame_track")
+
 
 
 
@@ -61,6 +63,11 @@ function TestSceneRenderer.new(options)
   local player_front_sequence = self.project.resources.image_region_sequence:get("player_front_walk")
   local player_walk_clip = self.project.resources.animation_clip:get("player_walk")
   local ball_pulse_clip = self.project.resources.animation_clip:get("ball_pulse")
+
+  local player_front_track = AnimationFrameTrack.new(
+    player_walk_clip,
+    player_front_sequence
+  )
 
   local player_x, player_y = self.player:get_position()
 
@@ -202,7 +209,7 @@ function TestSceneRenderer.new(options)
     end
   }))
 
-  self.player_animation = AnimationPlayer.new(player_walk_clip)
+  self.player_animation = AnimationPlayer.new(player_front_track:get_clip())
 
   local function player_frame_index()
     return self.player_animation:get_frame_index()
@@ -210,9 +217,9 @@ function TestSceneRenderer.new(options)
 
   local player_front_image_visuals = {}
 
-  for index = 1, player_front_sequence:get_count() do
+  for index = 1, player_front_track:get_frame_count() do
     player_front_image_visuals[index] = ImageBillboardVisual.new({
-      source = player_front_sequence:get(index)
+      source = player_front_track:get_frame(index)
     })
   end
 

@@ -1,13 +1,16 @@
 local project_definition = {
   resources = {
     image = {
-      characters = {
-        path = "project/assets/default_img.png"
+      characters_1 = {
+        path = "project/assets/default_img_1.png"
+      },
+      characters_2 = {
+        path = "project/assets/default_img_2.png"
       }
     },
     image_region = {
       player_front_1 = {
-        image = "characters",
+        image = "characters_1",
         x = 0,
         y = 0,
         width = 64,
@@ -15,7 +18,7 @@ local project_definition = {
       },
 
       player_front_2 = {
-        image = "characters",
+        image = "characters_2",
         x = 0,
         y = 0,
         width = 64,
@@ -25,8 +28,8 @@ local project_definition = {
     animation_clip = {
       player_walk = {
         frame_durations = {
-          0.18,
-          0.18
+          0.3,
+          0.5
         },
         loop = true
       },
@@ -50,6 +53,26 @@ local project_definition = {
         }
       },
 
+      player_right_walk = {
+        items = {
+          "player_front_1",
+          "player_front_2"
+        }
+      },
+
+      player_back_walk = {
+        items = {
+          "player_front_1",
+          "player_front_2"
+        }
+      },
+
+      player_left_walk = {
+        items = {
+          "player_front_1",
+          "player_front_2"
+        }
+      }
     },
     physical_material = {
       ball = {
