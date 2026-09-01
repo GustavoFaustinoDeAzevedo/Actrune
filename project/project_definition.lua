@@ -141,6 +141,27 @@ local project_definition = {
         }
       }
     },
+    image_animation_track = {
+      player_front_walk = {
+        clip = "player_walk",
+        sequence = "player_front_walk"
+      },
+
+      player_right_walk = {
+        clip = "player_walk",
+        sequence = "player_right_walk"
+      },
+
+      player_back_walk = {
+        clip = "player_walk",
+        sequence = "player_back_walk"
+      },
+
+      player_left_walk = {
+        clip = "player_walk",
+        sequence = "player_left_walk"
+      }
+    },
     physical_material = {
       ball = {
         properties = {

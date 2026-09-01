@@ -21,7 +21,6 @@ local BillboardVisual = require("engine.render.billboard_visual")
 local DirectionalBillboardVisual = require("engine.render.directional_billboard_visual")
 local AnimationPlayer = require("engine.core.animation.animation_player")
 local IndexedBillboardVisual = require("engine.render.indexed_billboard_visual")
-local AnimationFrameTrack = require("engine.core.animation.animation_frame_track")
 local ImageAnimationVisualFactory = require("engine.render.image_animation_visual_factory")
 
 
@@ -59,28 +58,11 @@ function TestSceneRenderer.new(options)
   self.large_grid_area = self.project.entities_by_id["large_grid_area"]
   self.free_area = self.project.entities_by_id["free_area"]
 
-  local player_walk_clip = self.project.resources.animation_clip:get("player_walk")
+  local player_front_track = self.project.resources.image_animation_track:get("player_front_walk")
+  local player_right_track = self.project.resources.image_animation_track:get("player_right_walk")
+  local player_back_track = self.project.resources.image_animation_track:get("player_back_walk")
+  local player_left_track = self.project.resources.image_animation_track:get("player_left_walk")
   local ball_pulse_clip = self.project.resources.animation_clip:get("ball_pulse")
-
-  local player_front_track = AnimationFrameTrack.new(
-    player_walk_clip,
-    self.project.resources.image_region_sequence:get("player_front_walk")
-  )
-
-  local player_right_track = AnimationFrameTrack.new(
-    player_walk_clip,
-    self.project.resources.image_region_sequence:get("player_right_walk")
-  )
-
-  local player_back_track = AnimationFrameTrack.new(
-    player_walk_clip,
-    self.project.resources.image_region_sequence:get("player_back_walk")
-  )
-
-  local player_left_track = AnimationFrameTrack.new(
-    player_walk_clip,
-    self.project.resources.image_region_sequence:get("player_left_walk")
-  )
 
   local player_x, player_y = self.player:get_position()
 
