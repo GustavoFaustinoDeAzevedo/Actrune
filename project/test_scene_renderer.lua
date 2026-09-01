@@ -20,7 +20,6 @@ local RotationResponse = require("engine.render.camera_rotation.rotation_respons
 local BillboardVisual = require("engine.render.billboard_visual")
 local DirectionalBillboardVisual = require("engine.render.directional_billboard_visual")
 local ImageBillboardVisual = require("engine.render.image_billboard_visual")
-local TransformedBillboardVisual = require("engine.render.transformed_billboard_visual")
 local AnimationPlayer = require("engine.core.animation.animation_player")
 local IndexedBillboardVisual = require("engine.render.indexed_billboard_visual")
 local AnimationFrameTrack = require("engine.core.animation.animation_frame_track")
@@ -60,13 +59,27 @@ function TestSceneRenderer.new(options)
   self.large_grid_area = self.project.entities_by_id["large_grid_area"]
   self.free_area = self.project.entities_by_id["free_area"]
 
-  local player_front_sequence = self.project.resources.image_region_sequence:get("player_front_walk")
   local player_walk_clip = self.project.resources.animation_clip:get("player_walk")
   local ball_pulse_clip = self.project.resources.animation_clip:get("ball_pulse")
 
   local player_front_track = AnimationFrameTrack.new(
     player_walk_clip,
-    player_front_sequence
+    self.project.resources.image_region_sequence:get("player_front_walk")
+  )
+
+  local player_right_track = AnimationFrameTrack.new(
+    player_walk_clip,
+    self.project.resources.image_region_sequence:get("player_right_walk")
+  )
+
+  local player_back_track = AnimationFrameTrack.new(
+    player_walk_clip,
+    self.project.resources.image_region_sequence:get("player_back_walk")
+  )
+
+  local player_left_track = AnimationFrameTrack.new(
+    player_walk_clip,
+    self.project.resources.image_region_sequence:get("player_left_walk")
   )
 
   local player_x, player_y = self.player:get_position()
@@ -83,7 +96,7 @@ function TestSceneRenderer.new(options)
   })
 
   self.projected_camera_rotation_response = RotationResponse.new({
-    half_life = 0.08
+    half_life = 0.1
   })
 
   self.projected_camera_rotation = CameraRotationControl.new(
@@ -215,6 +228,22 @@ function TestSceneRenderer.new(options)
     return self.player_animation:get_frame_index()
   end
 
+  -- Creates an indexed image visual backed by one synchronized animation frame track.
+  local function create_player_track_visual(track)
+    local visuals = {}
+
+    for index = 1, track:get_frame_count() do
+      visuals[index] = ImageBillboardVisual.new({
+        source = track:get_frame(index)
+      })
+    end
+
+    return IndexedBillboardVisual.new({
+      visuals = visuals,
+      index_provider = player_frame_index
+    })
+  end
+
   local player_front_image_visuals = {}
 
   for index = 1, player_front_track:get_frame_count() do
@@ -223,104 +252,13 @@ function TestSceneRenderer.new(options)
     })
   end
 
+  local player_front = create_player_track_visual(player_front_track)
+  local player_right = create_player_track_visual(player_right_track)
+  local player_back = create_player_track_visual(player_back_track)
+  local player_left = create_player_track_visual(player_left_track)
+
   local player_front_image = IndexedBillboardVisual.new({
     visuals = player_front_image_visuals,
-    index_provider = player_frame_index
-  })
-
-  local player_front_1 = BillboardVisual.new({
-    width = 24,
-    height = 48,
-    draw = function(width, height)
-      love.graphics.setColor(1, 1, 1, 1)
-      love.graphics.rectangle("line", 0, 0, width, height)
-      love.graphics.circle("line", width * 0.5, 10, 4)
-      love.graphics.line(4, height, 8, height - 8)
-    end
-  })
-
-  local player_front_2 = BillboardVisual.new({
-    width = 24,
-    height = 48,
-    draw = function(width, height)
-      love.graphics.setColor(1, 1, 1, 1)
-      love.graphics.rectangle("line", 0, 0, width, height)
-      love.graphics.circle("line", width * 0.5, 10, 4)
-      love.graphics.line(width - 4, height, width - 8, height - 8)
-    end
-  })
-
-  local player_right_1 = BillboardVisual.new({
-    width = 24,
-    height = 48,
-    draw = function(width, height)
-      love.graphics.setColor(1, 1, 1, 1)
-      love.graphics.rectangle("line", 0, 0, width, height)
-      love.graphics.line(width * 0.5, 10, width - 2, 10)
-      love.graphics.line(4, height, 8, height - 8)
-    end
-  })
-
-  local player_right_2 = BillboardVisual.new({
-    width = 24,
-    height = 48,
-    draw = function(width, height)
-      love.graphics.setColor(1, 1, 1, 1)
-      love.graphics.rectangle("line", 0, 0, width, height)
-      love.graphics.line(width * 0.5, 10, width - 2, 10)
-      love.graphics.line(width - 4, height, width - 8, height - 8)
-    end
-  })
-
-  local player_back_1 = BillboardVisual.new({
-    width = 24,
-    height = 48,
-    draw = function(width, height)
-      love.graphics.setColor(1, 1, 1, 1)
-      love.graphics.rectangle("line", 0, 0, width, height)
-      love.graphics.line(4, 10, width - 4, 10)
-      love.graphics.line(4, height, 8, height - 8)
-    end
-  })
-
-  local player_back_2 = BillboardVisual.new({
-    width = 24,
-    height = 48,
-    draw = function(width, height)
-      love.graphics.setColor(1, 1, 1, 1)
-      love.graphics.rectangle("line", 0, 0, width, height)
-      love.graphics.line(4, 10, width - 4, 10)
-      love.graphics.line(width - 4, height, width - 8, height - 8)
-    end
-  })
-
-  local player_left_1 = TransformedBillboardVisual.new({
-    visual = player_right_1,
-    scale_x = -1
-  })
-
-  local player_left_2 = TransformedBillboardVisual.new({
-    visual = player_right_2,
-    scale_x = -1
-  })
-
-  local player_front = IndexedBillboardVisual.new({
-    visuals = { player_front_1, player_front_2 },
-    index_provider = player_frame_index
-  })
-
-  local player_right = IndexedBillboardVisual.new({
-    visuals = { player_right_1, player_right_2 },
-    index_provider = player_frame_index
-  })
-
-  local player_back = IndexedBillboardVisual.new({
-    visuals = { player_back_1, player_back_2 },
-    index_provider = player_frame_index
-  })
-
-  local player_left = IndexedBillboardVisual.new({
-    visuals = { player_left_1, player_left_2 },
     index_provider = player_frame_index
   })
 
@@ -383,7 +321,7 @@ function TestSceneRenderer.new(options)
       rotation_provider = function()
         return self.player:get_rotation()
       end,
-      visual = player_front_image
+      visual = player_directional_visual
     },
 
     {

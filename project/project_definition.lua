@@ -6,7 +6,26 @@ local project_definition = {
       },
       characters_2 = {
         path = "project/assets/default_img_2.png"
-      }
+      },
+      characters_3 = {
+        path = "project/assets/default_img_3.png"
+      },
+      characters_4 = {
+        path = "project/assets/default_img_4.png"
+      },
+      characters_5 = {
+        path = "project/assets/default_img_5.png"
+      },
+      characters_6 = {
+        path = "project/assets/default_img_6.png"
+      },
+      characters_7 = {
+        path = "project/assets/default_img_7.png"
+      },
+      characters_8 = {
+        path = "project/assets/default_img_8.png"
+      },
+
     },
     image_region = {
       player_front_1 = {
@@ -23,13 +42,61 @@ local project_definition = {
         y = 0,
         width = 64,
         height = 64
+      },
+
+      player_right_1 = {
+        image = "characters_3",
+        x = 0,
+        y = 0,
+        width = 64,
+        height = 64
+      },
+
+      player_right_2 = {
+        image = "characters_4",
+        x = 0,
+        y = 0,
+        width = 64,
+        height = 64
+      },
+
+      player_back_1 = {
+        image = "characters_5",
+        x = 0,
+        y = 0,
+        width = 64,
+        height = 64
+      },
+
+      player_back_2 = {
+        image = "characters_6",
+        x = 0,
+        y = 0,
+        width = 64,
+        height = 64
+      },
+
+      player_left_1 = {
+        image = "characters_7",
+        x = 0,
+        y = 0,
+        width = 64,
+        height = 64
+      },
+
+      player_left_2 = {
+        image = "characters_8",
+        x = 0,
+        y = 0,
+        width = 64,
+        height = 64
       }
     },
     animation_clip = {
       player_walk = {
         frame_durations = {
-          0.3,
-          0.5
+          0.18,
+          0.18,
         },
         loop = true
       },
@@ -55,22 +122,22 @@ local project_definition = {
 
       player_right_walk = {
         items = {
-          "player_front_1",
-          "player_front_2"
+          "player_right_1",
+          "player_right_2"
         }
       },
 
       player_back_walk = {
         items = {
-          "player_front_1",
-          "player_front_2"
+          "player_back_1",
+          "player_back_2"
         }
       },
 
       player_left_walk = {
         items = {
-          "player_front_1",
-          "player_front_2"
+          "player_left_1",
+          "player_left_2"
         }
       }
     },

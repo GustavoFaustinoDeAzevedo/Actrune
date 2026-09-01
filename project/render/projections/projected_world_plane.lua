@@ -97,6 +97,11 @@ function ProjectedWorldPlane:get_view_position()
   return self.viewpoint:get_position()
 end
 
+-- Returns the world-space angle from which projected points are visually observed.
+function ProjectedWorldPlane:get_observation_angle(x, y)
+  return self:get_rotation() + math.pi
+end
+
 -- Returns the current projection values consumed by the shader.
 function ProjectedWorldPlane:_get_uniforms()
   local view_x, view_y = self.viewpoint:get_position()

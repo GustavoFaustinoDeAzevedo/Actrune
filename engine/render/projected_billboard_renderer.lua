@@ -30,23 +30,24 @@ local function normalize_angle(angle)
   return (angle + math.pi) % (math.pi * 2) - math.pi
 end
 
--- Resolves how the viewpoint observes one oriented billboard.
+-- Resolves how the current projection visually observes one oriented billboard.
 local function resolve_relative_rotation(projection, entry, x, y)
   if entry.rotation_provider == nil then return nil end
 
-  assert(type(entry.rotation_provider) == "function", "billboard rotation_provider must be a function")
-  assert(type(projection.get_view_position) == "function",
-    "directional billboard requires projection view position")
+  assert(type(entry.rotation_provider) == "function",
+    "billboard rotation_provider must be a function")
+  assert(type(projection.get_observation_angle) == "function",
+    "directional billboard requires projection observation angle")
 
   local rotation = entry.rotation_provider()
-  local view_x, view_y = projection:get_view_position()
+  local observation_angle = projection:get_observation_angle(x, y)
 
-  assert(type(rotation) == "number", "billboard rotation provider must return a numeric rotation")
-  assert(type(view_x) == "number" and type(view_y) == "number",
-    "projection view position must contain numeric coordinates")
+  assert(type(rotation) == "number",
+    "billboard rotation provider must return a numeric rotation")
+  assert(type(observation_angle) == "number",
+    "projection observation angle must be numeric")
 
-  local viewer_angle = math.atan(view_y - y, view_x - x)
-  return normalize_angle(viewer_angle - rotation)
+  return normalize_angle(rotation - observation_angle)
 end
 
 -- Sorts projected billboards from farthest to nearest with deterministic ties.
