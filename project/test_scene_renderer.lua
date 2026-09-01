@@ -19,10 +19,10 @@ local EntityRotationPolicy = require("engine.render.camera_rotation.entity_rotat
 local RotationResponse = require("engine.render.camera_rotation.rotation_response")
 local BillboardVisual = require("engine.render.billboard_visual")
 local DirectionalBillboardVisual = require("engine.render.directional_billboard_visual")
-local ImageBillboardVisual = require("engine.render.image_billboard_visual")
 local AnimationPlayer = require("engine.core.animation.animation_player")
 local IndexedBillboardVisual = require("engine.render.indexed_billboard_visual")
 local AnimationFrameTrack = require("engine.core.animation.animation_frame_track")
+local ImageAnimationVisualFactory = require("engine.render.image_animation_visual_factory")
 
 
 
@@ -228,39 +228,10 @@ function TestSceneRenderer.new(options)
     return self.player_animation:get_frame_index()
   end
 
-  -- Creates an indexed image visual backed by one synchronized animation frame track.
-  local function create_player_track_visual(track)
-    local visuals = {}
-
-    for index = 1, track:get_frame_count() do
-      visuals[index] = ImageBillboardVisual.new({
-        source = track:get_frame(index)
-      })
-    end
-
-    return IndexedBillboardVisual.new({
-      visuals = visuals,
-      index_provider = player_frame_index
-    })
-  end
-
-  local player_front_image_visuals = {}
-
-  for index = 1, player_front_track:get_frame_count() do
-    player_front_image_visuals[index] = ImageBillboardVisual.new({
-      source = player_front_track:get_frame(index)
-    })
-  end
-
-  local player_front = create_player_track_visual(player_front_track)
-  local player_right = create_player_track_visual(player_right_track)
-  local player_back = create_player_track_visual(player_back_track)
-  local player_left = create_player_track_visual(player_left_track)
-
-  local player_front_image = IndexedBillboardVisual.new({
-    visuals = player_front_image_visuals,
-    index_provider = player_frame_index
-  })
+  local player_front = ImageAnimationVisualFactory.create(player_front_track, player_frame_index)
+  local player_right = ImageAnimationVisualFactory.create(player_right_track, player_frame_index)
+  local player_back = ImageAnimationVisualFactory.create(player_back_track, player_frame_index)
+  local player_left = ImageAnimationVisualFactory.create(player_left_track, player_frame_index)
 
   local player_directional_visual = DirectionalBillboardVisual.new({
     directions = {
