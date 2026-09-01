@@ -185,7 +185,7 @@ function ProjectLoader:_validate_entities(entity_definitions, resource_definitio
       entity_definition.events,
       entity_path .. ".events",
       {
-        resources = resource_exists,
+        resource_exists = resource_exists,
         shapes = shapes,
         type_catalog = self.type_catalog,
         action_exists = function(name)
