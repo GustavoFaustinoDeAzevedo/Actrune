@@ -20,6 +20,7 @@ local RotationResponse = require("engine.render.camera_rotation.rotation_respons
 local BillboardVisual = require("engine.render.billboard_visual")
 local AnimationPlayer = require("engine.core.animation.animation_player")
 local IndexedBillboardVisual = require("engine.render.indexed_billboard_visual")
+local AnimatedEntityVisual = require("engine.render.animated_entity_visual")
 
 
 
@@ -258,43 +259,34 @@ function TestSceneRenderer.new(options)
     end
   })
 
-  self.projected_character_animations = {}
+  self.projected_character_visuals = {}
   local projected_character_billboards = {}
 
   for index = 1, projected_character_bindings:get_count() do
     local binding = projected_character_bindings:get(index)
     local entity_id = binding:get_entity_id()
     local entity = self.project.entities_by_id[entity_id]
-    local visual_template = binding:get_visual_template()
 
     assert(entity ~= nil,
       "visual binding references an unloaded entity: " .. entity_id)
-    assert(type(visual_template.get_clip) == "function",
-      "animated visual template must expose get_clip")
-    assert(type(visual_template.instantiate) == "function",
-      "animated visual template must expose instantiate")
 
-    local animation = AnimationPlayer.new(visual_template:get_clip())
+    local entity_visual = AnimatedEntityVisual.new(entity, binding:get_visual_template())
 
-    if index == 2 then animation:set_playback_rate(0.25) end
+    if index == 2 then
+      entity_visual:get_animation():set_playback_rate(0.25)
+    end
 
-    local visual = visual_template:instantiate({
-      index_provider = function()
-        return animation:get_frame_index()
-      end
-    })
-
-    self.projected_character_animations[index] = animation
+    self.projected_character_visuals[index] = entity_visual
 
     projected_character_billboards[index] = {
       id = entity_id,
       position_provider = function()
-        return entity:get_position()
+        return entity_visual:get_position()
       end,
       rotation_provider = function()
-        return entity:get_rotation()
+        return entity_visual:get_rotation()
       end,
-      visual = visual
+      visual = entity_visual:get_visual()
     }
   end
 
@@ -429,8 +421,9 @@ function TestSceneRenderer:update(dt)
   )
 
   self.ball_animation:update(dt)
-  for _, animation in ipairs(self.projected_character_animations) do
-    animation:update(dt)
+
+  for _, entity_visual in ipairs(self.projected_character_visuals) do
+    entity_visual:update(dt)
   end
 end
 
