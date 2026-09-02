@@ -183,9 +183,17 @@ local project_definition = {
         entity = "player",
         visual = "player_walk"
       },
-      door = {
+      door_character_test = {
         entity = "door",
         visual = "player_walk"
+      },
+    },
+    directional_image_animation_binding_sequence = {
+      projected_characters = {
+        items = {
+          "player",
+          "door_character_test"
+        }
       }
     },
     physical_material = {

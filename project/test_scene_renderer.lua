@@ -56,20 +56,10 @@ function TestSceneRenderer.new(options)
   self.large_grid_area = self.project.entities_by_id["large_grid_area"]
   self.free_area = self.project.entities_by_id["free_area"]
 
-  local player_visual_binding =
-      self.project.resources.directional_image_animation_binding:get("player")
+  local projected_character_bindings = self.project.resources.directional_image_animation_binding_sequence:get(
+    "projected_characters")
 
-  local player_walk_visual_template =
-      player_visual_binding:get_visual_template()
-
-  local player_visual_entity =
-      self.project.entities_by_id[player_visual_binding:get_entity_id()]
-
-  assert(player_visual_entity ~= nil,
-    "player visual binding references an unloaded entity")
-
-  local ball_pulse_clip =
-      self.project.resources.animation_clip:get("ball_pulse")
+  local ball_pulse_clip = self.project.resources.animation_clip:get("ball_pulse")
 
   local player_x, player_y = self.player:get_position()
 
@@ -211,13 +201,21 @@ function TestSceneRenderer.new(options)
     end
   }))
 
-  self.player_animation = AnimationPlayer.new(player_walk_visual_template:get_clip())
-
-  local player_directional_visual = player_walk_visual_template:instantiate({
-    index_provider = function()
-      return self.player_animation:get_frame_index()
+  self.layers:add(RenderLayer.new({
+    name = "player coordinates",
+    order = 1100,
+    draw = function()
+      self:_draw_player_coordinates()
     end
-  })
+  }))
+
+  self.layers:add(RenderLayer.new({
+    name = "door coordinates",
+    order = 1200,
+    draw = function()
+      self:_draw_door_coordinates()
+    end
+  }))
 
   local ball_frame_a = BillboardVisual.new({
     width = 20,
@@ -260,68 +258,91 @@ function TestSceneRenderer.new(options)
     end
   })
 
-  self.projected_billboards = {
-    {
-      id = "player",
+  self.projected_character_animations = {}
+  local projected_character_billboards = {}
+
+  for index = 1, projected_character_bindings:get_count() do
+    local binding = projected_character_bindings:get(index)
+    local entity_id = binding:get_entity_id()
+    local entity = self.project.entities_by_id[entity_id]
+    local visual_template = binding:get_visual_template()
+
+    assert(entity ~= nil,
+      "visual binding references an unloaded entity: " .. entity_id)
+    assert(type(visual_template.get_clip) == "function",
+      "animated visual template must expose get_clip")
+    assert(type(visual_template.instantiate) == "function",
+      "animated visual template must expose instantiate")
+
+    local animation = AnimationPlayer.new(visual_template:get_clip())
+
+    if index == 2 then animation:set_playback_rate(0.25) end
+
+    local visual = visual_template:instantiate({
+      index_provider = function()
+        return animation:get_frame_index()
+      end
+    })
+
+    self.projected_character_animations[index] = animation
+
+    projected_character_billboards[index] = {
+      id = entity_id,
       position_provider = function()
-        return player_visual_entity:get_position()
+        return entity:get_position()
       end,
       rotation_provider = function()
-        return player_visual_entity:get_rotation()
+        return entity:get_rotation()
       end,
-      visual = player_directional_visual
-    },
-
-    {
-      id = "floor_marker",
-      position_provider = function()
-        return self.floor:get_position()
-      end,
-      visual = BillboardVisual.new({
-        width = 16,
-        height = 48,
-        draw = function(width, height)
-          love.graphics.setColor(1, 1, 1, 1)
-          love.graphics.line(width * 0.5, height, width * 0.5, 0)
-          love.graphics.circle("line", width * 0.5, 0, width * 0.5)
-        end
-      })
-    },
-
-    {
-      id = "door",
-      position_provider = function()
-        return self.door:get_position()
-      end,
-      visual = BillboardVisual.new({
-        width = 500,
-        height = 800,
-        draw = function(width, height)
-          love.graphics.setColor(0, 0, 1, 1)
-          love.graphics.rectangle("line", 0, 0, width, height)
-          love.graphics.setColor(1, 1, 1, 1)
-          love.graphics.circle("fill", width - 30, height * 0.5, 20)
-        end
-      })
-    },
-
-    {
-      id = "bounce_ball",
-      position_provider = function()
-        return self.bounce_ball:get_position()
-      end,
-      visual = ball_animation_visual
-
-      -- BillboardVisual.new({
-      --   width = 20,
-      --   height = 20,
-      --   draw = function(width, height)
-      --     love.graphics.setColor(1, 1, 1, 1)
-      --     love.graphics.circle("line", width * 0.5, height * 0.5, math.min(width, height) * 0.5)
-      --   end
-      -- })
+      visual = visual
     }
-  }
+  end
+
+  self.projected_billboards = {}
+
+  for _, billboard in ipairs(projected_character_billboards) do
+    table.insert(self.projected_billboards, billboard)
+  end
+
+  table.insert(self.projected_billboards, {
+    id = "floor_marker",
+    position_provider = function()
+      return self.floor:get_position()
+    end,
+    visual = BillboardVisual.new({
+      width = 16,
+      height = 48,
+      draw = function(width, height)
+        love.graphics.setColor(1, 1, 1, 1)
+        love.graphics.line(width * 0.5, height, width * 0.5, 0)
+        love.graphics.circle("line", width * 0.5, 0, width * 0.5)
+      end
+    })
+  })
+
+  table.insert(self.projected_billboards, {
+    id = "door",
+    position_provider = function()
+      return self.door:get_position()
+    end,
+    visual = BillboardVisual.new({
+      width = 500,
+      height = 800,
+      draw = function(width, height)
+        love.graphics.setColor(0, 0, 1, 1)
+        love.graphics.rectangle("fill", 0, 0, width, height)
+        love.graphics.setColor(1, 1, 1, 1)
+        love.graphics.circle("line", width - 30, height * 0.5, 20)
+      end
+    })
+  })
+
+  table.insert(self.projected_billboards, {
+    position_provider = function()
+      return self.bounce_ball:get_position()
+    end,
+    visual = ball_animation_visual
+  })
 
   return self
 end
@@ -373,6 +394,16 @@ function TestSceneRenderer:_draw_world()
   SpatialDebugRenderer.draw_shape(self.step_player, "collision")
 end
 
+function TestSceneRenderer:_draw_player_coordinates()
+  local player_x, player_y = self.player:get_position()
+  love.graphics.print(string.format("Player position: %.2f, %.2f", player_x, player_y), 20, 250)
+end
+
+function TestSceneRenderer:_draw_door_coordinates()
+  local door_x, door_y = self.door:get_position()
+  love.graphics.print(string.format("Door position: %.2f, %.2f", door_x, door_y), 20, 270)
+end
+
 -- Draws development overlays that share the projected world plane.
 function TestSceneRenderer:_draw_ground_debug()
   SpatialDebugRenderer.draw_shape(self.small_grid_area, "area")
@@ -398,7 +429,9 @@ function TestSceneRenderer:update(dt)
   )
 
   self.ball_animation:update(dt)
-  self.player_animation:update(dt)
+  for _, animation in ipairs(self.projected_character_animations) do
+    animation:update(dt)
+  end
 end
 
 -- Draws all configured render layers in their current order.
