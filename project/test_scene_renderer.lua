@@ -56,8 +56,20 @@ function TestSceneRenderer.new(options)
   self.large_grid_area = self.project.entities_by_id["large_grid_area"]
   self.free_area = self.project.entities_by_id["free_area"]
 
-  local player_walk_visual_template = self.project.resources.directional_image_animation_visual:get("player_walk")
-  local ball_pulse_clip = self.project.resources.animation_clip:get("ball_pulse")
+  local player_visual_binding =
+      self.project.resources.directional_image_animation_binding:get("player")
+
+  local player_walk_visual_template =
+      player_visual_binding:get_visual_template()
+
+  local player_visual_entity =
+      self.project.entities_by_id[player_visual_binding:get_entity_id()]
+
+  assert(player_visual_entity ~= nil,
+    "player visual binding references an unloaded entity")
+
+  local ball_pulse_clip =
+      self.project.resources.animation_clip:get("ball_pulse")
 
   local player_x, player_y = self.player:get_position()
 
@@ -252,10 +264,10 @@ function TestSceneRenderer.new(options)
     {
       id = "player",
       position_provider = function()
-        return self.player:get_position()
+        return player_visual_entity:get_position()
       end,
       rotation_provider = function()
-        return self.player:get_rotation()
+        return player_visual_entity:get_rotation()
       end,
       visual = player_directional_visual
     },
@@ -286,7 +298,7 @@ function TestSceneRenderer.new(options)
         height = 800,
         draw = function(width, height)
           love.graphics.setColor(0, 0, 1, 1)
-          love.graphics.rectangle("fill", 0, 0, width, height)
+          love.graphics.rectangle("line", 0, 0, width, height)
           love.graphics.setColor(1, 1, 1, 1)
           love.graphics.circle("fill", width - 30, height * 0.5, 20)
         end

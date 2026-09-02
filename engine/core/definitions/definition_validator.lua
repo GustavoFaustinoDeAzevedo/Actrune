@@ -24,6 +24,8 @@ local function matches_type(value, field_type)
   if field_type == "string" then return type(value) == "string" end
   if field_type == "boolean" then return type(value) == "boolean" end
   if field_type == "enum" then return type(value) == "string" end
+
+  if field_type == "entity_reference" then return type(value) == "string" end
   if field_type == "resource_reference" then return type(value) == "string" end
   if field_type == "resource_reference_list" then return type(value) == "table" end
   if field_type == "shape_reference" then return type(value) == "string" end
@@ -161,6 +163,12 @@ local function resource_exists(context, type_name, name)
   return registry ~= nil and registry:has(name)
 end
 
+-- Returns whether one named entity is known by the current validation context.
+local function entity_exists(context, name)
+  if context.entity_exists ~= nil then return context.entity_exists(name) end
+  return context.entities_by_id ~= nil and context.entities_by_id[name] ~= nil
+end
+
 -- Validates a list of named resource references.
 local function validate_resource_reference_list(errors, path, values, field, context)
   if field.min_items ~= nil and #values < field.min_items then
@@ -216,6 +224,11 @@ local function validate_field(errors, path, value, field, context)
     end
   elseif field.type == "shape_reference_list" then
     validate_shape_references(errors, path, value, context)
+  elseif field.type == "entity_reference" then
+    if not entity_exists(context, value) then
+      add_error(errors, path,
+        "references unknown entity '" .. tostring(value) .. "'")
+    end
   elseif field.type == "resource_reference" then
     if not resource_exists(context, field.resource_type, value) then
       add_error(errors, path,

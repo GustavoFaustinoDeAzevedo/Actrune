@@ -9,6 +9,7 @@ local AnimationClipFactory = require("engine.core.animation.animation_clip_facto
 local AnimationFrameTrackFactory = require("engine.core.animation.animation_frame_track_factory")
 local AnimationFrameTrackSetFactory = require("engine.core.animation.animation_frame_track_set_factory")
 local DirectionalImageAnimationVisualFactory = require("engine.render.directional_image_animation_visual_factory")
+local EntityVisualBindingFactory = require("engine.render.entity_visual_binding_factory")
 
 local ActruneResourceTypes = {}
 
@@ -152,6 +153,23 @@ function ActruneResourceTypes.register(register)
           name = "angle_offset",
           type = "number",
           default = 0
+        }
+      }
+    })
+
+  register:register_resource_type("directional_image_animation_binding",
+    EntityVisualBindingFactory.for_visual_type("directional_image_animation_visual"), {
+      fields = {
+        {
+          name = "entity",
+          type = "entity_reference",
+          required = true
+        },
+        {
+          name = "visual",
+          type = "resource_reference",
+          resource_type = "directional_image_animation_visual",
+          required = true
         }
       }
     })

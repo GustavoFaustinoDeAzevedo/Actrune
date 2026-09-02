@@ -178,6 +178,16 @@ local project_definition = {
         angle_offset = 0
       }
     },
+    directional_image_animation_binding = {
+      player = {
+        entity = "player",
+        visual = "player_walk"
+      },
+      door = {
+        entity = "door",
+        visual = "player_walk"
+      }
+    },
     physical_material = {
       ball = {
         properties = {

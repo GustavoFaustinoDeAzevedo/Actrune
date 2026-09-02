@@ -18,6 +18,19 @@ local function create_resource_exists(resource_definitions)
   end
 end
 
+-- Creates an entity existence query backed only by serialized project definitions.
+local function create_entity_exists(entity_definitions)
+  local ids = {}
+
+  for _, definition in ipairs(entity_definitions or {}) do
+    if type(definition.id) == "string" then ids[definition.id] = true end
+  end
+
+  return function(name)
+    return ids[name] == true
+  end
+end
+
 -- Creates a project loader backed by one complete project configuration.
 function ProjectLoader.new(options)
   options = options or {}
@@ -65,9 +78,10 @@ function ProjectLoader:_create_entity_factory(registries)
 end
 
 -- Validates all serialized project resources and their declared references without constructing them.
-function ProjectLoader:_validate_resources(resource_definitions)
+function ProjectLoader:_validate_resources(resource_definitions, entity_definitions)
   local errors = {}
   local resource_exists = create_resource_exists(resource_definitions)
+  local entity_exists = create_entity_exists(entity_definitions)
 
   for type_name, definitions in pairs(resource_definitions or {}) do
     if not self.configuration:has_resource_type(type_name) then
@@ -86,7 +100,8 @@ function ProjectLoader:_validate_resources(resource_definitions)
             "resources." .. type_name .. "." .. name,
             {
               type_catalog = self.type_catalog,
-              resource_exists = resource_exists
+              resource_exists = resource_exists,
+              entity_exists = entity_exists
             }
           )
 
@@ -206,7 +221,7 @@ function ProjectLoader:validate(definition)
 
   local errors = {}
 
-  local resource_errors = self:_validate_resources(definition.resources)
+  local resource_errors = self:_validate_resources(definition.resources, definition.entities)
   for _, validation_error in ipairs(resource_errors) do table.insert(errors, validation_error) end
 
   local entity_errors = self:_validate_entities(
