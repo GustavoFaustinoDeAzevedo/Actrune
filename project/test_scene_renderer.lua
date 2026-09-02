@@ -18,10 +18,8 @@ local CameraRotationControl = require("engine.render.camera_rotation_control")
 local EntityRotationPolicy = require("engine.render.camera_rotation.entity_rotation_policy")
 local RotationResponse = require("engine.render.camera_rotation.rotation_response")
 local BillboardVisual = require("engine.render.billboard_visual")
-local DirectionalBillboardVisual = require("engine.render.directional_billboard_visual")
 local AnimationPlayer = require("engine.core.animation.animation_player")
 local IndexedBillboardVisual = require("engine.render.indexed_billboard_visual")
-local ImageAnimationVisualFactory = require("engine.render.image_animation_visual_factory")
 
 
 
@@ -58,7 +56,7 @@ function TestSceneRenderer.new(options)
   self.large_grid_area = self.project.entities_by_id["large_grid_area"]
   self.free_area = self.project.entities_by_id["free_area"]
 
-  local player_walk_tracks = self.project.resources.image_animation_track_set:get("player_walk")
+  local player_walk_visual_template = self.project.resources.directional_image_animation_visual:get("player_walk")
   local ball_pulse_clip = self.project.resources.animation_clip:get("ball_pulse")
 
   local player_x, player_y = self.player:get_position()
@@ -201,23 +199,12 @@ function TestSceneRenderer.new(options)
     end
   }))
 
-  self.player_animation = AnimationPlayer.new(player_walk_tracks:get_clip())
+  self.player_animation = AnimationPlayer.new(player_walk_visual_template:get_clip())
 
-  local function player_frame_index()
-    return self.player_animation:get_frame_index()
-  end
-
-  local player_directional_visuals = {}
-
-  for index = 1, player_walk_tracks:get_count() do
-    player_directional_visuals[index] = ImageAnimationVisualFactory.create(
-      player_walk_tracks:get(index),
-      player_frame_index
-    )
-  end
-
-  local player_directional_visual = DirectionalBillboardVisual.new({
-    directions = player_directional_visuals
+  local player_directional_visual = player_walk_visual_template:instantiate({
+    index_provider = function()
+      return self.player_animation:get_frame_index()
+    end
   })
 
   local ball_frame_a = BillboardVisual.new({

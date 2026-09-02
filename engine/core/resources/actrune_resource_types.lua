@@ -8,6 +8,7 @@ local ResourceSequenceFactory = require("engine.core.resources.resource_sequence
 local AnimationClipFactory = require("engine.core.animation.animation_clip_factory")
 local AnimationFrameTrackFactory = require("engine.core.animation.animation_frame_track_factory")
 local AnimationFrameTrackSetFactory = require("engine.core.animation.animation_frame_track_set_factory")
+local DirectionalImageAnimationVisualFactory = require("engine.render.directional_image_animation_visual_factory")
 
 local ActruneResourceTypes = {}
 
@@ -134,6 +135,23 @@ function ActruneResourceTypes.register(register)
           resource_type = "image_animation_track",
           required = true,
           min_items = 1
+        }
+      }
+    })
+
+  register:register_resource_type("directional_image_animation_visual",
+    DirectionalImageAnimationVisualFactory.create, {
+      fields = {
+        {
+          name = "track_set",
+          type = "resource_reference",
+          resource_type = "image_animation_track_set",
+          required = true
+        },
+        {
+          name = "angle_offset",
+          type = "number",
+          default = 0
         }
       }
     })

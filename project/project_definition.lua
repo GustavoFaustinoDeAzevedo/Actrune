@@ -172,6 +172,12 @@ local project_definition = {
         }
       }
     },
+    directional_image_animation_visual = {
+      player_walk = {
+        track_set = "player_walk",
+        angle_offset = 0
+      }
+    },
     physical_material = {
       ball = {
         properties = {
