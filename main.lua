@@ -5,6 +5,7 @@ local ProjectRuntime = require("engine.core.project.project_runtime")
 
 local project_definition = require("project.project_definition")
 local TestSceneRenderer = require("project.test_scene_renderer")
+local ProjectRuntimeConfiguration = require("project.runtime_configuration")
 
 local game
 local messages = {}
@@ -27,6 +28,10 @@ end
 -- Loads and validates the current project definition.
 local function load_project()
     local project_loader = ActruneProjectLoader.new()
+
+    ProjectRuntimeConfiguration.register(
+        project_loader:create_register("project")
+    )
 
     local configuration = project_loader:get_configuration()
 

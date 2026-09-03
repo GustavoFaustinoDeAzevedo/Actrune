@@ -1,4 +1,5 @@
 local love = require "love"
+
 local Camera2D = require("engine.render.camera_2d")
 local CameraPositionControl = require("engine.render.camera_position_control")
 local EntityPositionPolicy = require("engine.render.camera_position.entity_position_policy")
@@ -20,7 +21,6 @@ local RotationResponse = require("engine.render.camera_rotation.rotation_respons
 local BillboardVisual = require("engine.render.billboard_visual")
 local AnimationPlayer = require("engine.core.animation.animation_player")
 local IndexedBillboardVisual = require("engine.render.indexed_billboard_visual")
-local AnimatedEntityVisualSystem = require("engine.render.animated_entity_visual_system")
 
 
 
@@ -57,8 +57,13 @@ function TestSceneRenderer.new(options)
   self.large_grid_area = self.project.entities_by_id["large_grid_area"]
   self.free_area = self.project.entities_by_id["free_area"]
 
-  local projected_character_visual_configuration = self.project.resources.animated_entity_visual_configuration:get(
-    "projected_character_visuals")
+
+
+  self.projected_character_visuals =
+      options.project_runtime:get_system("animated_entity_visuals")
+
+  assert(self.projected_character_visuals ~= nil,
+    "test scene renderer requires the animated_entity_visuals runtime system")
 
   local ball_pulse_clip = self.project.resources.animation_clip:get("ball_pulse")
 
@@ -259,14 +264,6 @@ function TestSceneRenderer.new(options)
     end
   })
 
-  local projected_character_visual_configuration =
-      self.project.resources.animated_entity_visual_configuration:get("projected_character_visuals")
-
-  self.projected_character_visuals = AnimatedEntityVisualSystem.new(
-    self.project.entities_by_id,
-    projected_character_visual_configuration
-  )
-
   local projected_character_billboards = {}
 
   for index = 1, self.projected_character_visuals:get_count() do
@@ -415,7 +412,6 @@ function TestSceneRenderer:update(dt)
   )
 
   self.ball_animation:update(dt)
-  self.projected_character_visuals:update(dt)
 end
 
 -- Draws all configured render layers in their current order.
