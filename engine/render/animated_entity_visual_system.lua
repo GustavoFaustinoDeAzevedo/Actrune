@@ -3,12 +3,17 @@ local AnimatedEntityVisual = require("engine.render.animated_entity_visual")
 local AnimatedEntityVisualSystem = {}
 AnimatedEntityVisualSystem.__index = AnimatedEntityVisualSystem
 
--- Creates a runtime collection of animated entity visuals from declarative bindings.
-function AnimatedEntityVisualSystem.new(entities_by_id, bindings)
+-- Creates runtime animated entity visuals from one declarative visual configuration.
+function AnimatedEntityVisualSystem.new(entities_by_id, configuration)
   assert(type(entities_by_id) == "table",
     "animated entity visual system requires entities_by_id")
+  assert(configuration ~= nil and type(configuration.get_bindings) == "function",
+    "animated entity visual system requires a configuration exposing get_bindings")
+
+  local bindings = configuration:get_bindings()
+
   assert(bindings ~= nil and type(bindings.get_count) == "function" and type(bindings.get) == "function",
-    "animated entity visual system requires an indexed binding collection")
+    "animated entity visual configuration must provide an indexed binding collection")
 
   local self = setmetatable({
     visuals = {}
@@ -49,15 +54,12 @@ function AnimatedEntityVisualSystem:get(index)
     "animated entity visual system index must be an integer")
   assert(index >= 1 and index <= #self.visuals,
     "animated entity visual system index is out of range")
-
   return self.visuals[index]
 end
 
 -- Updates every animated entity visual owned by this system.
 function AnimatedEntityVisualSystem:update(dt)
-  for _, entity_visual in ipairs(self.visuals) do
-    entity_visual:update(dt)
-  end
+  for _, entity_visual in ipairs(self.visuals) do entity_visual:update(dt) end
 end
 
 return AnimatedEntityVisualSystem

@@ -10,6 +10,7 @@ local AnimationFrameTrackFactory = require("engine.core.animation.animation_fram
 local AnimationFrameTrackSetFactory = require("engine.core.animation.animation_frame_track_set_factory")
 local DirectionalImageAnimationVisualFactory = require("engine.render.directional_image_animation_visual_factory")
 local EntityVisualBindingFactory = require("engine.render.entity_visual_binding_factory")
+local AnimatedEntityVisualConfigurationFactory = require("engine.render.animated_entity_visual_configuration_factory")
 
 local ActruneResourceTypes = {}
 
@@ -185,8 +186,19 @@ function ActruneResourceTypes.register(register)
           min_items = 1
         }
       }
-    }
-  )
+    })
+
+  register:register_resource_type("animated_entity_visual_configuration",
+    AnimatedEntityVisualConfigurationFactory.for_binding_sequence_type("directional_image_animation_binding_sequence"), {
+      fields = {
+        {
+          name = "bindings",
+          type = "resource_reference",
+          resource_type = "directional_image_animation_binding_sequence",
+          required = true
+        }
+      }
+    })
 
   register:register_resource_type("input_map", InputMapFactory.create)
   register:register_resource_type("control_profile", ControlProfileFactory.create)

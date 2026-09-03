@@ -57,8 +57,8 @@ function TestSceneRenderer.new(options)
   self.large_grid_area = self.project.entities_by_id["large_grid_area"]
   self.free_area = self.project.entities_by_id["free_area"]
 
-  local projected_character_bindings = self.project.resources.directional_image_animation_binding_sequence:get(
-    "projected_characters")
+  local projected_character_visual_configuration = self.project.resources.animated_entity_visual_configuration:get(
+    "projected_character_visuals")
 
   local ball_pulse_clip = self.project.resources.animation_clip:get("ball_pulse")
 
@@ -259,12 +259,13 @@ function TestSceneRenderer.new(options)
     end
   })
 
+  local projected_character_visual_configuration =
+      self.project.resources.animated_entity_visual_configuration:get("projected_character_visuals")
+
   self.projected_character_visuals = AnimatedEntityVisualSystem.new(
     self.project.entities_by_id,
-    projected_character_bindings
+    projected_character_visual_configuration
   )
-
-  self.projected_character_visuals:get(2):get_animation():set_playback_rate(0.25)
 
   local projected_character_billboards = {}
 

@@ -196,6 +196,11 @@ local project_definition = {
         }
       }
     },
+    animated_entity_visual_configuration = {
+      projected_character_visuals = {
+        bindings = "projected_characters"
+      }
+    },
     physical_material = {
       ball = {
         properties = {
