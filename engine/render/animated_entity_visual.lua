@@ -4,16 +4,21 @@ local AnimatedEntityVisual = {}
 AnimatedEntityVisual.__index = AnimatedEntityVisual
 
 -- Creates one runtime visual instance with independent animation playback for an entity.
-function AnimatedEntityVisual.new(entity, visual_template)
+function AnimatedEntityVisual.new(entity_id, entity, visual_template)
+  assert(type(entity_id) == "string" and entity_id ~= "",
+    "animated entity visual requires a non-empty entity id")
   assert(entity ~= nil, "animated entity visual requires an entity")
-  assert(type(entity.get_position) == "function", "animated entity visual entity must expose get_position")
-  assert(type(entity.get_rotation) == "function", "animated entity visual entity must expose get_rotation")
+  assert(type(entity.get_position) == "function",
+    "animated entity visual entity must expose get_position")
+  assert(type(entity.get_rotation) == "function",
+    "animated entity visual entity must expose get_rotation")
   assert(visual_template ~= nil and type(visual_template.get_clip) == "function",
     "animated entity visual requires a template exposing get_clip")
   assert(type(visual_template.instantiate) == "function",
     "animated entity visual template must expose instantiate")
 
   local self = setmetatable({}, AnimatedEntityVisual)
+  self.entity_id = entity_id
   self.entity = entity
   self.animation = AnimationPlayer.new(visual_template:get_clip())
 
@@ -24,6 +29,11 @@ function AnimatedEntityVisual.new(entity, visual_template)
   })
 
   return self
+end
+
+-- Returns the id of the represented entity.
+function AnimatedEntityVisual:get_entity_id()
+  return self.entity_id
 end
 
 -- Returns the entity represented by this runtime visual instance.

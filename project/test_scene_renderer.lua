@@ -20,7 +20,7 @@ local RotationResponse = require("engine.render.camera_rotation.rotation_respons
 local BillboardVisual = require("engine.render.billboard_visual")
 local AnimationPlayer = require("engine.core.animation.animation_player")
 local IndexedBillboardVisual = require("engine.render.indexed_billboard_visual")
-local AnimatedEntityVisual = require("engine.render.animated_entity_visual")
+local AnimatedEntityVisualSystem = require("engine.render.animated_entity_visual_system")
 
 
 
@@ -259,27 +259,20 @@ function TestSceneRenderer.new(options)
     end
   })
 
-  self.projected_character_visuals = {}
+  self.projected_character_visuals = AnimatedEntityVisualSystem.new(
+    self.project.entities_by_id,
+    projected_character_bindings
+  )
+
+  self.projected_character_visuals:get(2):get_animation():set_playback_rate(0.25)
+
   local projected_character_billboards = {}
 
-  for index = 1, projected_character_bindings:get_count() do
-    local binding = projected_character_bindings:get(index)
-    local entity_id = binding:get_entity_id()
-    local entity = self.project.entities_by_id[entity_id]
-
-    assert(entity ~= nil,
-      "visual binding references an unloaded entity: " .. entity_id)
-
-    local entity_visual = AnimatedEntityVisual.new(entity, binding:get_visual_template())
-
-    if index == 2 then
-      entity_visual:get_animation():set_playback_rate(0.25)
-    end
-
-    self.projected_character_visuals[index] = entity_visual
+  for index = 1, self.projected_character_visuals:get_count() do
+    local entity_visual = self.projected_character_visuals:get(index)
 
     projected_character_billboards[index] = {
-      id = entity_id,
+      id = entity_visual:get_entity_id(),
       position_provider = function()
         return entity_visual:get_position()
       end,
@@ -421,10 +414,7 @@ function TestSceneRenderer:update(dt)
   )
 
   self.ball_animation:update(dt)
-
-  for _, entity_visual in ipairs(self.projected_character_visuals) do
-    entity_visual:update(dt)
-  end
+  self.projected_character_visuals:update(dt)
 end
 
 -- Draws all configured render layers in their current order.
