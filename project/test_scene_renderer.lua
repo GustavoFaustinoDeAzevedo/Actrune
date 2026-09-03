@@ -21,6 +21,7 @@ local RotationResponse = require("engine.render.camera_rotation.rotation_respons
 local BillboardVisual = require("engine.render.billboard_visual")
 local AnimationPlayer = require("engine.core.animation.animation_player")
 local IndexedBillboardVisual = require("engine.render.indexed_billboard_visual")
+local EntityVisualBillboardAdapter = require("engine.render.entity_visual_billboard_adapter")
 
 
 
@@ -56,14 +57,6 @@ function TestSceneRenderer.new(options)
   self.small_grid_area = self.project.entities_by_id["small_grid_area"]
   self.large_grid_area = self.project.entities_by_id["large_grid_area"]
   self.free_area = self.project.entities_by_id["free_area"]
-
-
-
-  self.projected_character_visuals =
-      options.project_runtime:get_system("animated_entity_visuals")
-
-  assert(self.projected_character_visuals ~= nil,
-    "test scene renderer requires the animated_entity_visuals runtime system")
 
   local ball_pulse_clip = self.project.resources.animation_clip:get("ball_pulse")
 
@@ -264,22 +257,14 @@ function TestSceneRenderer.new(options)
     end
   })
 
-  local projected_character_billboards = {}
+  self.projected_character_visuals =
+      options.project_runtime:get_system("animated_entity_visuals")
 
-  for index = 1, self.projected_character_visuals:get_count() do
-    local entity_visual = self.projected_character_visuals:get(index)
+  assert(self.projected_character_visuals ~= nil,
+    "test scene renderer requires the animated_entity_visuals runtime system")
 
-    projected_character_billboards[index] = {
-      id = entity_visual:get_entity_id(),
-      position_provider = function()
-        return entity_visual:get_position()
-      end,
-      rotation_provider = function()
-        return entity_visual:get_rotation()
-      end,
-      visual = entity_visual:get_visual()
-    }
-  end
+  local projected_character_billboards =
+      EntityVisualBillboardAdapter.create_all(self.projected_character_visuals)
 
   self.projected_billboards = {}
 
