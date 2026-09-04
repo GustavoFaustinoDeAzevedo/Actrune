@@ -55,15 +55,19 @@ function TestSceneRenderer.new(options)
 
   assert(self.project ~= nil, "test scene renderer requires a project")
   assert(self.runtime ~= nil, "test scene renderer requires a runtime")
-  assert(options.project_runtime ~= nil, "test scene renderer requires a project runtime")
 
-  -- Physics is currently queried directly because diagnostics still inspect Box2D state.
-  local physics_system = options.project_runtime:get_system("physics")
-  assert(physics_system ~= nil, "test scene renderer requires the physics runtime system")
+  -- These physics dependencies are injected because the renderer only needs diagnostic access to them.
+  self.physics_backend = options.physics_backend
+  self.physics_step = options.physics_step
 
-  -- These references are only used for physics diagnostics and fixed-step information.
-  self.box2d = physics_system:get_backend()
-  self.physics_step = physics_system:get_fixed_step()
+  assert(self.physics_backend ~= nil,
+    "test scene renderer requires a physics backend")
+  assert(type(self.physics_backend.get_linear_velocity) == "function",
+    "test scene renderer physics backend must expose get_linear_velocity")
+  assert(type(self.physics_backend.get_angular_velocity) == "function",
+    "test scene renderer physics backend must expose get_angular_velocity")
+  assert(self.physics_step ~= nil,
+    "test scene renderer requires a physics fixed step")
 
   -- These entities are required by the current visual and diagnostic test scene.
   self.bounce_ball = require_entity(self.project, "bounce_ball")
@@ -380,14 +384,20 @@ function TestSceneRenderer:_draw_diagnostics()
   love.graphics.print(table.concat(self.messages, "\n"), 20, 20)
   love.graphics.print("Active events: " .. self.runtime:get_active_event_count(), 20, 100)
 
-  -- These values expose the current Box2D state of the bouncing-ball test.
-  local velocity_x, velocity_y = self.box2d:get_linear_velocity(self.bounce_ball)
-  local angular_velocity = self.box2d:get_angular_velocity(self.bounce_ball)
+  -- These values expose the current physics state of the bouncing-ball test.
+  local velocity_x, velocity_y =
+      self.physics_backend:get_linear_velocity(self.bounce_ball)
+
+  local angular_velocity =
+      self.physics_backend:get_angular_velocity(self.bounce_ball)
 
   love.graphics.print(string.format("Ball velocity: %.2f, %.2f", velocity_x, velocity_y), 20, 130)
   love.graphics.print(string.format("Angular velocity: %.4f", angular_velocity), 20, 150)
   love.graphics.print("FPS: " .. love.timer.getFPS(), 20, 180)
+
+  -- The fixed-step diagnostics show how many physics simulation steps ran in the last frame.
   love.graphics.print("Fixed steps: " .. self.physics_step.last_steps, 20, 200)
+
   love.graphics.print("WASD: continuous | Arrows: contextual grid/free movement", 20, 220)
 end
 
