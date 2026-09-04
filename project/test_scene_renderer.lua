@@ -21,7 +21,8 @@ local RotationResponse = require("engine.render.camera_rotation.rotation_respons
 local BillboardVisual = require("engine.render.billboard_visual")
 local AnimationPlayer = require("engine.core.animation.animation_player")
 local IndexedBillboardVisual = require("engine.render.indexed_billboard_visual")
-local EntityVisualBillboardAdapter = require("engine.render.entity_visual_billboard_adapter")
+local EntityVisualBillboardSource = require("engine.render.entity_visual_billboard_source")
+local BillboardSourceGroup = require("engine.render.billboard_source_group")
 
 
 
@@ -263,16 +264,13 @@ function TestSceneRenderer.new(options)
   assert(self.projected_character_visuals ~= nil,
     "test scene renderer requires the animated_entity_visuals runtime system")
 
-  local projected_character_billboards =
-      EntityVisualBillboardAdapter.create_all(self.projected_character_visuals)
+  local projected_character_billboard_source =
+      EntityVisualBillboardSource.new(self.projected_character_visuals)
 
-  self.projected_billboards = {}
+  self.projected_billboards = BillboardSourceGroup.new()
+  self.projected_billboards:add_source(projected_character_billboard_source)
 
-  for _, billboard in ipairs(projected_character_billboards) do
-    table.insert(self.projected_billboards, billboard)
-  end
-
-  table.insert(self.projected_billboards, {
+  self.projected_billboards:add_entry({
     id = "floor_marker",
     position_provider = function()
       return self.floor:get_position()
@@ -288,7 +286,7 @@ function TestSceneRenderer.new(options)
     })
   })
 
-  table.insert(self.projected_billboards, {
+  self.projected_billboards:add_entry({
     id = "door",
     position_provider = function()
       return self.door:get_position()
@@ -305,7 +303,7 @@ function TestSceneRenderer.new(options)
     })
   })
 
-  table.insert(self.projected_billboards, {
+  self.projected_billboards:add_entry({
     position_provider = function()
       return self.bounce_ball:get_position()
     end,
@@ -321,7 +319,7 @@ function TestSceneRenderer:_draw_projected_billboards()
   local width, height = canvas:getDimensions()
 
   self.billboard_renderer:draw(
-    self.projected_billboards,
+    self.projected_billboards:get_entries(),
     width,
     height,
     {
