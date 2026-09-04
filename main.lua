@@ -4,7 +4,10 @@ local ActruneProjectLoader = require("engine.core.project.actrune_project_loader
 local ProjectRuntime = require("engine.core.project.project_runtime")
 
 local project_definition = require("project.project_definition")
-local TestSceneRenderer = require("project.test_scene_renderer")
+
+-- This factory resolves project-specific renderer dependencies before creating the renderer.
+local TestSceneRendererFactory = require("project.test_scene_renderer_factory")
+
 local ProjectRuntimeConfiguration = require("project.runtime_configuration")
 
 local game
@@ -46,17 +49,13 @@ local function load_project()
     return project_loader:load(project_definition)
 end
 
--- Creates the renderer used by the current development project.
-local function create_renderer(options)
-    options.messages = messages
-    return TestSceneRenderer.new(options)
-end
-
 -- Creates the current Actrune test project runtime.
 function love.load()
     game = ProjectRuntime.new({
         project = load_project(),
-        renderer_factory = create_renderer
+
+        -- The project-specific factory injects the billboard sources required by the renderer.
+        renderer_factory = TestSceneRendererFactory.create,
     })
 end
 
