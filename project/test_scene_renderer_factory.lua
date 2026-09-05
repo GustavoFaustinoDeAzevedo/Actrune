@@ -1,7 +1,11 @@
 local TestSceneRenderer = require("project.test_scene_renderer")
 local EntityVisualBillboardSource = require("engine.render.entity_visual_billboard_source")
+
 -- This project-specific source owns the temporary bouncing-ball visual animation.
 local BounceBallBillboardSource = require("project.render.bounce_ball_billboard_source")
+
+-- This project-specific source owns temporary projected scene inspection visuals.
+local ProjectedDebugBillboardSource = require("project.render.projected_debug_billboard_source")
 
 local TestSceneRendererFactory = {}
 
@@ -63,6 +67,21 @@ function TestSceneRendererFactory.create(options)
     animation_clip = ball_pulse_clip
   })
 
+  -- These entities drive the temporary projected debug visuals.
+  local floor = options.project.entities_by_id["floor"]
+  local door = options.project.entities_by_id["door"]
+
+  assert(floor ~= nil,
+    "test scene renderer factory requires the floor entity")
+  assert(door ~= nil,
+    "test scene renderer factory requires the door entity")
+
+  -- This source isolates project-specific procedural debug billboards from the renderer.
+  local projected_debug_billboard_source = ProjectedDebugBillboardSource.new({
+    floor = floor,
+    door = door
+  })
+
   -- This table keeps normal renderer options while hiding runtime service locators from the renderer.
   local renderer_options = {}
 
@@ -72,13 +91,17 @@ function TestSceneRendererFactory.create(options)
     end
   end
 
-  -- These project-specific dependencies are resolved before renderer construction.
+  -- These billboard sources provide independent projected visual origins.
   renderer_options.projected_character_billboard_source =
       projected_character_billboard_source
+  renderer_options.bounce_ball_billboard_source =
+      bounce_ball_billboard_source
+  renderer_options.projected_debug_billboard_source =
+      projected_debug_billboard_source
+
+  -- These dependencies expose only the diagnostic capabilities consumed by the renderer.
   renderer_options.physics_backend = physics_backend
   renderer_options.physics_step = physics_step
-
-  -- Diagnostics receive only the event information they actually consume.
   renderer_options.active_event_count_provider =
       active_event_count_provider
 

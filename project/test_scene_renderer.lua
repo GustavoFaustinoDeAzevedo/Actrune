@@ -22,7 +22,6 @@ local WorldRegionView = require("engine.render.world_region_view")
 -- Projected rendering converts the captured world region and entity visuals into perspective output.
 local ProjectedWorldPlane = require("project.render.projections.projected_world_plane")
 local ProjectedBillboardRenderer = require("engine.render.projected_billboard_renderer")
-local BillboardVisual = require("engine.render.billboard_visual")
 local BillboardSourceGroup = require("engine.render.billboard_source_group")
 
 -- Spatial debug rendering remains independent from the projected visual pipeline.
@@ -38,25 +37,267 @@ local function require_entity(project, id)
   return entity
 end
 
--- Creates the renderer used by the current Actrune test project.
+-- Resolves the entities required by the current test scene.
+local function resolve_entities(self)
+  -- These references are shared by rendering, camera tracking, and diagnostics.
+  self.bounce_ball = require_entity(self.project, "bounce_ball")
+  self.floor = require_entity(self.project, "floor")
+  self.door = require_entity(self.project, "door")
+  self.player = require_entity(self.project, "player")
+  self.step_player = require_entity(self.project, "step_player")
+  self.small_grid_area = require_entity(self.project, "small_grid_area")
+  self.large_grid_area = require_entity(self.project, "large_grid_area")
+  self.free_area = require_entity(self.project, "free_area")
+end
+
+-- Creates the regular and projected cameras together with their follow controls.
+local function create_cameras(self)
+  local player_x, player_y = self.player:get_position()
+
+  -- This camera renders the ordinary top-down/debug world view.
+  self.camera = Camera2D.new({
+    x = player_x,
+    y = player_y
+  })
+
+  -- This camera provides the viewpoint used by the perspective projection.
+  self.projected_camera = Camera2D.new({
+    x = player_x,
+    y = player_y,
+    rotation = self.player:get_rotation()
+  })
+
+  -- Rotation smoothing keeps projected turns independent from player rotation snapping.
+  self.projected_camera_rotation_response = RotationResponse.new({
+    half_life = 0.1
+  })
+
+  self.projected_camera_rotation = CameraRotationControl.new(
+    self.projected_camera,
+    EntityRotationPolicy.new(self.player),
+    {
+      response = self.projected_camera_rotation_response
+    }
+  )
+
+  -- This policy places the projected viewpoint behind the player in its current orientation.
+  self.projected_camera_offset = OrientedOffsetPositionPolicy.new(
+    EntityPositionPolicy.new(self.player),
+    function()
+      return self.projected_camera:get_rotation()
+    end,
+    {
+      forward = -96
+    }
+  )
+
+  -- Position smoothing runs separately because the offset depends on the smoothed camera rotation.
+  self.projected_camera_position = CameraPositionControl.new(
+    self.projected_camera,
+    self.projected_camera_offset,
+    {
+      response = PositionResponse.new({
+        half_life = 0.08
+      })
+    }
+  )
+
+  -- The regular debug camera follows the player without the projected camera offset.
+  self.camera_position_response = PositionResponse.new({
+    half_life = 0.08
+  })
+
+  self.camera_position = CameraPositionControl.new(
+    self.camera,
+    EntityPositionPolicy.new(self.player),
+    {
+      response = self.camera_position_response
+    }
+  )
+end
+
+-- Creates the captured world region and the perspective projection used by the ground and billboards.
+local function create_projected_world(self)
+  -- These objects define the world area captured before perspective projection.
+  self.ground_transform = LayerTransform2D.new()
+  self.ground_region_size = 2048
+
+  local projected_x, projected_y = self.projected_camera:get_position()
+  local half_region = self.ground_region_size * 0.5
+
+  -- This region moves with the projected camera while preserving a fixed capture size.
+  self.ground_world_region = WorldRegionView.new({
+    min_x = projected_x - half_region,
+    min_y = projected_y - half_region,
+    max_x = projected_x + half_region,
+    max_y = projected_y + half_region
+  })
+
+  -- This projection converts world positions into the perspective-like projected space.
+  self.ground_projection = ProjectedWorldPlane.new({
+    viewpoint = self.projected_camera,
+    source_region = self.ground_world_region,
+    horizon = 0.3,
+    near_distance = 32,
+    far_distance = 800,
+    horizontal_fov = math.rad(75)
+  })
+
+  -- Ground and billboards share the same projection so their perspective stays aligned.
+  self.billboard_renderer = ProjectedBillboardRenderer.new(self.ground_projection)
+
+  -- The world surface is first captured into this canvas before being projected.
+  self.ground_canvas = CanvasRenderView.new({
+    presenter = self.ground_projection
+  })
+
+  -- This group lets multiple ground-space layers share the same capture and world region.
+  self.projected_world = RenderLayerGroup.new({
+    name = "projected_world",
+    order = 100,
+    view = RenderViewStack.new({
+      self.ground_canvas,
+      self.ground_world_region
+    })
+  })
+end
+
+-- Creates the ordered render layers used by the current test scene.
+local function create_layers(self)
+  self.layers = RenderLayerStack.new()
+
+  -- The physical floor becomes the base surface captured by the projected world.
+  self.projected_world:add(RenderLayer.new({
+    name = "ground",
+    order = 100,
+    view = self.ground_transform,
+    draw = function()
+      self:_draw_ground()
+    end
+  }))
+
+  -- Development areas are captured in the same projected space as the ground.
+  self.projected_world:add(RenderLayer.new({
+    name = "ground_debug",
+    order = 200,
+    draw = function()
+      self:_draw_ground_debug()
+    end
+  }))
+
+  -- The whole projected ground group is submitted as one layer hierarchy.
+  self.layers:add(self.projected_world)
+
+  -- Projected vertical entities are rendered over the projected ground.
+  self.layers:add(RenderLayer.new({
+    name = "projected_billboards",
+    order = 150,
+    draw = function()
+      self:_draw_projected_billboards()
+    end
+  }))
+
+  -- This layer preserves the ordinary non-projected debug world.
+  self.layers:add(RenderLayer.new({
+    name = "world",
+    order = 200,
+    view = self.camera,
+    draw = function()
+      self:_draw_world()
+    end
+  }))
+
+  -- Runtime information is drawn directly in screen coordinates.
+  self.layers:add(RenderLayer.new({
+    name = "screen",
+    order = 1000,
+    draw = function()
+      self:_draw_diagnostics()
+    end
+  }))
+
+  self.layers:add(RenderLayer.new({
+    name = "player_coordinates",
+    order = 1100,
+    draw = function()
+      self:_draw_player_coordinates()
+    end
+  }))
+
+  self.layers:add(RenderLayer.new({
+    name = "door_coordinates",
+    order = 1200,
+    draw = function()
+      self:_draw_door_coordinates()
+    end
+  }))
+end
+
+-- Creates the billboard composition from the sources prepared for this test scene.
+local function create_billboards(self, options)
+  -- This source contains project-configured animated entity representations.
+  local projected_character_billboard_source =
+      options.projected_character_billboard_source
+
+  assert(projected_character_billboard_source ~= nil
+    and type(projected_character_billboard_source.append_entries) == "function",
+    "test scene renderer requires a projected character billboard source")
+
+  -- This source owns the temporary procedural bouncing-ball visual.
+  local bounce_ball_billboard_source =
+      options.bounce_ball_billboard_source
+
+  assert(bounce_ball_billboard_source ~= nil
+    and type(bounce_ball_billboard_source.append_entries) == "function",
+    "test scene renderer requires a bounce ball billboard source")
+  assert(type(bounce_ball_billboard_source.update) == "function",
+    "test scene renderer bounce ball billboard source must expose update")
+
+  -- This source owns temporary projected visuals used only for scene inspection.
+  local projected_debug_billboard_source =
+      options.projected_debug_billboard_source
+
+  assert(projected_debug_billboard_source ~= nil
+    and type(projected_debug_billboard_source.append_entries) == "function",
+    "test scene renderer requires a projected debug billboard source")
+
+  -- This reference remains because the ball source still has renderer-owned playback timing.
+  self.bounce_ball_billboard_source =
+      bounce_ball_billboard_source
+
+  -- This group merges every billboard origin before one global projection and depth sort.
+  self.projected_billboards = BillboardSourceGroup.new()
+
+  -- Declarative animated entities contribute through their runtime-backed source.
+  self.projected_billboards:add_source(projected_character_billboard_source)
+
+  -- The procedural ball contributes independently from declarative character visuals.
+  self.projected_billboards:add_source(bounce_ball_billboard_source)
+
+  -- Project-specific inspection visuals contribute without adding drawing details to the renderer.
+  self.projected_billboards:add_source(projected_debug_billboard_source)
+end
+
+-- Creates the renderer used by the current Actrune test project.-- Creates the renderer used by the current Actrune test project.
 function TestSceneRenderer.new(options)
   options = options or {}
 
   local self = setmetatable({}, TestSceneRenderer)
 
-  -- These values provide project data and screen-space diagnostic messages.
+  -- Project data remains available because this renderer still represents a concrete test scene.
   self.project = options.project
   self.messages = options.messages or {}
 
   assert(self.project ~= nil, "test scene renderer requires a project")
 
-  -- This provider exposes the event metric without giving the renderer access to the full runtime.
-  self.active_event_count_provider = options.active_event_count_provider
+  -- This provider exposes one event diagnostic without exposing the complete event runtime.
+  self.active_event_count_provider =
+      options.active_event_count_provider
 
   assert(type(self.active_event_count_provider) == "function",
     "test scene renderer requires an active event count provider")
 
-  -- These physics dependencies are injected because the renderer only needs diagnostic access to them.
+  -- These narrow dependencies expose only the physics information used by diagnostics.
   self.physics_backend = options.physics_backend
   self.physics_step = options.physics_step
 
@@ -69,258 +310,12 @@ function TestSceneRenderer.new(options)
   assert(self.physics_step ~= nil,
     "test scene renderer requires a physics fixed step")
 
-  -- These entities are required by the current visual and diagnostic test scene.
-  self.bounce_ball = require_entity(self.project, "bounce_ball")
-  self.floor = require_entity(self.project, "floor")
-  self.door = require_entity(self.project, "door")
-  self.player = require_entity(self.project, "player")
-  self.step_player = require_entity(self.project, "step_player")
-  self.small_grid_area = require_entity(self.project, "small_grid_area")
-  self.large_grid_area = require_entity(self.project, "large_grid_area")
-  self.free_area = require_entity(self.project, "free_area")
-
-  local player_x, player_y = self.player:get_position()
-
-  -- This camera renders the ordinary top-down/debug world view.
-  self.camera = Camera2D.new({
-    x = player_x,
-    y = player_y
-  })
-
-  -- This camera acts as the viewpoint used by the projected world plane.
-  self.projected_camera = Camera2D.new({
-    x = player_x,
-    y = player_y,
-    rotation = self.player:get_rotation()
-  })
-
-  -- Rotation smoothing prevents projected viewpoint turns from snapping instantly.
-  self.projected_camera_rotation_response = RotationResponse.new({
-    half_life = 0.1
-  })
-
-  -- The projected camera follows the player's world rotation through an independent response.
-  self.projected_camera_rotation = CameraRotationControl.new(
-    self.projected_camera,
-    EntityRotationPolicy.new(self.player),
-    {
-      response = self.projected_camera_rotation_response
-    }
-  )
-
-  -- This policy keeps the projected viewpoint behind the player using the camera's current orientation.
-  self.projected_camera_offset = OrientedOffsetPositionPolicy.new(
-    EntityPositionPolicy.new(self.player),
-    function()
-      return self.projected_camera:get_rotation()
-    end,
-    {
-      forward = -96
-    }
-  )
-
-  -- Position smoothing lets the projected camera converge independently from its rotation.
-  self.projected_camera_position = CameraPositionControl.new(
-    self.projected_camera,
-    self.projected_camera_offset,
-    {
-      response = PositionResponse.new({
-        half_life = 0.08
-      })
-    }
-  )
-
-  -- This response smooths the regular world camera while it follows the player.
-  self.camera_position_response = PositionResponse.new({
-    half_life = 0.08
-  })
-
-  self.camera_position = CameraPositionControl.new(
-    self.camera,
-    EntityPositionPolicy.new(self.player),
-    {
-      response = self.camera_position_response
-    }
-  )
-
-  -- These objects define the world region captured before perspective projection.
-  self.ground_transform = LayerTransform2D.new()
-  self.layers = RenderLayerStack.new()
-  self.ground_region_size = 2048
-
-  local projected_x, projected_y = self.projected_camera:get_position()
-  local half_region = self.ground_region_size * 0.5
-
-  -- This region follows the projected camera and limits what is captured into the projection canvas.
-  self.ground_world_region = WorldRegionView.new({
-    min_x = projected_x - half_region,
-    min_y = projected_y - half_region,
-    max_x = projected_x + half_region,
-    max_y = projected_y + half_region
-  })
-
-  -- This projection converts captured world coordinates into the perspective-like screen space.
-  self.ground_projection = ProjectedWorldPlane.new({
-    viewpoint = self.projected_camera,
-    source_region = self.ground_world_region,
-    horizon = 0.3,
-    near_distance = 32,
-    far_distance = 800,
-    horizontal_fov = math.rad(75)
-  })
-
-  -- Billboards use the same projection as the ground so both spaces remain visually aligned.
-  self.billboard_renderer = ProjectedBillboardRenderer.new(self.ground_projection)
-
-  -- The ground is first rendered to a canvas and then presented through the world projection.
-  self.ground_canvas = CanvasRenderView.new({
-    presenter = self.ground_projection
-  })
-
-  -- This group captures ground-related layers through the same view stack before presentation.
-  self.projected_world = RenderLayerGroup.new({
-    name = "projected_world",
-    order = 100,
-    view = RenderViewStack.new({
-      self.ground_canvas,
-      self.ground_world_region
-    })
-  })
-
-  -- The physical floor becomes the base surface of the projected world.
-  self.projected_world:add(RenderLayer.new({
-    name = "ground",
-    order = 100,
-    view = self.ground_transform,
-    draw = function()
-      self:_draw_ground()
-    end
-  }))
-
-  -- Area overlays share the captured projected-world space for development inspection.
-  self.projected_world:add(RenderLayer.new({
-    name = "ground_debug",
-    order = 200,
-    draw = function()
-      self:_draw_ground_debug()
-    end
-  }))
-
-  -- The projected-world group is presented before the projected billboard layer.
-  self.layers:add(self.projected_world)
-
-  -- Vertical projected entities are drawn after the projected ground.
-  self.layers:add(RenderLayer.new({
-    name = "projected_billboards",
-    order = 150,
-    draw = function()
-      self:_draw_projected_billboards()
-    end
-  }))
-
-  -- This layer keeps the ordinary world/debug view available beside the projected pipeline.
-  self.layers:add(RenderLayer.new({
-    name = "world",
-    order = 200,
-    view = self.camera,
-    draw = function()
-      self:_draw_world()
-    end
-  }))
-
-  -- Runtime diagnostics are rendered directly in screen space.
-  self.layers:add(RenderLayer.new({
-    name = "screen",
-    order = 1000,
-    draw = function()
-      self:_draw_diagnostics()
-    end
-  }))
-
-  -- Player coordinates remain visible independently from world camera transforms.
-  self.layers:add(RenderLayer.new({
-    name = "player_coordinates",
-    order = 1100,
-    draw = function()
-      self:_draw_player_coordinates()
-    end
-  }))
-
-  -- Door coordinates help compare the projected representation with its world position.
-  self.layers:add(RenderLayer.new({
-    name = "door_coordinates",
-    order = 1200,
-    draw = function()
-      self:_draw_door_coordinates()
-    end
-  }))
-
-  -- This source contains the project-configured animated character billboards.
-  local projected_character_billboard_source = options.projected_character_billboard_source
-
-
-  assert(projected_character_billboard_source ~= nil
-    and type(projected_character_billboard_source.append_entries) == "function",
-    "test scene renderer requires a projected character billboard source")
-
-  -- This source contains the temporary procedural animation used by the bouncing-ball test.
-  local bounce_ball_billboard_source =
-      options.bounce_ball_billboard_source
-
-  assert(bounce_ball_billboard_source ~= nil
-    and type(bounce_ball_billboard_source.append_entries) == "function",
-    "test scene renderer requires a bounce ball billboard source")
-
-  assert(type(bounce_ball_billboard_source.update) == "function",
-    "test scene renderer bounce ball billboard source must expose update")
-
-  -- The renderer keeps this reference only because the temporary source still owns render-time playback.
-  self.bounce_ball_billboard_source =
-      bounce_ball_billboard_source
-
-  -- This group combines project-driven billboard sources with temporary test entries.
-  self.projected_billboards = BillboardSourceGroup.new()
-
-  -- Project-configured animated characters contribute their billboards through this source.
-  self.projected_billboards:add_source(projected_character_billboard_source)
-
-  -- The temporary bouncing-ball test contributes its own independently animated billboard.
-  self.projected_billboards:add_source(bounce_ball_billboard_source)
-
-  -- This marker provides a simple projected reference for the floor entity position.
-  self.projected_billboards:add_entry({
-    id = "floor_marker",
-    position_provider = function()
-      return self.floor:get_position()
-    end,
-    visual = BillboardVisual.new({
-      width = 16,
-      height = 48,
-      draw = function(width, height)
-        love.graphics.setColor(1, 1, 1, 1)
-        love.graphics.line(width * 0.5, height, width * 0.5, 0)
-        love.graphics.circle("line", width * 0.5, 0, width * 0.5)
-      end
-    })
-  })
-
-  -- This temporary billboard makes the door easy to inspect inside the projected view.
-  self.projected_billboards:add_entry({
-    id = "door",
-    position_provider = function()
-      return self.door:get_position()
-    end,
-    visual = BillboardVisual.new({
-      width = 500,
-      height = 800,
-      draw = function(width, height)
-        love.graphics.setColor(0, 0, 1, 1)
-        love.graphics.rectangle("fill", 0, 0, width, height)
-        love.graphics.setColor(1, 1, 1, 1)
-        love.graphics.circle("line", width - 30, height * 0.5, 20)
-      end
-    })
-  })
+  -- Each construction step owns one clearly separated part of the renderer setup.
+  resolve_entities(self)
+  create_cameras(self)
+  create_projected_world(self)
+  create_layers(self)
+  create_billboards(self, options)
 
   return self
 end
