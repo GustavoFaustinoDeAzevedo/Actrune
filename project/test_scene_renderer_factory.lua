@@ -10,6 +10,14 @@ function TestSceneRendererFactory.create(options)
   assert(type(options) == "table", "test scene renderer factory requires options")
   assert(options.project_runtime ~= nil, "test scene renderer factory requires a project runtime")
 
+  assert(options.runtime ~= nil and type(options.runtime.get_active_event_count) == "function",
+    "test scene renderer factory requires an event runtime exposing get_active_event_count")
+
+  -- This provider exposes only the event metric required by the renderer diagnostics.
+  local active_event_count_provider = function()
+    return options.runtime:get_active_event_count()
+  end
+
   -- This runtime system owns the animated entity visual instances configured by the project.
   local animated_entity_visuals = options.project_runtime:get_system("animated_entity_visuals")
 
@@ -55,11 +63,11 @@ function TestSceneRendererFactory.create(options)
     animation_clip = ball_pulse_clip
   })
 
-  -- This table preserves normal renderer options without exposing ProjectRuntime as a service locator.
+  -- This table keeps normal renderer options while hiding runtime service locators from the renderer.
   local renderer_options = {}
 
   for name, value in pairs(options) do
-    if name ~= "project_runtime" then
+    if name ~= "project_runtime" and name ~= "runtime" then
       renderer_options[name] = value
     end
   end
@@ -69,7 +77,12 @@ function TestSceneRendererFactory.create(options)
       projected_character_billboard_source
   renderer_options.physics_backend = physics_backend
   renderer_options.physics_step = physics_step
-  
+
+  -- Diagnostics receive only the event information they actually consume.
+  renderer_options.active_event_count_provider =
+      active_event_count_provider
+
+
   -- The renderer only needs the finished source, not its animation implementation details.
   renderer_options.bounce_ball_billboard_source =
       bounce_ball_billboard_source

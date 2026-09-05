@@ -44,13 +44,17 @@ function TestSceneRenderer.new(options)
 
   local self = setmetatable({}, TestSceneRenderer)
 
-  -- These objects provide project data, event diagnostics, and runtime systems used by this test renderer.
+  -- These values provide project data and screen-space diagnostic messages.
   self.project = options.project
-  self.runtime = options.runtime
   self.messages = options.messages or {}
 
   assert(self.project ~= nil, "test scene renderer requires a project")
-  assert(self.runtime ~= nil, "test scene renderer requires a runtime")
+
+  -- This provider exposes the event metric without giving the renderer access to the full runtime.
+  self.active_event_count_provider = options.active_event_count_provider
+
+  assert(type(self.active_event_count_provider) == "function",
+    "test scene renderer requires an active event count provider")
 
   -- These physics dependencies are injected because the renderer only needs diagnostic access to them.
   self.physics_backend = options.physics_backend
@@ -341,7 +345,10 @@ end
 -- Draws the current runtime diagnostic information in screen space.
 function TestSceneRenderer:_draw_diagnostics()
   love.graphics.print(table.concat(self.messages, "\n"), 20, 20)
-  love.graphics.print("Active events: " .. self.runtime:get_active_event_count(), 20, 100)
+
+  -- The provider keeps event runtime details outside the rendering layer.
+  local active_event_count = self.active_event_count_provider()
+  love.graphics.print("Active events: " .. active_event_count, 20, 100)
 
   -- These values expose the current physics state of the bouncing-ball test.
   local velocity_x, velocity_y =
