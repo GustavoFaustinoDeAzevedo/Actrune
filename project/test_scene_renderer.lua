@@ -52,6 +52,7 @@ end
 
 -- Creates the regular and projected cameras together with their follow controls.
 local function create_cameras(self)
+  local configuration = self.render_configuration
   local player_x, player_y = self.player:get_position()
 
   -- This camera renders the ordinary top-down/debug world view.
@@ -67,9 +68,9 @@ local function create_cameras(self)
     rotation = self.player:get_rotation()
   })
 
-  -- Rotation smoothing keeps projected turns independent from player rotation snapping.
+  -- Project data controls how quickly projected camera rotation follows the player.
   self.projected_camera_rotation_response = RotationResponse.new({
-    half_life = 0.1
+    half_life = configuration:get_projected_camera_rotation_half_life()
   })
 
   self.projected_camera_rotation = CameraRotationControl.new(
@@ -80,31 +81,31 @@ local function create_cameras(self)
     }
   )
 
-  -- This policy places the projected viewpoint behind the player in its current orientation.
+  -- Project data determines how far the projected viewpoint remains behind the player.
   self.projected_camera_offset = OrientedOffsetPositionPolicy.new(
     EntityPositionPolicy.new(self.player),
     function()
       return self.projected_camera:get_rotation()
     end,
     {
-      forward = -96
+      forward = configuration:get_projected_camera_forward_offset()
     }
   )
 
-  -- Position smoothing runs separately because the offset depends on the smoothed camera rotation.
+  -- Projected position smoothing remains independent from projected rotation smoothing.
   self.projected_camera_position = CameraPositionControl.new(
     self.projected_camera,
     self.projected_camera_offset,
     {
       response = PositionResponse.new({
-        half_life = 0.08
+        half_life = configuration:get_projected_camera_position_half_life()
       })
     }
   )
 
-  -- The regular debug camera follows the player without the projected camera offset.
+  -- The regular camera uses its own project-configured follow response.
   self.camera_position_response = PositionResponse.new({
-    half_life = 0.08
+    half_life = configuration:get_world_camera_position_half_life()
   })
 
   self.camera_position = CameraPositionControl.new(
@@ -118,40 +119,52 @@ end
 
 -- Creates the captured world region and the perspective projection used by the ground and billboards.
 local function create_projected_world(self)
-  -- These objects define the world area captured before perspective projection.
+  local configuration = self.render_configuration
+
+  -- This transform remains available for visual-only ground-space adjustments.
   self.ground_transform = LayerTransform2D.new()
-  self.ground_region_size = 2048
 
-  local projected_x, projected_y = self.projected_camera:get_position()
-  local half_region = self.ground_region_size * 0.5
+  -- The capture dimensions are project data and no longer need to form a square.
+  self.ground_region_width =
+      configuration:get_ground_region_width()
 
-  -- This region moves with the projected camera while preserving a fixed capture size.
+  self.ground_region_height =
+      configuration:get_ground_region_height()
+
+  local projected_x, projected_y =
+      self.projected_camera:get_position()
+
+  local half_width = self.ground_region_width * 0.5
+  local half_height = self.ground_region_height * 0.5
+
+  -- This region moves with the projected camera while preserving configured dimensions.
   self.ground_world_region = WorldRegionView.new({
-    min_x = projected_x - half_region,
-    min_y = projected_y - half_region,
-    max_x = projected_x + half_region,
-    max_y = projected_y + half_region
+    min_x = projected_x - half_width,
+    min_y = projected_y - half_height,
+    max_x = projected_x + half_width,
+    max_y = projected_y + half_height
   })
 
-  -- This projection converts world positions into the perspective-like projected space.
+  -- Perspective parameters come from the project configuration consumed by this scene.
   self.ground_projection = ProjectedWorldPlane.new({
     viewpoint = self.projected_camera,
     source_region = self.ground_world_region,
-    horizon = 0.3,
-    near_distance = 32,
-    far_distance = 800,
-    horizontal_fov = math.rad(75)
+    horizon = configuration:get_horizon(),
+    near_distance = configuration:get_near_distance(),
+    far_distance = configuration:get_far_distance(),
+    horizontal_fov = configuration:get_horizontal_fov()
   })
 
-  -- Ground and billboards share the same projection so their perspective stays aligned.
-  self.billboard_renderer = ProjectedBillboardRenderer.new(self.ground_projection)
+  -- Ground and billboards share one projection to preserve spatial alignment.
+  self.billboard_renderer =
+      ProjectedBillboardRenderer.new(self.ground_projection)
 
-  -- The world surface is first captured into this canvas before being projected.
+  -- The world surface is captured before the perspective presenter draws it.
   self.ground_canvas = CanvasRenderView.new({
     presenter = self.ground_projection
   })
 
-  -- This group lets multiple ground-space layers share the same capture and world region.
+  -- Ground-related layers share the same capture canvas and world region.
   self.projected_world = RenderLayerGroup.new({
     name = "projected_world",
     order = 100,
@@ -301,6 +314,16 @@ function TestSceneRenderer.new(options)
   self.physics_backend = options.physics_backend
   self.physics_step = options.physics_step
 
+  -- This configuration supplies project-defined camera and projection parameters.
+  self.render_configuration =
+      options.render_configuration
+
+  assert(self.render_configuration ~= nil,
+    "test scene renderer requires a render configuration")
+  assert(type(self.render_configuration.get_world_camera_position_half_life) == "function",
+    "test scene renderer render configuration must expose camera settings")
+  assert(type(self.render_configuration.get_ground_region_width) == "function",
+    "test scene renderer render configuration must expose projection settings")
   assert(self.physics_backend ~= nil,
     "test scene renderer requires a physics backend")
   assert(type(self.physics_backend.get_linear_velocity) == "function",
@@ -408,14 +431,16 @@ function TestSceneRenderer:update(dt)
   self.projected_camera_position:update(dt)
 
   local projected_x, projected_y = self.projected_camera:get_position()
-  local half_region = self.ground_region_size * 0.5
 
-  -- The captured world region follows the projected camera while keeping a fixed size.
+  local half_width = self.ground_region_width * 0.5
+  local half_height = self.ground_region_height * 0.5
+
+  -- The capture region follows the camera while preserving its configured width and height.
   self.ground_world_region:set_bounds(
-    projected_x - half_region,
-    projected_y - half_region,
-    projected_x + half_region,
-    projected_y + half_region
+    projected_x - half_width,
+    projected_y - half_height,
+    projected_x + half_width,
+    projected_y + half_height
   )
 
   -- The temporary ball source still owns render-specific playback and advances once per render update.

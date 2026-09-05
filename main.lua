@@ -10,6 +10,9 @@ local TestSceneRendererFactory = require("project.test_scene_renderer_factory")
 
 local ProjectRuntimeConfiguration = require("project.runtime_configuration")
 
+-- These resource types describe render data owned by the current project.
+local ProjectRenderResourceTypes = require("project.render.resource_types")
+
 local game
 local messages = {}
 
@@ -32,9 +35,13 @@ end
 local function load_project()
     local project_loader = ActruneProjectLoader.new()
 
-    ProjectRuntimeConfiguration.register(
+    -- This register groups extensions supplied by the current project under one provider.
+    local project_register =
         project_loader:create_register("project")
-    )
+
+    -- Runtime and rendering extensions use the same project-owned configuration boundary.
+    ProjectRuntimeConfiguration.register(project_register)
+    ProjectRenderResourceTypes.register(project_register)
 
     local configuration = project_loader:get_configuration()
 

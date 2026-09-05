@@ -1,5 +1,22 @@
 local project_definition = {
   resources = {
+    test_scene_render_configuration = {
+      main = {
+        world_camera_position_half_life = 0.08,
+        projected_camera_position_half_life = 0.08,
+        projected_camera_rotation_half_life = 0.1,
+        projected_camera_forward_offset = -96,
+
+        ground_region_width = 2048,
+        ground_region_height = 2048,
+
+        horizon = 0.3,
+        near_distance = 32,
+        far_distance = 800,
+        horizontal_fov = math.rad(75)
+      }
+    },
+
     image = {
       characters_1 = {
         path = "project/assets/default_img_1.png"

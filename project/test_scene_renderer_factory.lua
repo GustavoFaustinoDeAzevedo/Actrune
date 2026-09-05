@@ -14,6 +14,20 @@ function TestSceneRendererFactory.create(options)
   assert(type(options) == "table", "test scene renderer factory requires options")
   assert(options.project_runtime ~= nil, "test scene renderer factory requires a project runtime")
 
+  -- This resource contains the camera and projection values selected by the current test scene.
+  local render_configurations =
+      options.project.resources.test_scene_render_configuration
+
+  assert(render_configurations ~= nil,
+    "test scene renderer factory requires test_scene_render_configuration resources")
+
+  -- The project currently uses one render configuration for its main test scene.
+  local render_configuration =
+      render_configurations:get("main")
+
+  assert(render_configuration ~= nil,
+    "test scene renderer factory requires the main test scene render configuration")
+
   assert(options.runtime ~= nil and type(options.runtime.get_active_event_count) == "function",
     "test scene renderer factory requires an event runtime exposing get_active_event_count")
 
@@ -90,6 +104,10 @@ function TestSceneRendererFactory.create(options)
       renderer_options[name] = value
     end
   end
+
+  -- Camera and projection behavior comes from project data instead of renderer constants.
+  renderer_options.render_configuration =
+      render_configuration
 
   -- These billboard sources provide independent projected visual origins.
   renderer_options.projected_character_billboard_source =
