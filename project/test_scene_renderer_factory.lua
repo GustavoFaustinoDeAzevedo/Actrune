@@ -1,5 +1,7 @@
 local TestSceneRenderer = require("project.test_scene_renderer")
 local EntityVisualBillboardSource = require("engine.render.entity_visual_billboard_source")
+-- This project-specific source owns the temporary bouncing-ball visual animation.
+local BounceBallBillboardSource = require("project.render.bounce_ball_billboard_source")
 
 local TestSceneRendererFactory = {}
 
@@ -33,6 +35,26 @@ function TestSceneRendererFactory.create(options)
   assert(physics_step ~= nil,
     "test scene renderer factory requires a physics fixed step")
 
+  -- This entity is required by the temporary bouncing-ball projected visual.
+  local bounce_ball = options.project.entities_by_id["bounce_ball"]
+
+  assert(bounce_ball ~= nil,
+    "test scene renderer factory requires the bounce_ball entity")
+
+  -- This clip controls the timing of the temporary bouncing-ball animation.
+  local ball_pulse_clip =
+      options.project.resources.animation_clip:get("ball_pulse")
+
+  assert(ball_pulse_clip ~= nil,
+    "test scene renderer factory requires the ball_pulse animation clip")
+
+  -- This source encapsulates the procedural frames and their independent playback state.
+  local bounce_ball_billboard_source = BounceBallBillboardSource.new({
+    entity_id = "bounce_ball",
+    entity = bounce_ball,
+    animation_clip = ball_pulse_clip
+  })
+
   -- This table preserves normal renderer options without exposing ProjectRuntime as a service locator.
   local renderer_options = {}
 
@@ -47,6 +69,10 @@ function TestSceneRendererFactory.create(options)
       projected_character_billboard_source
   renderer_options.physics_backend = physics_backend
   renderer_options.physics_step = physics_step
+  
+  -- The renderer only needs the finished source, not its animation implementation details.
+  renderer_options.bounce_ball_billboard_source =
+      bounce_ball_billboard_source
 
   -- The renderer receives prepared dependencies and does not resolve runtime systems itself.
   return TestSceneRenderer.new(renderer_options)

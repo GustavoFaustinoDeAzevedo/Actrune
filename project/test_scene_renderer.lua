@@ -23,11 +23,7 @@ local WorldRegionView = require("engine.render.world_region_view")
 local ProjectedWorldPlane = require("project.render.projections.projected_world_plane")
 local ProjectedBillboardRenderer = require("engine.render.projected_billboard_renderer")
 local BillboardVisual = require("engine.render.billboard_visual")
-local IndexedBillboardVisual = require("engine.render.indexed_billboard_visual")
 local BillboardSourceGroup = require("engine.render.billboard_source_group")
-
--- Animation playback is still used directly by the temporary bouncing-ball visual test.
-local AnimationPlayer = require("engine.core.animation.animation_player")
 
 -- Spatial debug rendering remains independent from the projected visual pipeline.
 local SpatialDebugRenderer = require("engine.debug.spatial_debug_renderer")
@@ -78,9 +74,6 @@ function TestSceneRenderer.new(options)
   self.small_grid_area = require_entity(self.project, "small_grid_area")
   self.large_grid_area = require_entity(self.project, "large_grid_area")
   self.free_area = require_entity(self.project, "free_area")
-
-  -- This clip drives the remaining manual billboard animation test.
-  local ball_pulse_clip = self.project.resources.animation_clip:get("ball_pulse")
 
   local player_x, player_y = self.player:get_position()
 
@@ -258,62 +251,37 @@ function TestSceneRenderer.new(options)
     end
   }))
 
-  -- These three temporary visuals expose different frames for the manual ball animation test.
-  local ball_frame_a = BillboardVisual.new({
-    width = 20,
-    height = 20,
-    draw = function(width, height)
-      love.graphics.setColor(1, 1, 1, 0.7)
-      love.graphics.circle("fill", width * 0.5, height * 0.5, 50)
-    end
-  })
-
-  local ball_frame_b = BillboardVisual.new({
-    width = 20,
-    height = 20,
-    draw = function(width, height)
-      love.graphics.setColor(1, 1, 1, 0.8)
-      love.graphics.circle("fill", width * 0.5, height * 0.5, 60)
-    end
-  })
-
-  local ball_frame_c = BillboardVisual.new({
-    width = 20,
-    height = 20,
-    draw = function(width, height)
-      love.graphics.setColor(1, 1, 1, 0.9)
-      love.graphics.circle("fill", width * 0.5, height * 0.5, 55)
-    end
-  })
-
-  -- This AnimationPlayer owns only the playback state of the temporary ball visual.
-  self.ball_animation = AnimationPlayer.new(ball_pulse_clip)
-
-  -- The indexed visual selects its current frame without owning animation timing itself.
-  local ball_animation_visual = IndexedBillboardVisual.new({
-    visuals = {
-      ball_frame_a,
-      ball_frame_b,
-      ball_frame_c,
-      ball_frame_b
-    },
-    index_provider = function()
-      return self.ball_animation:get_frame_index()
-    end
-  })
-
   -- This source contains the project-configured animated character billboards.
   local projected_character_billboard_source = options.projected_character_billboard_source
+
 
   assert(projected_character_billboard_source ~= nil
     and type(projected_character_billboard_source.append_entries) == "function",
     "test scene renderer requires a projected character billboard source")
+
+  -- This source contains the temporary procedural animation used by the bouncing-ball test.
+  local bounce_ball_billboard_source =
+      options.bounce_ball_billboard_source
+
+  assert(bounce_ball_billboard_source ~= nil
+    and type(bounce_ball_billboard_source.append_entries) == "function",
+    "test scene renderer requires a bounce ball billboard source")
+
+  assert(type(bounce_ball_billboard_source.update) == "function",
+    "test scene renderer bounce ball billboard source must expose update")
+
+  -- The renderer keeps this reference only because the temporary source still owns render-time playback.
+  self.bounce_ball_billboard_source =
+      bounce_ball_billboard_source
 
   -- This group combines project-driven billboard sources with temporary test entries.
   self.projected_billboards = BillboardSourceGroup.new()
 
   -- Project-configured animated characters contribute their billboards through this source.
   self.projected_billboards:add_source(projected_character_billboard_source)
+
+  -- The temporary bouncing-ball test contributes its own independently animated billboard.
+  self.projected_billboards:add_source(bounce_ball_billboard_source)
 
   -- This marker provides a simple projected reference for the floor entity position.
   self.projected_billboards:add_entry({
@@ -348,15 +316,6 @@ function TestSceneRenderer.new(options)
         love.graphics.circle("line", width - 30, height * 0.5, 20)
       end
     })
-  })
-
-  -- This entry keeps the manual bouncing-ball animation test outside the entity visual pipeline.
-  self.projected_billboards:add_entry({
-    id = "bounce_ball",
-    position_provider = function()
-      return self.bounce_ball:get_position()
-    end,
-    visual = ball_animation_visual
   })
 
   return self
@@ -457,8 +416,8 @@ function TestSceneRenderer:update(dt)
     projected_y + half_region
   )
 
-  -- The ball remains a renderer-owned animation until this temporary test is migrated or removed.
-  self.ball_animation:update(dt)
+  -- The temporary ball source still owns render-specific playback and advances once per render update.
+  self.bounce_ball_billboard_source:update(dt)
 end
 
 -- Draws all configured render layers in their current order.
