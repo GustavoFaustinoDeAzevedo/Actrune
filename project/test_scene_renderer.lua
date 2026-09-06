@@ -285,6 +285,18 @@ local function create_billboards(self, options)
   self.bounce_ball_billboard_source =
       bounce_ball_billboard_source
 
+
+
+  -- This source temporarily proves the static declarative entity representation path.
+  local static_test_billboard_source =
+      options.static_test_billboard_source
+
+  assert(static_test_billboard_source ~= nil
+    and type(static_test_billboard_source.append_entries) == "function",
+    "test scene renderer requires a static test billboard source")
+
+
+
   -- This group merges every billboard origin before one global projection and depth sort.
   self.projected_billboards = BillboardSourceGroup.new()
 
@@ -296,6 +308,12 @@ local function create_billboards(self, options)
 
   -- Project-specific inspection visuals contribute without adding drawing details to the renderer.
   self.projected_billboards:add_source(projected_debug_billboard_source)
+
+
+
+
+  -- The static test representation shares the same billboard composition and global depth sorting.
+  self.projected_billboards:add_source(static_test_billboard_source)
 end
 
 -- Creates the renderer used by the current Actrune test project.-- Creates the renderer used by the current Actrune test project.

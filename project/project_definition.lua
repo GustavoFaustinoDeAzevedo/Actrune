@@ -132,6 +132,19 @@ local project_definition = {
       }
     },
 
+    image_billboard_visual = {
+      static_test_character = {
+        source = "player_front_1"
+      }
+    },
+
+    image_billboard_binding = {
+      static_test_character = {
+        entity = "step_player",
+        visual = "static_test_character"
+      },
+    },
+
     image_region_sequence = {
       player_front_walk = {
         items = {

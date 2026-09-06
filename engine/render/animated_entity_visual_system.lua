@@ -24,8 +24,8 @@ function AnimatedEntityVisualSystem.new(entities_by_id, configuration)
 
     assert(binding ~= nil and type(binding.get_entity_id) == "function",
       "animated entity visual system binding must expose get_entity_id")
-    assert(type(binding.get_visual_template) == "function",
-      "animated entity visual system binding must expose get_visual_template")
+    assert(type(binding.get_visual) == "function",
+      "animated entity visual system binding must expose get_visual")
 
     local entity_id = binding:get_entity_id()
     local entity = entities_by_id[entity_id]
@@ -33,10 +33,11 @@ function AnimatedEntityVisualSystem.new(entities_by_id, configuration)
     assert(entity ~= nil,
       "visual binding references an unloaded entity: " .. entity_id)
 
+    -- Animated bindings provide a visual template that creates independent playback instances.
     self.visuals[index] = AnimatedEntityVisual.new(
       entity_id,
       entity,
-      binding:get_visual_template()
+      binding:get_visual()
     )
   end
 

@@ -7,6 +7,10 @@ local BounceBallBillboardSource = require("project.render.bounce_ball_billboard_
 -- This project-specific source owns temporary projected scene inspection visuals.
 local ProjectedDebugBillboardSource = require("project.render.projected_debug_billboard_source")
 
+
+local StaticEntityVisual = require("engine.render.static_entity_visual")
+
+
 -- Resolves one required entity from the loaded project.
 local function require_entity(project, id)
   local entity = project.entities_by_id[id]
@@ -183,6 +187,54 @@ function TestSceneRendererFactory.create(options)
       world_camera_target
   renderer_options.projected_camera_target =
       projected_camera_target
+
+
+
+
+  -- This binding temporarily proves that a static declarative visual can represent an entity.
+  local static_binding =
+      options.project.resources.image_billboard_binding:get("static_test_character")
+
+  local static_entity_id =
+      static_binding:get_entity_id()
+
+  local static_entity =
+      options.project.entities_by_id[static_entity_id]
+
+  assert(static_entity ~= nil,
+    "test static visual binding references an unloaded entity: " .. static_entity_id)
+
+  -- StaticEntityVisual combines the live entity with the shared stateless visual resource.
+  local static_entity_visual = StaticEntityVisual.new(
+    static_entity_id,
+    static_entity,
+    static_binding:get_visual()
+  )
+
+  -- This tiny indexed collection lets us reuse the existing generic billboard source adapter.
+  local static_visual_collection = {
+    get_count = function()
+      return 1
+    end,
+
+    get = function(_, index)
+      assert(index == 1, "static test visual collection index is out of range")
+      return static_entity_visual
+    end
+  }
+
+  local static_billboard_source =
+      EntityVisualBillboardSource.new(static_visual_collection)
+
+
+  -- This temporary source proves the static declarative entity visual path.
+  renderer_options.static_test_billboard_source =
+      static_billboard_source
+
+
+
+
+
 
   -- The renderer is constructed only after every external dependency has been resolved.
   return TestSceneRenderer.new(renderer_options)

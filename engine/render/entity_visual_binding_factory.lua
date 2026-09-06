@@ -13,14 +13,16 @@ function EntityVisualBindingFactory.for_visual_type(visual_resource_type)
     assert(context ~= nil and type(context.resolve_resource) == "function",
       "entity visual binding factory requires resource resolution")
 
-    local visual_template = context.resolve_resource(
+    -- The configured visual type determines which project resource this binding resolves.
+    local visual = context.resolve_resource(
       visual_resource_type,
       definition.visual
     )
 
+    -- Runtime state remains outside the binding itself.
     return EntityVisualBinding.new(
       definition.entity,
-      visual_template
+      visual
     )
   end
 end
