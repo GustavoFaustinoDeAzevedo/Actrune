@@ -1,7 +1,18 @@
 local AnimatedEntityVisual = require("engine.render.animated_entity_visual")
+local EntityVisualCollection = require("engine.render.entity_visual_collection")
 
 local AnimatedEntityVisualSystem = {}
 AnimatedEntityVisualSystem.__index = AnimatedEntityVisualSystem
+
+-- Creates one animated entity visual representation from resolved binding data.
+local function create_animated_visual(entity_id, entity, visual)
+  -- AnimatedEntityVisual adds independent playback state around the shared visual template.
+  return AnimatedEntityVisual.new(
+    entity_id,
+    entity,
+    visual
+  )
+end
 
 -- Creates runtime animated entity visuals from one declarative visual configuration.
 function AnimatedEntityVisualSystem.new(entities_by_id, configuration)
@@ -10,57 +21,36 @@ function AnimatedEntityVisualSystem.new(entities_by_id, configuration)
   assert(configuration ~= nil and type(configuration.get_bindings) == "function",
     "animated entity visual system requires a configuration exposing get_bindings")
 
+  -- The configuration chooses the binding sequence while the generic collection resolves its entities.
   local bindings = configuration:get_bindings()
 
-  assert(bindings ~= nil and type(bindings.get_count) == "function" and type(bindings.get) == "function",
-    "animated entity visual configuration must provide an indexed binding collection")
+  local collection = EntityVisualCollection.new(
+    entities_by_id,
+    bindings,
+    create_animated_visual
+  )
 
-  local self = setmetatable({
-    visuals = {}
+  return setmetatable({
+    collection = collection
   }, AnimatedEntityVisualSystem)
-
-  for index = 1, bindings:get_count() do
-    local binding = bindings:get(index)
-
-    assert(binding ~= nil and type(binding.get_entity_id) == "function",
-      "animated entity visual system binding must expose get_entity_id")
-    assert(type(binding.get_visual) == "function",
-      "animated entity visual system binding must expose get_visual")
-
-    local entity_id = binding:get_entity_id()
-    local entity = entities_by_id[entity_id]
-
-    assert(entity ~= nil,
-      "visual binding references an unloaded entity: " .. entity_id)
-
-    -- Animated bindings provide a visual template that creates independent playback instances.
-    self.visuals[index] = AnimatedEntityVisual.new(
-      entity_id,
-      entity,
-      binding:get_visual()
-    )
-  end
-
-  return self
 end
 
--- Returns the number of runtime visual instances owned by this system.
+-- Returns the number of animated runtime representations owned by this system.
 function AnimatedEntityVisualSystem:get_count()
-  return #self.visuals
+  return self.collection:get_count()
 end
 
--- Returns one runtime visual instance by its one-based index.
+-- Returns one animated runtime representation by its one-based index.
 function AnimatedEntityVisualSystem:get(index)
-  assert(type(index) == "number" and index % 1 == 0,
-    "animated entity visual system index must be an integer")
-  assert(index >= 1 and index <= #self.visuals,
-    "animated entity visual system index is out of range")
-  return self.visuals[index]
+  return self.collection:get(index)
 end
 
--- Updates every animated entity visual owned by this system.
+-- Advances every independently animated representation owned by this system.
 function AnimatedEntityVisualSystem:update(dt)
-  for _, entity_visual in ipairs(self.visuals) do entity_visual:update(dt) end
+  -- Animation lifecycle remains here instead of leaking into the generic entity visual collection.
+  for index = 1, self.collection:get_count() do
+    self.collection:get(index):update(dt)
+  end
 end
 
 return AnimatedEntityVisualSystem

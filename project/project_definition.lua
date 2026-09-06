@@ -20,6 +20,12 @@ local project_definition = {
       }
     },
 
+    static_entity_visual_configuration = {
+      projected_static_visuals = {
+        bindings = "projected_static_entities"
+      }
+    },
+
     image = {
       characters_1 = {
         path = "project/assets/default_img_1.png"
