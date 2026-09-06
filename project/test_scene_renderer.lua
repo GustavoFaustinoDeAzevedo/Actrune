@@ -50,40 +50,47 @@ local function resolve_entities(self)
   self.free_area = require_entity(self.project, "free_area")
 end
 
--- Creates the regular and projected cameras together with their follow controls.
+-- Creates the regular and projected cameras together with their independent target controls.
 local function create_cameras(self)
   local configuration = self.render_configuration
-  local player_x, player_y = self.player:get_position()
+
+  -- Each camera starts at the current position of its independently configured target.
+  local world_target_x, world_target_y =
+      self.world_camera_target:get_position()
+
+  local projected_target_x, projected_target_y =
+      self.projected_camera_target:get_position()
 
   -- This camera renders the ordinary top-down/debug world view.
   self.camera = Camera2D.new({
-    x = player_x,
-    y = player_y
+    x = world_target_x,
+    y = world_target_y
   })
 
   -- This camera provides the viewpoint used by the perspective projection.
   self.projected_camera = Camera2D.new({
-    x = player_x,
-    y = player_y,
-    rotation = self.player:get_rotation()
+    x = projected_target_x,
+    y = projected_target_y,
+    rotation = self.projected_camera_target:get_rotation()
   })
 
-  -- Project data controls how quickly projected camera rotation follows the player.
+  -- Project data controls how quickly projected camera rotation follows its configured target.
   self.projected_camera_rotation_response = RotationResponse.new({
     half_life = configuration:get_projected_camera_rotation_half_life()
   })
 
+  -- Rotation tracking depends only on the configured projected camera target.
   self.projected_camera_rotation = CameraRotationControl.new(
     self.projected_camera,
-    EntityRotationPolicy.new(self.player),
+    EntityRotationPolicy.new(self.projected_camera_target),
     {
       response = self.projected_camera_rotation_response
     }
   )
 
-  -- Project data determines how far the projected viewpoint remains behind the player.
+  -- This policy keeps the projected viewpoint behind its target using the current camera orientation.
   self.projected_camera_offset = OrientedOffsetPositionPolicy.new(
-    EntityPositionPolicy.new(self.player),
+    EntityPositionPolicy.new(self.projected_camera_target),
     function()
       return self.projected_camera:get_rotation()
     end,
@@ -103,14 +110,14 @@ local function create_cameras(self)
     }
   )
 
-  -- The regular camera uses its own project-configured follow response.
+  -- The regular camera follows its own configured target without projected-world orientation rules.
   self.camera_position_response = PositionResponse.new({
     half_life = configuration:get_world_camera_position_half_life()
   })
 
   self.camera_position = CameraPositionControl.new(
     self.camera,
-    EntityPositionPolicy.new(self.player),
+    EntityPositionPolicy.new(self.world_camera_target),
     {
       response = self.camera_position_response
     }
@@ -332,6 +339,22 @@ function TestSceneRenderer.new(options)
     "test scene renderer physics backend must expose get_angular_velocity")
   assert(self.physics_step ~= nil,
     "test scene renderer requires a physics fixed step")
+
+  -- These entities drive camera tracking independently from the renderer's other scene entities.
+  self.world_camera_target =
+      options.world_camera_target
+
+  self.projected_camera_target =
+      options.projected_camera_target
+
+  assert(self.world_camera_target ~= nil
+    and type(self.world_camera_target.get_position) == "function",
+    "test scene renderer requires a world camera target exposing get_position")
+
+  assert(self.projected_camera_target ~= nil
+    and type(self.projected_camera_target.get_position) == "function"
+    and type(self.projected_camera_target.get_rotation) == "function",
+    "test scene renderer requires a projected camera target exposing get_position and get_rotation")
 
   -- Each construction step owns one clearly separated part of the renderer setup.
   resolve_entities(self)

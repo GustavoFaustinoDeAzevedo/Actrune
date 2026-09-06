@@ -9,10 +9,15 @@ function TestSceneRenderConfigurationFactory.create(definition)
 
   -- The runtime configuration keeps validation and access separate from serialized project data.
   return TestSceneRenderConfiguration.new({
+    -- Camera target associations remain serialized as entity ids.
+    world_camera_target_entity = definition.world_camera_target_entity,
+    projected_camera_target_entity = definition.projected_camera_target_entity,
+
     world_camera_position_half_life = definition.world_camera_position_half_life,
     projected_camera_position_half_life = definition.projected_camera_position_half_life,
     projected_camera_rotation_half_life = definition.projected_camera_rotation_half_life,
     projected_camera_forward_offset = definition.projected_camera_forward_offset,
+
     ground_region_width = definition.ground_region_width,
     ground_region_height = definition.ground_region_height,
     horizon = definition.horizon,

@@ -15,6 +15,16 @@ function ProjectRenderResourceTypes.register(register)
     {
       fields = {
         {
+          name = "world_camera_target_entity",
+          type = "entity_reference",
+          required = true
+        },
+        {
+          name = "projected_camera_target_entity",
+          type = "entity_reference",
+          required = true
+        },
+        {
           name = "world_camera_position_half_life",
           type = "number",
           required = true

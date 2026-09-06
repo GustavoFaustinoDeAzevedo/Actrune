@@ -28,6 +28,33 @@ function TestSceneRendererFactory.create(options)
   assert(render_configuration ~= nil,
     "test scene renderer factory requires the main test scene render configuration")
 
+  -- These ids describe camera-to-entity associations without storing entity objects in project resources.
+  local world_camera_target_id =
+      render_configuration:get_world_camera_target_entity()
+
+  local projected_camera_target_id =
+      render_configuration:get_projected_camera_target_entity()
+
+  -- The composition factory resolves serialized ids into the live entities required by camera policies.
+  local world_camera_target =
+      options.project.entities_by_id[world_camera_target_id]
+
+  local projected_camera_target =
+      options.project.entities_by_id[projected_camera_target_id]
+
+  assert(world_camera_target ~= nil,
+    "test scene renderer factory cannot resolve world camera target: " .. world_camera_target_id)
+
+  assert(projected_camera_target ~= nil,
+    "test scene renderer factory cannot resolve projected camera target: " .. projected_camera_target_id)
+
+  assert(type(world_camera_target.get_position) == "function",
+    "world camera target must expose get_position")
+
+  assert(type(projected_camera_target.get_position) == "function"
+    and type(projected_camera_target.get_rotation) == "function",
+    "projected camera target must expose get_position and get_rotation")
+
   assert(options.runtime ~= nil and type(options.runtime.get_active_event_count) == "function",
     "test scene renderer factory requires an event runtime exposing get_active_event_count")
 
@@ -104,6 +131,13 @@ function TestSceneRendererFactory.create(options)
       renderer_options[name] = value
     end
   end
+
+  -- Camera targets are resolved here so the renderer does not need to interpret entity ids itself.
+  renderer_options.world_camera_target =
+      world_camera_target
+
+  renderer_options.projected_camera_target =
+      projected_camera_target
 
   -- Camera and projection behavior comes from project data instead of renderer constants.
   renderer_options.render_configuration =

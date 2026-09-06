@@ -5,6 +5,14 @@ TestSceneRenderConfiguration.__index = TestSceneRenderConfiguration
 function TestSceneRenderConfiguration.new(options)
   options = options or {}
 
+  assert(type(options.world_camera_target_entity) == "string"
+    and options.world_camera_target_entity ~= "",
+    "test scene render configuration requires a world camera target entity")
+
+  assert(type(options.projected_camera_target_entity) == "string"
+    and options.projected_camera_target_entity ~= "",
+    "test scene render configuration requires a projected camera target entity")
+
   assert(type(options.world_camera_position_half_life) == "number"
     and options.world_camera_position_half_life > 0,
     "test scene render configuration requires a positive world camera position half-life")
@@ -40,8 +48,10 @@ function TestSceneRenderConfiguration.new(options)
     and options.horizontal_fov > 0 and options.horizontal_fov < math.pi,
     "test scene render configuration horizontal FOV must be between zero and pi")
 
-  -- These values control how the regular and projected cameras follow the player.
+  -- These values define which entities drive each camera and how they follow their targets.
   local camera = {
+    world_target_entity = options.world_camera_target_entity,
+    projected_target_entity = options.projected_camera_target_entity,
     world_position_half_life = options.world_camera_position_half_life,
     projected_position_half_life = options.projected_camera_position_half_life,
     projected_rotation_half_life = options.projected_camera_rotation_half_life,
@@ -62,6 +72,16 @@ function TestSceneRenderConfiguration.new(options)
     camera = camera,
     projection = projection
   }, TestSceneRenderConfiguration)
+end
+
+-- Returns the entity id followed by the regular world camera.
+function TestSceneRenderConfiguration:get_world_camera_target_entity()
+  return self.camera.world_target_entity
+end
+
+-- Returns the entity id followed by the projected camera.
+function TestSceneRenderConfiguration:get_projected_camera_target_entity()
+  return self.camera.projected_target_entity
 end
 
 -- Returns the regular world camera position smoothing half-life.

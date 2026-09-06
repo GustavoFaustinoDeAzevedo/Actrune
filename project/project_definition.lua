@@ -2,6 +2,9 @@ local project_definition = {
   resources = {
     test_scene_render_configuration = {
       main = {
+        world_camera_target_entity = "player",
+        projected_camera_target_entity = "player",
+
         world_camera_position_half_life = 0.08,
         projected_camera_position_half_life = 0.08,
         projected_camera_rotation_half_life = 0.1,
