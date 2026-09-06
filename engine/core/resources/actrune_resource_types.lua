@@ -203,7 +203,20 @@ function ActruneResourceTypes.register(register)
           required = true
         }
       }
+    })
+
+  register:register_resource_type("image_billboard_binding_sequence",
+    ResourceSequenceFactory.for_type("image_billboard_binding"), {
+    fields = {
+      {
+        name = "items",
+        type = "resource_reference_list",
+        resource_type = "image_billboard_binding",
+        required = true,
+        min_items = 1
+      }
     }
+  }
   )
 
   register:register_resource_type("directional_image_animation_binding_sequence",

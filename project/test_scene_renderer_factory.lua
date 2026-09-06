@@ -7,9 +7,12 @@ local BounceBallBillboardSource = require("project.render.bounce_ball_billboard_
 -- This project-specific source owns temporary projected scene inspection visuals.
 local ProjectedDebugBillboardSource = require("project.render.projected_debug_billboard_source")
 
+-- This system creates runtime representations for stateless entity visuals.
+local StaticEntityVisualSystem = require("engine.render.static_entity_visual_system")
 
-local StaticEntityVisual = require("engine.render.static_entity_visual")
-
+-- -------------------------------------------------------------------------- --
+--                               Local Functions                              --
+-- -------------------------------------------------------------------------- --
 
 -- Resolves one required entity from the loaded project.
 local function require_entity(project, id)
@@ -120,6 +123,33 @@ local function create_test_billboard_sources(project)
   return bounce_ball_source, debug_source
 end
 
+-- Creates the billboard source backed by declarative static entity visual bindings.
+local function create_static_billboard_source(project)
+  local binding_sequences =
+      project.resources.image_billboard_binding_sequence
+
+  assert(binding_sequences ~= nil,
+    "test scene renderer factory requires image_billboard_binding_sequence resources")
+
+  -- This sequence selects which static entity representations belong to the projected test scene.
+  local bindings =
+      binding_sequences:get("projected_static_entities")
+
+  assert(bindings ~= nil,
+    "test scene renderer factory requires the projected_static_entities binding sequence")
+
+  -- The system resolves binding entity ids into live runtime representations.
+  local static_visuals = StaticEntityVisualSystem.new(
+    project.entities_by_id,
+    bindings
+  )
+
+  -- The existing billboard source works because static and animated representations expose the same render interface.
+  return EntityVisualBillboardSource.new(static_visuals)
+end
+
+-- -------------------------------------------------------------------------- --
+
 local TestSceneRendererFactory = {}
 
 -- Creates the test renderer with all project-specific dependencies already resolved.
@@ -150,6 +180,10 @@ function TestSceneRendererFactory.create(options)
   local bounce_ball_source, debug_source =
       create_test_billboard_sources(options.project)
 
+  -- Static entity visuals are built from their own declarative binding sequence.
+  local static_billboard_source =
+      create_static_billboard_source(options.project)
+
   -- This provider exposes only the event metric consumed by screen diagnostics.
   local active_event_count_provider = function()
     return options.runtime:get_active_event_count()
@@ -163,6 +197,10 @@ function TestSceneRendererFactory.create(options)
       renderer_options[name] = value
     end
   end
+
+  -- This source contributes stateless entity representations to the projected billboard composition.
+  renderer_options.static_test_billboard_source =
+      static_billboard_source
 
   -- Billboard sources are injected independently so their implementations remain outside the renderer.
   renderer_options.projected_character_billboard_source =
@@ -187,54 +225,6 @@ function TestSceneRendererFactory.create(options)
       world_camera_target
   renderer_options.projected_camera_target =
       projected_camera_target
-
-
-
-
-  -- This binding temporarily proves that a static declarative visual can represent an entity.
-  local static_binding =
-      options.project.resources.image_billboard_binding:get("static_test_character")
-
-  local static_entity_id =
-      static_binding:get_entity_id()
-
-  local static_entity =
-      options.project.entities_by_id[static_entity_id]
-
-  assert(static_entity ~= nil,
-    "test static visual binding references an unloaded entity: " .. static_entity_id)
-
-  -- StaticEntityVisual combines the live entity with the shared stateless visual resource.
-  local static_entity_visual = StaticEntityVisual.new(
-    static_entity_id,
-    static_entity,
-    static_binding:get_visual()
-  )
-
-  -- This tiny indexed collection lets us reuse the existing generic billboard source adapter.
-  local static_visual_collection = {
-    get_count = function()
-      return 1
-    end,
-
-    get = function(_, index)
-      assert(index == 1, "static test visual collection index is out of range")
-      return static_entity_visual
-    end
-  }
-
-  local static_billboard_source =
-      EntityVisualBillboardSource.new(static_visual_collection)
-
-
-  -- This temporary source proves the static declarative entity visual path.
-  renderer_options.static_test_billboard_source =
-      static_billboard_source
-
-
-
-
-
 
   -- The renderer is constructed only after every external dependency has been resolved.
   return TestSceneRenderer.new(renderer_options)

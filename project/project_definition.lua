@@ -145,6 +145,14 @@ local project_definition = {
       },
     },
 
+    image_billboard_binding_sequence = {
+      projected_static_entities = {
+        items = {
+          "static_test_character",
+        }
+      }
+    },
+
     image_region_sequence = {
       player_front_walk = {
         items = {
