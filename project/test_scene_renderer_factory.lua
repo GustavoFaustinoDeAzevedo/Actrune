@@ -7,123 +7,151 @@ local BounceBallBillboardSource = require("project.render.bounce_ball_billboard_
 -- This project-specific source owns temporary projected scene inspection visuals.
 local ProjectedDebugBillboardSource = require("project.render.projected_debug_billboard_source")
 
-local TestSceneRendererFactory = {}
+-- Resolves one required entity from the loaded project.
+local function require_entity(project, id)
+  local entity = project.entities_by_id[id]
+  assert(entity ~= nil, "test scene renderer factory requires entity: " .. id)
+  return entity
+end
 
--- Creates the test renderer with the project-specific runtime dependencies it requires.
-function TestSceneRendererFactory.create(options)
-  assert(type(options) == "table", "test scene renderer factory requires options")
-  assert(options.project_runtime ~= nil, "test scene renderer factory requires a project runtime")
-
-  -- This resource contains the camera and projection values selected by the current test scene.
-  local render_configurations =
-      options.project.resources.test_scene_render_configuration
-
-  assert(render_configurations ~= nil,
-    "test scene renderer factory requires test_scene_render_configuration resources")
-
-  -- The project currently uses one render configuration for its main test scene.
-  local render_configuration =
-      render_configurations:get("main")
-
-  assert(render_configuration ~= nil,
-    "test scene renderer factory requires the main test scene render configuration")
-
-  -- These ids describe camera-to-entity associations without storing entity objects in project resources.
-  local world_camera_target_id =
-      render_configuration:get_world_camera_target_entity()
-
-  local projected_camera_target_id =
-      render_configuration:get_projected_camera_target_entity()
-
-  -- The composition factory resolves serialized ids into the live entities required by camera policies.
-  local world_camera_target =
-      options.project.entities_by_id[world_camera_target_id]
-
-  local projected_camera_target =
-      options.project.entities_by_id[projected_camera_target_id]
-
-  assert(world_camera_target ~= nil,
-    "test scene renderer factory cannot resolve world camera target: " .. world_camera_target_id)
-
-  assert(projected_camera_target ~= nil,
-    "test scene renderer factory cannot resolve projected camera target: " .. projected_camera_target_id)
-
-  assert(type(world_camera_target.get_position) == "function",
-    "world camera target must expose get_position")
-
-  assert(type(projected_camera_target.get_position) == "function"
-    and type(projected_camera_target.get_rotation) == "function",
-    "projected camera target must expose get_position and get_rotation")
-
-  assert(options.runtime ~= nil and type(options.runtime.get_active_event_count) == "function",
-    "test scene renderer factory requires an event runtime exposing get_active_event_count")
-
-  -- This provider exposes only the event metric required by the renderer diagnostics.
-  local active_event_count_provider = function()
-    return options.runtime:get_active_event_count()
-  end
-
-  -- This runtime system owns the animated entity visual instances configured by the project.
-  local animated_entity_visuals = options.project_runtime:get_system("animated_entity_visuals")
+-- Resolves the runtime-backed source containing declarative animated entity visuals.
+local function create_character_billboard_source(options)
+  -- This runtime system owns the instantiated animated entity representations.
+  local animated_entity_visuals =
+      options.project_runtime:get_system("animated_entity_visuals")
 
   assert(animated_entity_visuals ~= nil,
     "test scene renderer factory requires the animated_entity_visuals runtime system")
 
-  -- This source adapts runtime entity visuals to the billboard source contract.
-  local projected_character_billboard_source =
-      EntityVisualBillboardSource.new(animated_entity_visuals)
+  -- The source adapts runtime representations to the billboard source contract.
+  return EntityVisualBillboardSource.new(animated_entity_visuals)
+end
 
-  -- This runtime system owns the physics backend and fixed-step state used by diagnostics.
-  local physics_system = options.project_runtime:get_system("physics")
+-- Resolves the narrow physics dependencies used only by renderer diagnostics.
+local function resolve_physics_dependencies(options)
+  local physics_system =
+      options.project_runtime:get_system("physics")
 
   assert(physics_system ~= nil,
     "test scene renderer factory requires the physics runtime system")
 
-  -- These are the narrow physics dependencies actually consumed by the renderer.
-  local physics_backend = physics_system:get_backend()
-  local physics_step = physics_system:get_fixed_step()
+  -- The renderer receives capabilities instead of the complete physics runtime system.
+  local backend = physics_system:get_backend()
+  local fixed_step = physics_system:get_fixed_step()
 
-  assert(physics_backend ~= nil,
+  assert(backend ~= nil,
     "test scene renderer factory requires a physics backend")
-  assert(physics_step ~= nil,
+  assert(fixed_step ~= nil,
     "test scene renderer factory requires a physics fixed step")
 
-  -- This entity is required by the temporary bouncing-ball projected visual.
-  local bounce_ball = options.project.entities_by_id["bounce_ball"]
+  return backend, fixed_step
+end
 
-  assert(bounce_ball ~= nil,
-    "test scene renderer factory requires the bounce_ball entity")
+-- Resolves the render configuration selected by the current test scene.
+local function resolve_render_configuration(project)
+  local configurations = project.resources.test_scene_render_configuration
 
-  -- This clip controls the timing of the temporary bouncing-ball animation.
+  assert(configurations ~= nil,
+    "test scene renderer factory requires test_scene_render_configuration resources")
+
+  -- This factory represents the main test scene, so selecting its main configuration belongs here.
+  local configuration = configurations:get("main")
+
+  assert(configuration ~= nil,
+    "test scene renderer factory requires the main test scene render configuration")
+
+  return configuration
+end
+
+-- Resolves the live entities referenced by the configured camera target ids.
+local function resolve_camera_targets(project, configuration)
+  local world_target_id =
+      configuration:get_world_camera_target_entity()
+
+  local projected_target_id =
+      configuration:get_projected_camera_target_entity()
+
+  -- Serialized entity ids become live runtime objects only at this composition boundary.
+  local world_target =
+      require_entity(project, world_target_id)
+
+  local projected_target =
+      require_entity(project, projected_target_id)
+
+  assert(type(world_target.get_position) == "function",
+    "world camera target must expose get_position")
+
+  assert(type(projected_target.get_position) == "function"
+    and type(projected_target.get_rotation) == "function",
+    "projected camera target must expose get_position and get_rotation")
+
+  return world_target, projected_target
+end
+
+-- Creates the project-specific procedural billboard sources used by this test scene.
+local function create_test_billboard_sources(project)
+  local bounce_ball = require_entity(project, "bounce_ball")
+  local floor = require_entity(project, "floor")
+  local door = require_entity(project, "door")
+
+  -- This clip supplies timing while the source owns the procedural ball frames.
   local ball_pulse_clip =
-      options.project.resources.animation_clip:get("ball_pulse")
+      project.resources.animation_clip:get("ball_pulse")
 
   assert(ball_pulse_clip ~= nil,
     "test scene renderer factory requires the ball_pulse animation clip")
 
-  -- This source encapsulates the procedural frames and their independent playback state.
-  local bounce_ball_billboard_source = BounceBallBillboardSource.new({
+  local bounce_ball_source = BounceBallBillboardSource.new({
     entity_id = "bounce_ball",
     entity = bounce_ball,
     animation_clip = ball_pulse_clip
   })
 
-  -- These entities drive the temporary projected debug visuals.
-  local floor = options.project.entities_by_id["floor"]
-  local door = options.project.entities_by_id["door"]
-
-  assert(floor ~= nil,
-    "test scene renderer factory requires the floor entity")
-  assert(door ~= nil,
-    "test scene renderer factory requires the door entity")
-
-  -- This source isolates project-specific procedural debug billboards from the renderer.
-  local projected_debug_billboard_source = ProjectedDebugBillboardSource.new({
+  -- These visuals are intentionally project-side because they exist only for development inspection.
+  local debug_source = ProjectedDebugBillboardSource.new({
     floor = floor,
     door = door
   })
 
-  -- This table keeps normal renderer options while hiding runtime service locators from the renderer.
+  return bounce_ball_source, debug_source
+end
+
+local TestSceneRendererFactory = {}
+
+-- Creates the test renderer with all project-specific dependencies already resolved.
+function TestSceneRendererFactory.create(options)
+  assert(type(options) == "table",
+    "test scene renderer factory requires options")
+  assert(options.project ~= nil,
+    "test scene renderer factory requires a project")
+  assert(options.project_runtime ~= nil,
+    "test scene renderer factory requires a project runtime")
+  assert(options.runtime ~= nil
+    and type(options.runtime.get_active_event_count) == "function",
+    "test scene renderer factory requires an event runtime exposing get_active_event_count")
+
+  -- Each helper resolves one independent dependency group at the project composition boundary.
+  local character_source =
+      create_character_billboard_source(options)
+
+  local physics_backend, physics_step =
+      resolve_physics_dependencies(options)
+
+  local render_configuration =
+      resolve_render_configuration(options.project)
+
+  local world_camera_target, projected_camera_target =
+      resolve_camera_targets(options.project, render_configuration)
+
+  local bounce_ball_source, debug_source =
+      create_test_billboard_sources(options.project)
+
+  -- This provider exposes only the event metric consumed by screen diagnostics.
+  local active_event_count_provider = function()
+    return options.runtime:get_active_event_count()
+  end
+
+  -- Runtime service locators are deliberately not forwarded to the renderer.
   local renderer_options = {}
 
   for name, value in pairs(options) do
@@ -132,37 +160,31 @@ function TestSceneRendererFactory.create(options)
     end
   end
 
-  -- Camera targets are resolved here so the renderer does not need to interpret entity ids itself.
-  renderer_options.world_camera_target =
-      world_camera_target
-
-  renderer_options.projected_camera_target =
-      projected_camera_target
-
-  -- Camera and projection behavior comes from project data instead of renderer constants.
-  renderer_options.render_configuration =
-      render_configuration
-
-  -- These billboard sources provide independent projected visual origins.
+  -- Billboard sources are injected independently so their implementations remain outside the renderer.
   renderer_options.projected_character_billboard_source =
-      projected_character_billboard_source
+      character_source
   renderer_options.bounce_ball_billboard_source =
-      bounce_ball_billboard_source
+      bounce_ball_source
   renderer_options.projected_debug_billboard_source =
-      projected_debug_billboard_source
+      debug_source
 
-  -- These dependencies expose only the diagnostic capabilities consumed by the renderer.
-  renderer_options.physics_backend = physics_backend
-  renderer_options.physics_step = physics_step
+  -- Diagnostics receive only the physics capabilities and event metric they consume.
+  renderer_options.physics_backend =
+      physics_backend
+  renderer_options.physics_step =
+      physics_step
   renderer_options.active_event_count_provider =
       active_event_count_provider
 
+  -- Camera and projection behavior comes from validated project data.
+  renderer_options.render_configuration =
+      render_configuration
+  renderer_options.world_camera_target =
+      world_camera_target
+  renderer_options.projected_camera_target =
+      projected_camera_target
 
-  -- The renderer only needs the finished source, not its animation implementation details.
-  renderer_options.bounce_ball_billboard_source =
-      bounce_ball_billboard_source
-
-  -- The renderer receives prepared dependencies and does not resolve runtime systems itself.
+  -- The renderer is constructed only after every external dependency has been resolved.
   return TestSceneRenderer.new(renderer_options)
 end
 
