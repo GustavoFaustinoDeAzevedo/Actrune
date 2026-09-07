@@ -22,7 +22,8 @@ function EntityVisualBindingFactory.for_visual_type(visual_resource_type)
     -- Runtime state remains outside the binding itself.
     return EntityVisualBinding.new(
       definition.entity,
-      visual
+      visual,
+      definition.elevation_component
     )
   end
 end

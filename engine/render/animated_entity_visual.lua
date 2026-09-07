@@ -4,7 +4,7 @@ local AnimatedEntityVisual = {}
 AnimatedEntityVisual.__index = AnimatedEntityVisual
 
 -- Creates one runtime visual instance with independent animation playback for an entity.
-function AnimatedEntityVisual.new(entity_id, entity, visual_template)
+function AnimatedEntityVisual.new(entity_id, entity, visual_template, elevation_source)
   assert(type(entity_id) == "string" and entity_id ~= "",
     "animated entity visual requires a non-empty entity id")
   assert(entity ~= nil, "animated entity visual requires an entity")
@@ -16,10 +16,13 @@ function AnimatedEntityVisual.new(entity_id, entity, visual_template)
     "animated entity visual requires a template exposing get_clip")
   assert(type(visual_template.instantiate) == "function",
     "animated entity visual template must expose instantiate")
+  assert(elevation_source == nil or type(elevation_source.get_elevation) == "function",
+    "animated entity visual elevation source must expose get_elevation")
 
   local self = setmetatable({}, AnimatedEntityVisual)
   self.entity_id = entity_id
   self.entity = entity
+  self.elevation_source = elevation_source
   self.animation = AnimationPlayer.new(visual_template:get_clip())
 
   self.visual = visual_template:instantiate({
@@ -64,6 +67,12 @@ end
 -- Advances the independent animation playback state.
 function AnimatedEntityVisual:update(dt)
   self.animation:update(dt)
+end
+
+-- Returns live world-space elevation, defaulting to the base plane.
+function AnimatedEntityVisual:get_elevation()
+  if self.elevation_source == nil then return 0 end
+  return self.elevation_source:get_elevation()
 end
 
 return AnimatedEntityVisual

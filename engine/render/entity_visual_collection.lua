@@ -22,6 +22,8 @@ function EntityVisualCollection.new(entities_by_id, bindings, representation_fac
       "entity visual collection binding must expose get_entity_id")
     assert(type(binding.get_visual) == "function",
       "entity visual collection binding must expose get_visual")
+    assert(type(binding.get_elevation_component) == "function",
+      "entity visual collection binding must expose get_elevation_component")
 
     local entity_id = binding:get_entity_id()
     local entity = entities_by_id[entity_id]
@@ -29,11 +31,27 @@ function EntityVisualCollection.new(entities_by_id, bindings, representation_fac
     assert(entity ~= nil,
       "entity visual binding references an unloaded entity: " .. entity_id)
 
-    -- The collection resolves common binding data while the injected factory chooses the representation type.
+    local elevation_source = nil
+    local component_name = binding:get_elevation_component()
+
+    if component_name ~= nil then
+      assert(type(entity.get_component) == "function",
+        "entity visual elevation requires an entity exposing get_component")
+
+      elevation_source = entity:get_component(component_name)
+
+      assert(elevation_source ~= nil,
+        "entity visual references a missing component: " .. entity_id .. "." .. component_name)
+      assert(type(elevation_source.get_elevation) == "function",
+        "entity visual elevation component must expose get_elevation")
+    end
+
+    -- Resolve shared dependencies before selecting the concrete representation.
     local entity_visual = representation_factory(
       entity_id,
       entity,
-      binding:get_visual()
+      binding:get_visual(),
+      elevation_source
     )
 
     assert(entity_visual ~= nil,

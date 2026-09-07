@@ -229,7 +229,8 @@ local project_definition = {
     directional_image_animation_binding = {
       player = {
         entity = "player",
-        visual = "player_walk"
+        visual = "player_walk",
+        elevation_component = "elevation"
       },
       door_character_test = {
         entity = "door",

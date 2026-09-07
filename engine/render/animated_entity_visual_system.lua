@@ -4,14 +4,9 @@ local EntityVisualCollection = require("engine.render.entity_visual_collection")
 local AnimatedEntityVisualSystem = {}
 AnimatedEntityVisualSystem.__index = AnimatedEntityVisualSystem
 
--- Creates one animated entity visual representation from resolved binding data.
-local function create_animated_visual(entity_id, entity, visual)
-  -- AnimatedEntityVisual adds independent playback state around the shared visual template.
-  return AnimatedEntityVisual.new(
-    entity_id,
-    entity,
-    visual
-  )
+-- Creates an animated representation from resolved binding dependencies.
+local function create_animated_visual(entity_id, entity, visual, elevation_source)
+  return AnimatedEntityVisual.new(entity_id, entity, visual, elevation_source)
 end
 
 -- Creates runtime animated entity visuals from one declarative visual configuration.

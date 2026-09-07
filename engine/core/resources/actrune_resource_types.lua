@@ -22,15 +22,15 @@ function ActruneResourceTypes.register(register)
 
   register:register_resource_type("spatial_levels",
     function(definition) return SpatialLevels.new(definition.elevations) end, {
-    fields = {
-      {
-        name = "elevations",
-        type = "number_list",
-        required = true,
-        min_items = 1
+      fields = {
+        {
+          name = "elevations",
+          type = "number_list",
+          required = true,
+          min_items = 1
+        }
       }
-    }
-  })
+    })
 
   register:register_resource_type("image", ImageResourceFactory.create, {
     fields = {
@@ -188,6 +188,11 @@ function ActruneResourceTypes.register(register)
     EntityVisualBindingFactory.for_visual_type("directional_image_animation_visual"), {
       fields = {
         {
+          name = "elevation_component",
+          type = "string",
+          optional = true
+        },
+        {
           name = "entity",
           type = "entity_reference",
           required = true
@@ -204,6 +209,11 @@ function ActruneResourceTypes.register(register)
   register:register_resource_type("image_billboard_binding",
     EntityVisualBindingFactory.for_visual_type("image_billboard_visual"), {
       fields = {
+        {
+          name = "elevation_component",
+          type = "string",
+          optional = true
+        },
         {
           name = "entity",
           type = "entity_reference",

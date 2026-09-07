@@ -11,6 +11,8 @@ function EntityVisualBillboardAdapter.create(entity_visual)
     "entity visual billboard adapter requires get_rotation")
   assert(type(entity_visual.get_visual) == "function",
     "entity visual billboard adapter requires get_visual")
+  assert(type(entity_visual.get_elevation) == "function",
+    "entity visual billboard adapter requires get_elevation")
 
   local entity_id = entity_visual:get_entity_id()
   local visual = entity_visual:get_visual()
@@ -27,6 +29,9 @@ function EntityVisualBillboardAdapter.create(entity_visual)
     end,
     rotation_provider = function()
       return entity_visual:get_rotation()
+    end,
+    elevation_provider = function()
+      return entity_visual:get_elevation()
     end,
     visual = visual
   }

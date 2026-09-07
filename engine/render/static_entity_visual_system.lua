@@ -4,14 +4,9 @@ local EntityVisualCollection = require("engine.render.entity_visual_collection")
 local StaticEntityVisualSystem = {}
 StaticEntityVisualSystem.__index = StaticEntityVisualSystem
 
--- Creates one static entity visual representation from resolved binding data.
-local function create_static_visual(entity_id, entity, visual)
-  -- Static representations directly share their stateless visual resource.
-  return StaticEntityVisual.new(
-    entity_id,
-    entity,
-    visual
-  )
+-- Creates a static representation from resolved binding dependencies.
+local function create_static_visual(entity_id, entity, visual, elevation_source)
+  return StaticEntityVisual.new(entity_id, entity, visual, elevation_source)
 end
 
 -- Creates runtime static entity visuals from an indexed binding collection.
