@@ -42,6 +42,12 @@ function TestSceneRenderConfiguration.new(options)
   assert(type(options.reference_distance) == "number"
     and options.reference_distance > 0 and options.reference_distance < math.huge,
     "test scene render configuration requires a finite positive reference distance")
+  assert(options.ground_levels ~= nil
+    and type(options.ground_levels.get_elevation) == "function",
+    "test scene render configuration requires ground levels exposing get_elevation")
+
+  -- Resolve the fixed ground level once during configuration construction.
+  local ground_elevation = options.ground_levels:get_elevation(options.ground_level)
 
   -- These values define which entities drive each camera and how they follow their targets.
   local camera = {
@@ -63,6 +69,7 @@ function TestSceneRenderConfiguration.new(options)
     horizontal_fov = options.horizontal_fov,
     camera_elevation = options.camera_elevation,
     reference_distance = options.reference_distance,
+    ground_elevation = ground_elevation,
   }
 
   return setmetatable({
@@ -139,6 +146,11 @@ end
 -- Returns the depth at which billboards have unit scale.
 function TestSceneRenderConfiguration:get_reference_distance()
   return self.projection.reference_distance
+end
+
+-- Returns the ground elevation resolved from the configured spatial level.
+function TestSceneRenderConfiguration:get_ground_elevation()
+  return self.projection.ground_elevation
 end
 
 return TestSceneRenderConfiguration

@@ -169,7 +169,8 @@ local function create_projected_world(self)
   -- The ground presenter supplies only its captured region and presentation state.
   self.ground_plane = ProjectedWorldPlane.new({
     projection = self.perspective_projection,
-    source_region = self.ground_world_region
+    source_region = self.ground_world_region,
+    elevation = configuration:get_ground_elevation()
   })
 
   self.billboard_renderer =

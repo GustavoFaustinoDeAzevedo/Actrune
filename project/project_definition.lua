@@ -3,8 +3,6 @@ local project_definition = {
 
     test_scene_render_configuration = {
       main = {
-        camera_elevation = 32,
-        reference_distance = 32,
 
         world_camera_target_entity = "player",
         projected_camera_target_entity = "player",
@@ -13,7 +11,11 @@ local project_definition = {
         projected_camera_position_half_life = 0.08,
         projected_camera_rotation_half_life = 0.1,
         projected_camera_forward_offset = -96,
+        camera_elevation = 32,
+        reference_distance = 32,
 
+        ground_levels = "main",
+        ground_level = 0,
         ground_region_width = 2048,
         ground_region_height = 2048,
 
@@ -714,7 +716,7 @@ local project_definition = {
           type = "spatial_elevation",
           levels = "main",
           level = 0,
-          offset = 16
+          offset = 0
         },
         controls = {
           type = "controls",

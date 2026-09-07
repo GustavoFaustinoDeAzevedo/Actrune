@@ -15,6 +15,18 @@ function ProjectRenderResourceTypes.register(register)
     {
       fields = {
         {
+          name = "ground_levels",
+          type = "resource_reference",
+          resource_type = "spatial_levels",
+          required = true
+        },
+        {
+          name = "ground_level",
+          type = "integer",
+          required = true,
+          min = 0
+        },
+        {
           name = "camera_elevation",
           type = "number",
           required = true
