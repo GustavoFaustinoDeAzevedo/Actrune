@@ -45,6 +45,12 @@ function TestSceneRenderConfiguration.new(options)
   assert(options.ground_levels ~= nil
     and type(options.ground_levels.get_elevation) == "function",
     "test scene render configuration requires ground levels exposing get_elevation")
+  assert(options.render_mode == "perspective" or options.render_mode == "orthographic",
+    "test scene render configuration requires a supported render mode")
+  assert(type(options.orthographic_elevation_scale) == "number"
+    and options.orthographic_elevation_scale >= 0
+    and options.orthographic_elevation_scale < math.huge,
+    "test scene render configuration requires a finite non-negative elevation scale")
 
   -- Resolve the fixed ground level once during configuration construction.
   local ground_elevation = options.ground_levels:get_elevation(options.ground_level)
@@ -70,6 +76,8 @@ function TestSceneRenderConfiguration.new(options)
     camera_elevation = options.camera_elevation,
     reference_distance = options.reference_distance,
     ground_elevation = ground_elevation,
+    render_mode = options.render_mode,
+    orthographic_elevation_scale = options.orthographic_elevation_scale,
   }
 
   return setmetatable({
@@ -151,6 +159,16 @@ end
 -- Returns the ground elevation resolved from the configured spatial level.
 function TestSceneRenderConfiguration:get_ground_elevation()
   return self.projection.ground_elevation
+end
+
+-- Returns the presentation mode selected by this scene.
+function TestSceneRenderConfiguration:get_render_mode()
+  return self.projection.render_mode
+end
+
+-- Returns screen-vertical displacement per elevation unit before camera zoom.
+function TestSceneRenderConfiguration:get_orthographic_elevation_scale()
+  return self.projection.orthographic_elevation_scale
 end
 
 return TestSceneRenderConfiguration

@@ -9,6 +9,7 @@ local PositionResponse = require("engine.render.camera_position.position_respons
 local CameraRotationControl = require("engine.render.camera_rotation_control")
 local EntityRotationPolicy = require("engine.render.camera_rotation.entity_rotation_policy")
 local RotationResponse = require("engine.render.camera_rotation.rotation_response")
+local OrthographicProjection = require("engine.render.projections.orthographic_projection")
 
 -- Render layers and views compose the different spaces drawn by the test scene.
 local RenderLayer = require("engine.render.render_layer")
@@ -173,8 +174,15 @@ local function create_projected_world(self)
     elevation = configuration:get_ground_elevation()
   })
 
-  self.billboard_renderer =
-      ProjectedBillboardRenderer.new(self.perspective_projection)
+  self.billboard_renderer = ProjectedBillboardRenderer.new(self.perspective_projection)
+
+  self.orthographic_projection = OrthographicProjection.new({
+    camera = self.camera,
+    elevation_scale = configuration:get_orthographic_elevation_scale()
+  })
+
+  self.orthographic_billboard_renderer =
+      ProjectedBillboardRenderer.new(self.orthographic_projection)
 
   self.ground_canvas = CanvasRenderView.new({
     presenter = self.ground_plane
@@ -194,6 +202,9 @@ end
 -- Creates the ordered render layers used by the current test scene.
 local function create_layers(self)
   self.layers = RenderLayerStack.new()
+
+  local orthographic = self.render_configuration:get_render_mode() == "orthographic"
+  self.projected_world:set_enabled(not orthographic)
 
   -- The physical floor becomes the base surface captured by the projected world.
   self.projected_world:add(RenderLayer.new({
@@ -216,6 +227,16 @@ local function create_layers(self)
 
   -- The whole projected ground group is submitted as one layer hierarchy.
   self.layers:add(self.projected_world)
+
+  self.layers:add(RenderLayer.new({
+    name = "orthographic_ground",
+    order = 100,
+    enabled = orthographic,
+    view = self.camera,
+    draw = function()
+      self:_draw_orthographic_ground()
+    end
+  }))
 
   -- Projected vertical entities are rendered over the projected ground.
   self.layers:add(RenderLayer.new({
@@ -393,20 +414,37 @@ function TestSceneRenderer.new(options)
   return self
 end
 
--- Draws vertical world entities through the current perspective projection.
+-- Draws shared billboard entries through the presentation selected by this scene.
 function TestSceneRenderer:_draw_projected_billboards()
-  -- Billboard output uses the same dimensions as the canvas containing the projected ground.
-  local canvas = self.ground_canvas:get_canvas()
-  local width, height = canvas:getDimensions()
+  local entries = self.projected_billboards:get_entries()
 
-  -- All billboard sources are merged before projection so depth sorting remains global.
+  if self.render_configuration:get_render_mode() == "orthographic" then
+    local viewport_x, viewport_y, viewport_width, viewport_height =
+        self.camera:get_viewport()
+    local output_width, output_height = love.graphics.getDimensions()
+
+    love.graphics.push("all")
+    love.graphics.setScissor(viewport_x, viewport_y, viewport_width, viewport_height)
+
+    self.orthographic_billboard_renderer:draw(
+      entries,
+      output_width,
+      output_height,
+      { renderer = self }
+    )
+
+    love.graphics.pop()
+    return
+  end
+
+  local canvas = self.ground_canvas:get_canvas()
+  local output_width, output_height = canvas:getDimensions()
+
   self.billboard_renderer:draw(
-    self.projected_billboards:get_entries(),
-    width,
-    height,
-    {
-      renderer = self
-    }
+    entries,
+    output_width,
+    output_height,
+    { renderer = self }
   )
 end
 
@@ -438,6 +476,26 @@ function TestSceneRenderer:_draw_physics()
   SpatialDebugRenderer.draw_shape(self.bounce_ball, "physics")
   SpatialDebugRenderer.draw_shape(self.floor, "physics")
   SpatialDebugRenderer.draw_circle_rotation(self.bounce_ball, "physics")
+end
+
+-- Draws the ground through the regular camera at its configured elevation.
+function TestSceneRenderer:_draw_orthographic_ground()
+  local configuration = self.render_configuration
+  local offset = configuration:get_ground_elevation()
+      * configuration:get_orthographic_elevation_scale()
+  local rotation = self.camera:get_rotation()
+
+  -- Convert screen-up displacement into world axes before the camera transform.
+  love.graphics.translate(
+    math.sin(rotation) * offset,
+    -math.cos(rotation) * offset
+  )
+
+  self.ground_transform:begin()
+  self:_draw_ground()
+  self.ground_transform:finish()
+
+  self:_draw_ground_debug()
 end
 
 -- Draws world surfaces that conceptually belong below regular entities.

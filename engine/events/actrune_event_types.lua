@@ -16,14 +16,22 @@ function ActruneEventTypes.register(catalog)
       type = definition.action,
       shape = definition.shape,
       activator_shape = definition.activator_shape,
-      max_angle = definition.max_angle
+      max_angle = definition.max_angle,
+      vertical_mode = definition.vertical_mode,
+      target_vertical_range = definition.target_vertical_range,
+      activator_vertical_range = definition.activator_vertical_range,
+      enabled = definition.enabled,
     })
   end, {
     fields = {
-      { name = "action",          type = "string",          required = true },
-      { name = "shape",           type = "shape_reference", required = true },
-      { name = "activator_shape", type = "string",          required = true },
-      { name = "max_angle",       type = "number",          optional = true }
+      { name = "action",                   type = "string",          required = true },
+      { name = "shape",                    type = "shape_reference", required = true },
+      { name = "activator_shape",          type = "string",          required = true },
+      { name = "max_angle",                type = "number",          optional = true },
+      { name = "vertical_mode",            type = "enum",            values = { "overlap", "ignore" }, required = true },
+      { name = "target_vertical_range",    type = "string",          optional = true },
+      { name = "activator_vertical_range", type = "string",          optional = true },
+      { name = "enabled",                  type = "boolean",         default = true },
     }
   })
 

@@ -28,6 +28,9 @@ function TestSceneRenderConfigurationFactory.create(definition, context)
     camera_elevation = definition.camera_elevation,
     reference_distance = definition.reference_distance,
 
+    render_mode = definition.render_mode,
+    orthographic_elevation_scale = definition.orthographic_elevation_scale,
+
     ground_region_width = definition.ground_region_width,
     ground_region_height = definition.ground_region_height,
     ground_levels = ground_levels,
@@ -36,7 +39,8 @@ function TestSceneRenderConfigurationFactory.create(definition, context)
     horizon = definition.horizon,
     near_distance = definition.near_distance,
     far_distance = definition.far_distance,
-    horizontal_fov = definition.horizontal_fov
+    horizontal_fov = definition.horizontal_fov,
+
   })
 end
 

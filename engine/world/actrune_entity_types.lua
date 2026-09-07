@@ -12,6 +12,7 @@ local TranslationControl = require("engine.world.control.translation_control")
 local RotationControl = require("engine.world.control.rotation_control")
 local SpatialActionControl = require("engine.world.control.spatial_action_control")
 local SpatialElevation = require("engine.world.spatial.spatial_elevation")
+local VerticalRange = require("engine.world.spatial.vertical_range")
 
 local ActruneEntityTypes = {}
 
@@ -21,6 +22,20 @@ function ActruneEntityTypes.register(catalog)
 
   catalog:ensure_registry("shape", { kind = "shape" })
   catalog:ensure_registry("component", { kind = "component" })
+
+  catalog:register("component", "vertical_range", function(definition)
+    return VerticalRange.new({
+      elevation_component = definition.elevation_component,
+      lower = definition.lower,
+      upper = definition.upper
+    })
+  end, {
+    fields = {
+      { name = "elevation_component", type = "string", optional = true },
+      { name = "lower",               type = "number", required = true },
+      { name = "upper",               type = "number", required = true }
+    }
+  })
 
   catalog:register("component", "spatial_elevation", function(definition, context)
     local levels = context.factory:get_resource("spatial_levels", definition.levels)

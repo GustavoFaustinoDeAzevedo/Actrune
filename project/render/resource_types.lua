@@ -15,6 +15,18 @@ function ProjectRenderResourceTypes.register(register)
     {
       fields = {
         {
+          name = "render_mode",
+          type = "enum",
+          values = { "perspective", "orthographic" },
+          required = true
+        },
+        {
+          name = "orthographic_elevation_scale",
+          type = "number",
+          required = true,
+          min = 0
+        },
+        {
           name = "ground_levels",
           type = "resource_reference",
           resource_type = "spatial_levels",

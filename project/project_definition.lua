@@ -3,6 +3,8 @@ local project_definition = {
 
     test_scene_render_configuration = {
       main = {
+        render_mode = "orthographic",
+        orthographic_elevation_scale = 1,
 
         world_camera_target_entity = "player",
         projected_camera_target_entity = "player",
@@ -260,7 +262,7 @@ local project_definition = {
       ball = {
         properties = {
           density = 1,
-          restitution = 0,
+          restitution = 0.5,
           friction = 0.3
         }
       },
@@ -469,6 +471,14 @@ local project_definition = {
         }
       },
 
+      components = {
+        interaction_height = {
+          type = "vertical_range",
+          lower = 0,
+          upper = 12
+        }
+      },
+
       events = {
         {
           id = "test_event",
@@ -478,10 +488,14 @@ local project_definition = {
             {
               trigger = {
                 type = "directional_area",
+                enabled = false,
                 action = "interact",
                 shape = "interaction",
                 activator_shape = "collision",
-                max_angle = math.rad(60)
+                max_angle = math.rad(60),
+                vertical_mode = "overlap",
+                target_vertical_range = "interaction_height",
+                activator_vertical_range = "interaction_height"
               },
 
               commands = {
@@ -529,6 +543,12 @@ local project_definition = {
       },
 
       components = {
+        interaction_height = {
+          type = "vertical_range",
+          elevation_component = "elevation",
+          lower = 0,
+          upper = 12
+        },
         elevation = {
           type = "spatial_elevation",
           levels = "main",
@@ -712,6 +732,12 @@ local project_definition = {
       },
 
       components = {
+        interaction_height = {
+          type = "vertical_range",
+          elevation_component = "elevation",
+          lower = 0,
+          upper = 12
+        },
         elevation = {
           type = "spatial_elevation",
           levels = "main",

@@ -49,6 +49,11 @@ function Camera2D:get_rotation()
   return self.rotation
 end
 
+-- Returns the current world-to-screen zoom factor.
+function Camera2D:get_zoom()
+  return self.zoom
+end
+
 -- Changes the camera zoom factor.
 function Camera2D:set_zoom(zoom)
   assert(type(zoom) == "number" and zoom > 0, "camera zoom must be greater than zero")
