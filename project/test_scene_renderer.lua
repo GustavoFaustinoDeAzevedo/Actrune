@@ -23,6 +23,7 @@ local WorldRegionView = require("engine.render.world_region_view")
 local ProjectedWorldPlane = require("project.render.projections.projected_world_plane")
 local ProjectedBillboardRenderer = require("engine.render.projected_billboard_renderer")
 local BillboardSourceGroup = require("engine.render.billboard_source_group")
+local PerspectiveProjection = require("engine.render.projections.perspective_projection")
 
 -- Spatial debug rendering remains independent from the projected visual pipeline.
 local SpatialDebugRenderer = require("engine.debug.spatial_debug_renderer")
@@ -154,23 +155,26 @@ local function create_projected_world(self)
     max_y = projected_y + half_height
   })
 
-  -- Perspective parameters come from the project configuration consumed by this scene.
-  self.ground_projection = ProjectedWorldPlane.new({
+  -- Perspective calculations are shared by plane and billboard presentation.
+  self.perspective_projection = PerspectiveProjection.new({
     viewpoint = self.projected_camera,
-    source_region = self.ground_world_region,
     horizon = configuration:get_horizon(),
     near_distance = configuration:get_near_distance(),
     far_distance = configuration:get_far_distance(),
     horizontal_fov = configuration:get_horizontal_fov()
   })
 
-  -- Ground and billboards share one projection to preserve spatial alignment.
-  self.billboard_renderer =
-      ProjectedBillboardRenderer.new(self.ground_projection)
+  -- The ground presenter supplies only its captured region and presentation state.
+  self.ground_plane = ProjectedWorldPlane.new({
+    projection = self.perspective_projection,
+    source_region = self.ground_world_region
+  })
 
-  -- The world surface is captured before the perspective presenter draws it.
+  self.billboard_renderer =
+      ProjectedBillboardRenderer.new(self.perspective_projection)
+
   self.ground_canvas = CanvasRenderView.new({
-    presenter = self.ground_projection
+    presenter = self.ground_plane
   })
 
   -- Ground-related layers share the same capture canvas and world region.
