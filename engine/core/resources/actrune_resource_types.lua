@@ -12,12 +12,25 @@ local DirectionalImageAnimationVisualFactory = require("engine.render.directiona
 local EntityVisualBindingFactory = require("engine.render.entity_visual_binding_factory")
 local ImageBillboardVisualFactory = require("engine.render.image_billboard_visual_factory")
 local EntityVisualConfigurationFactory = require("engine.render.entity_visual_configuration_factory")
+local SpatialLevels = require("engine.world.spatial.spatial_levels")
 
 local ActruneResourceTypes = {}
 
 -- Registers the built-in Actrune resource types in a project configuration register.
 function ActruneResourceTypes.register(register)
   assert(register ~= nil, "Actrune resource types require a project configuration register")
+
+  register:register_resource_type("spatial_levels",
+    function(definition) return SpatialLevels.new(definition.elevations) end, {
+    fields = {
+      {
+        name = "elevations",
+        type = "number_list",
+        required = true,
+        min_items = 1
+      }
+    }
+  })
 
   register:register_resource_type("image", ImageResourceFactory.create, {
     fields = {

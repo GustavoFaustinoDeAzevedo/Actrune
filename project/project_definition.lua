@@ -1,5 +1,6 @@
 local project_definition = {
   resources = {
+
     test_scene_render_configuration = {
       main = {
         world_camera_target_entity = "player",
@@ -265,6 +266,17 @@ local project_definition = {
       }
     },
 
+    spatial_levels = {
+      main = {
+        elevations = {
+          0,  -- Level 0: street.
+          16, -- Level 1: landing.
+          40, -- Level 2: wall.
+          64  -- Level 3: rooftop.
+        }
+      }
+    },
+
     grid_metrics = {
       small_grid = {
         cell_width = 16,
@@ -510,6 +522,12 @@ local project_definition = {
       },
 
       components = {
+        elevation = {
+          type = "spatial_elevation",
+          levels = "main",
+          level = 0,
+          offset = 0
+        },
         controls = {
           type = "controls",
           profile = "player"
@@ -678,15 +696,21 @@ local project_definition = {
           type = "polygon",
 
           points = {
-            { x = -10, y = -10 },
-            { x = 10,  y = -10 },
-            { x = 10,  y = 10 },
-            { x = -10, y = 10 }
+            { x = -5, y = -5 },
+            { x = 5,  y = -5 },
+            { x = 5,  y = 5 },
+            { x = -5, y = 5 }
           }
         }
       },
 
       components = {
+        elevation = {
+          type = "spatial_elevation",
+          levels = "main",
+          level = 0,
+          offset = 0
+        },
         controls = {
           type = "controls",
           profile = "step_player"

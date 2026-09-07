@@ -11,6 +11,7 @@ local FacingDirection = require("engine.world.movement.direction.facing_directio
 local TranslationControl = require("engine.world.control.translation_control")
 local RotationControl = require("engine.world.control.rotation_control")
 local SpatialActionControl = require("engine.world.control.spatial_action_control")
+local SpatialElevation = require("engine.world.spatial.spatial_elevation")
 
 local ActruneEntityTypes = {}
 
@@ -20,6 +21,30 @@ function ActruneEntityTypes.register(catalog)
 
   catalog:ensure_registry("shape", { kind = "shape" })
   catalog:ensure_registry("component", { kind = "component" })
+
+  catalog:register("component", "spatial_elevation", function(definition, context)
+    local levels = context.factory:get_resource("spatial_levels", definition.levels)
+
+    assert(levels ~= nil,
+      "unknown spatial levels resource: " .. tostring(definition.levels))
+
+    return SpatialElevation.new({
+      levels = levels,
+      level = definition.level,
+      offset = definition.offset
+    })
+  end, {
+    fields = {
+      {
+        name = "levels",
+        type = "resource_reference",
+        resource_type = "spatial_levels",
+        required = true
+      },
+      { name = "level",  type = "integer", min = 0,    default = 0 },
+      { name = "offset", type = "number",  default = 0 }
+    }
+  })
 
   catalog:register("shape", "circle", function(definition, context)
     return CircleShape.new({

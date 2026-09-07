@@ -1,4 +1,5 @@
 local AnimatedEntityVisualRuntimeSystem = require("engine.render.animated_entity_visual_runtime_system")
+local StaticEntityVisualRuntimeSystem = require("engine.render.static_entity_visual_runtime_system")
 
 local RuntimeConfiguration = {}
 
@@ -12,6 +13,12 @@ function RuntimeConfiguration.register(register)
       configuration_name = "projected_character_visuals"
     })
   end, 400)
+
+  register:register_runtime_system("static_entity_visuals", function()
+    return StaticEntityVisualRuntimeSystem.new({
+      configuration_name = "projected_static_visuals"
+    })
+  end, 410)
 end
 
 return RuntimeConfiguration

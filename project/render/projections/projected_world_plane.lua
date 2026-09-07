@@ -42,14 +42,25 @@ vec4 effect(vec4 color, Image texture, vec2 texture_coords, vec2 screen_coords)
 }
 ]]
 
--- Resolves forward and right vectors using the Actrune world rotation convention.
-local function resolve_basis(rotation)
-  local forward_x = math.cos(rotation)
-  local forward_y = math.sin(rotation)
-  local right_x = -forward_y
-  local right_y = forward_x
+-- Reuses exact projection factors until their source parameters change.
+function ProjectedWorldPlane:_get_projection_factors()
+  local rotation = self:get_rotation()
+  local fov = self.horizontal_fov
 
-  return forward_x, forward_y, right_x, right_y
+  if self.cached_rotation ~= rotation then
+    self.cached_forward_x = math.cos(rotation)
+    self.cached_forward_y = math.sin(rotation)
+    self.cached_rotation = rotation
+  end
+
+  if self.cached_horizontal_fov ~= fov then
+    self.cached_half_fov_tangent = math.tan(fov * 0.5)
+    self.cached_horizontal_fov = fov
+  end
+
+  return self.cached_forward_x, self.cached_forward_y,
+      -self.cached_forward_y, self.cached_forward_x,
+      self.cached_half_fov_tangent
 end
 
 -- Creates a perspective presenter that samples a top-down world region as a navigable plane.
@@ -126,7 +137,7 @@ function ProjectedWorldPlane:project_world_point(x, y, width, height)
   assert(type(height) == "number" and height > 0, "projection output height must be greater than zero")
 
   local view_x, view_y = self.viewpoint:get_position()
-  local forward_x, forward_y, right_x, right_y = resolve_basis(self:get_rotation())
+  local forward_x, forward_y, right_x, right_y, half_fov_tangent = self:_get_projection_factors()
   local relative_x = x - view_x
   local relative_y = y - view_y
   local distance = relative_x * forward_x + relative_y * forward_y
@@ -141,7 +152,7 @@ function ProjectedWorldPlane:project_world_point(x, y, width, height)
   if distance <= 0 then return result end
 
   local scale = self.near_distance / distance
-  local horizontal = lateral / (distance * math.tan(self.horizontal_fov * 0.5))
+  local horizontal = lateral / (distance * half_fov_tangent)
   local u = 0.5 + horizontal * 0.5
   local v = self.horizon + scale * (1 - self.horizon)
 
@@ -178,12 +189,13 @@ function ProjectedWorldPlane:unproject_screen_point(x, y, width, height)
   local normalized_y = (v - self.horizon) / (1 - self.horizon)
   if normalized_y <= 0 then return result end
 
+  local forward_x, forward_y, right_x, right_y, half_fov_tangent = self:_get_projection_factors()
+
   local distance = self.near_distance / normalized_y
   local horizontal = (u - 0.5) * 2
-  local lateral = horizontal * distance * math.tan(self.horizontal_fov * 0.5)
+  local lateral = horizontal * distance * half_fov_tangent
 
   local view_x, view_y = self.viewpoint:get_position()
-  local forward_x, forward_y, right_x, right_y = resolve_basis(self:get_rotation())
 
   result.x = view_x + forward_x * distance + right_x * lateral
   result.y = view_y + forward_y * distance + right_y * lateral

@@ -30,6 +30,8 @@ local SpatialDebugRenderer = require("engine.debug.spatial_debug_renderer")
 local TestSceneRenderer = {}
 TestSceneRenderer.__index = TestSceneRenderer
 
+local width = love.graphics.getWidth()
+
 -- Returns one required project entity with a useful error when the test definition is incomplete.
 local function require_entity(project, id)
   local entity = project.entities_by_id[id]
@@ -403,27 +405,25 @@ end
 
 -- Draws the current runtime diagnostic information in screen space.
 function TestSceneRenderer:_draw_diagnostics()
-  love.graphics.print(table.concat(self.messages, "\n"), 20, 20)
+  love.graphics.printf(table.concat(self.messages, "\n"), -20, 20, width, "right")
 
   -- The provider keeps event runtime details outside the rendering layer.
   local active_event_count = self.active_event_count_provider()
-  love.graphics.print("Active events: " .. active_event_count, 20, 100)
+  love.graphics.printf("Active events: " .. active_event_count, -20, 20, width, "right")
 
   -- These values expose the current physics state of the bouncing-ball test.
-  local velocity_x, velocity_y =
-      self.physics_backend:get_linear_velocity(self.bounce_ball)
+  local velocity_x, velocity_y = self.physics_backend:get_linear_velocity(self.bounce_ball)
 
-  local angular_velocity =
-      self.physics_backend:get_angular_velocity(self.bounce_ball)
+  local angular_velocity = self.physics_backend:get_angular_velocity(self.bounce_ball)
 
-  love.graphics.print(string.format("Ball velocity: %.2f, %.2f", velocity_x, velocity_y), 20, 130)
-  love.graphics.print(string.format("Angular velocity: %.4f", angular_velocity), 20, 150)
-  love.graphics.print("FPS: " .. love.timer.getFPS(), 20, 180)
+  love.graphics.printf(string.format("Ball velocity: %.2f, %.2f", velocity_x, velocity_y), -20, 50, width, "right")
+  love.graphics.printf(string.format("Angular velocity: %.4f", angular_velocity), -20, 70, width, "right")
+  love.graphics.printf("FPS: " .. love.timer.getFPS(), -20, 100, width, "right")
 
   -- The fixed-step diagnostics show how many physics simulation steps ran in the last frame.
-  love.graphics.print("Fixed steps: " .. self.physics_step.last_steps, 20, 200)
+  love.graphics.printf("Fixed steps: " .. self.physics_step.last_steps, -20, 120, width, "right")
 
-  love.graphics.print("WASD: continuous | Arrows: contextual grid/free movement", 20, 220)
+  love.graphics.printf("WASD: continuous | Arrows: contextual grid/free movement", -20, 140, width, "right")
 end
 
 -- Draws the current physics test objects.
@@ -446,13 +446,13 @@ end
 -- Draws the player's current world coordinates in screen space.
 function TestSceneRenderer:_draw_player_coordinates()
   local player_x, player_y = self.player:get_position()
-  love.graphics.print(string.format("Player position: %.2f, %.2f", player_x, player_y), 20, 250)
+  love.graphics.printf(string.format("Player position: %.2f, %.2f", player_x, player_y), -20, 180, width, "right")
 end
 
 -- Draws the door's current world coordinates in screen space.
 function TestSceneRenderer:_draw_door_coordinates()
   local door_x, door_y = self.door:get_position()
-  love.graphics.print(string.format("Door position: %.2f, %.2f", door_x, door_y), 20, 270)
+  love.graphics.printf(string.format("Door position: %.2f, %.2f", door_x, door_y), -20, 200, width, "right")
 end
 
 -- Draws development overlays that share the projected world plane.
