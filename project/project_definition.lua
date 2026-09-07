@@ -493,7 +493,7 @@ local project_definition = {
             {
               trigger = {
                 type = "directional_area",
-                enabled = false,
+                enabled = true,
                 action = "interact",
                 shape = "interaction",
                 activator_shape = "collision",

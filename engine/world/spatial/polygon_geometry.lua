@@ -95,56 +95,60 @@ function PolygonGeometry.point_strictly_inside(point_x, point_y, points)
   return inside
 end
 
--- Returns whether two polygons have overlapping interior areas.
-function PolygonGeometry.overlaps_strict(
-    points_a,
-    points_b
-)
+-- Returns whether two simple polygons have overlapping interior areas.
+function PolygonGeometry.overlaps_strict(points_a, points_b)
+  local winding_a = PolygonGeometry.signed_area(points_a)
+  local winding_b = PolygonGeometry.signed_area(points_b)
+  local same_winding = (winding_a > 0) == (winding_b > 0)
+
   for index_a = 1, #points_a, 2 do
     local next_a = index_a + 2
+    if next_a > #points_a then next_a = 1 end
 
-    if next_a > #points_a then
-      next_a = 1
-    end
+    local ax, ay = points_a[index_a], points_a[index_a + 1]
+    local bx, by = points_a[next_a], points_a[next_a + 1]
+    local edge_x, edge_y = bx - ax, by - ay
 
     for index_b = 1, #points_b, 2 do
       local next_b = index_b + 2
+      if next_b > #points_b then next_b = 1 end
 
-      if next_b > #points_b then
-        next_b = 1
+      local cx, cy = points_b[index_b], points_b[index_b + 1]
+      local dx, dy = points_b[next_b], points_b[next_b + 1]
+
+      if Geometry.segments_properly_intersect(ax, ay, bx, by, cx, cy, dx, dy) then
+        return true
       end
 
-      if Geometry.segments_properly_intersect(
-            points_a[index_a],
-            points_a[index_a + 1],
-            points_a[next_a],
-            points_a[next_a + 1],
-            points_b[index_b],
-            points_b[index_b + 1],
-            points_b[next_b],
-            points_b[next_b + 1]
-          ) then
-        return true
+      -- Shared edges imply overlap only when both interiors lie on the same side.
+      local dot = Geometry.dot(edge_x, edge_y, dx - cx, dy - cy)
+
+      if dot ~= 0 and ((dot > 0) == same_winding)
+          and math.abs(Geometry.cross(ax, ay, bx, by, cx, cy)) <= Geometry.EPSILON
+          and math.abs(Geometry.cross(ax, ay, bx, by, dx, dy)) <= Geometry.EPSILON then
+        local overlap
+
+        if math.abs(edge_x) >= math.abs(edge_y) then
+          overlap = math.min(math.max(ax, bx), math.max(cx, dx))
+              - math.max(math.min(ax, bx), math.min(cx, dx))
+        else
+          overlap = math.min(math.max(ay, by), math.max(cy, dy))
+              - math.max(math.min(ay, by), math.min(cy, dy))
+        end
+
+        if overlap > Geometry.EPSILON then return true end
       end
     end
   end
 
   for index = 1, #points_a, 2 do
-    if PolygonGeometry.point_strictly_inside(
-          points_a[index],
-          points_a[index + 1],
-          points_b
-        ) then
+    if PolygonGeometry.point_strictly_inside(points_a[index], points_a[index + 1], points_b) then
       return true
     end
   end
 
   for index = 1, #points_b, 2 do
-    if PolygonGeometry.point_strictly_inside(
-          points_b[index],
-          points_b[index + 1],
-          points_a
-        ) then
+    if PolygonGeometry.point_strictly_inside(points_b[index], points_b[index + 1], points_a) then
       return true
     end
   end
