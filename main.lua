@@ -2,6 +2,7 @@ local love = require "love"
 
 local ActruneProjectLoader = require("engine.core.project.actrune_project_loader")
 local ProjectRuntime = require("engine.core.project.project_runtime")
+local ElevationMover = require("engine.world.spatial.elevation_mover")
 
 local project_definition = require("project.project_definition")
 
@@ -14,6 +15,7 @@ local ProjectRuntimeConfiguration = require("project.runtime_configuration")
 local ProjectRenderResourceTypes = require("project.render.resource_types")
 
 local game
+local elevation_test_mover
 local messages = {}
 
 -- Controls optional diagnostics owned by the development entry point.
@@ -122,14 +124,26 @@ local function load_project()
     return project_loader:load(project_definition)
 end
 
--- Creates the current Actrune test project runtime.
+-- Creates the test runtime and its temporary elevation movement control.
 function love.load()
     game = ProjectRuntime.new({
         project = load_project(),
-
-        -- The project-specific factory injects the billboard sources required by the renderer.
         renderer_factory = TestSceneRendererFactory.create,
     })
+
+    local runtime = game:get_runtime()
+
+    elevation_test_mover = ElevationMover.new(
+        runtime.world,
+        runtime:get_entity("player"),
+        {
+            elevation_component = "elevation",
+            source_shape = "collision",
+            target_shape = "collision",
+            source_vertical_range = "collision_height",
+            target_vertical_range = "collision_height"
+        }
+    )
 end
 
 -- Advances the runtime and optionally measures its elapsed execution time.
@@ -167,12 +181,27 @@ function love.draw()
     draw_performance()
 end
 
--- Forwards keyboard press events to the project runtime.
+-- Handles temporary elevation tests before forwarding gameplay input.
 function love.keypressed(key)
+    if key == "pageup" or key == "pagedown" then
+        local requested = key == "pageup" and 16 or -16
+        local applied, contact = elevation_test_mover:try_move(requested)
+
+        print(string.format(
+            "Elevation delta: %.2f / %.2f | Contact: %s",
+            applied,
+            requested,
+            contact and contact.id or "none"
+        ))
+
+        return
+    end
+
     game:key_pressed(key)
 end
 
--- Forwards keyboard release events to the project runtime.
+-- Keeps temporary test keys outside the gameplay input state.
 function love.keyreleased(key)
+    if key == "pageup" or key == "pagedown" then return end
     game:key_released(key)
 end
