@@ -476,7 +476,12 @@ local project_definition = {
           type = "vertical_range",
           lower = 0,
           upper = 12
-        }
+        },
+        collision_height = {
+          type = "vertical_range",
+          lower = 0,
+          upper = 12
+        },
       },
 
       events = {
@@ -543,6 +548,12 @@ local project_definition = {
       },
 
       components = {
+        collision_height = {
+          type = "vertical_range",
+          elevation_component = "elevation",
+          lower = 0,
+          upper = 12
+        },
         interaction_height = {
           type = "vertical_range",
           elevation_component = "elevation",
@@ -586,6 +597,8 @@ local project_definition = {
           controls = "controls",
           input = "move",
           direction = "movement_direction",
+          source_vertical_range = "collision_height",
+          target_vertical_range = "collision_height",
 
           displacement = {
             type = "uniform",
@@ -732,6 +745,12 @@ local project_definition = {
       },
 
       components = {
+        collision_height = {
+          type = "vertical_range",
+          elevation_component = "elevation",
+          lower = 0,
+          upper = 12
+        },
         interaction_height = {
           type = "vertical_range",
           elevation_component = "elevation",
@@ -763,6 +782,9 @@ local project_definition = {
           controls = "controls",
           input = "move",
           direction = "movement_direction",
+          source_vertical_range = "collision_height",
+          target_vertical_range = "collision_height",
+
           direction_policy = {
             type = "last_changed_axis",
             initial_axis = "x"
@@ -809,6 +831,9 @@ local project_definition = {
           controls = "controls",
           input = "move",
           direction = "movement_direction",
+          source_vertical_range = "collision_height",
+          target_vertical_range = "collision_height",
+
           direction_policy = {
             type = "last_changed_axis",
             initial_axis = "x"

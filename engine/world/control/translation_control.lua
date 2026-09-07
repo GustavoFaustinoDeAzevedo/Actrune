@@ -1,5 +1,6 @@
 local Translation = require("engine.world.movement.translation.translation")
 local SpatialMover = require("engine.world.spatial.spatial_mover")
+local VerticalRangeFilter = require("engine.world.spatial.vertical_range_filter")
 
 local TranslationControl = {}
 TranslationControl.__index = TranslationControl
@@ -18,6 +19,18 @@ function TranslationControl.new(options)
   self.application = options.application
   self.source_shape = options.source_shape
   self.target_shape = options.target_shape
+  self.source_vertical_range = options.source_vertical_range
+  self.target_vertical_range = options.target_vertical_range
+
+  assert((self.source_vertical_range == nil) == (self.target_vertical_range == nil),
+    "translation control requires both vertical range names or neither")
+
+  if self.source_vertical_range ~= nil then
+    assert(type(self.source_vertical_range) == "string" and self.source_vertical_range ~= "",
+      "translation control source vertical range must be a non-empty name")
+    assert(type(self.target_vertical_range) == "string" and self.target_vertical_range ~= "",
+      "translation control target vertical range must be a non-empty name")
+  end
 
   self.entity = nil
   self.control_profile = nil
@@ -47,11 +60,22 @@ function TranslationControl:bind_control(world, entity)
 
   assert(self.control_profile ~= nil, "translation control references missing controls component: " .. self.controls)
   assert(self.direction_resolver ~= nil, "translation control references missing direction component: " .. self
-  .direction)
+    .direction)
+
+  local target_filter = nil
+
+  if self.source_vertical_range ~= nil then
+    target_filter = VerticalRangeFilter.create(
+      entity,
+      self.source_vertical_range,
+      self.target_vertical_range
+    )
+  end
 
   local mover = SpatialMover.new(world, entity, {
     source_shape = self.source_shape,
-    target_shape = self.target_shape
+    target_shape = self.target_shape,
+    target_filter = target_filter
   })
 
   self.translation = Translation.new(mover)

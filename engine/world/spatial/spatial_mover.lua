@@ -22,6 +22,11 @@ function SpatialMover.new(world, entity, options)
 
     self.target_shape_name = options.target_shape
 
+    assert(options.target_filter == nil or type(options.target_filter) == "function",
+        "spatial mover target filter must be a function")
+
+    self.target_filter = options.target_filter
+
     return self
 end
 
@@ -46,7 +51,8 @@ function SpatialMover:try_move(dx, dy)
             dx,
             dy,
             self.target_shape_name,
-            self.entity
+            self.entity,
+            self.target_filter
         )
 
     if #hits == 0 then

@@ -90,8 +90,12 @@ function World:sweep_shape(
     dx,
     dy,
     shape_name,
-    ignored_entity
+    ignored_entity,
+    target_filter
 )
+    assert(target_filter == nil or type(target_filter) == "function",
+        "world sweep target filter must be a function")
+
     local hits = {}
 
     for _, entity in pairs(self.entities) do
@@ -99,7 +103,8 @@ function World:sweep_shape(
             local target_shape =
                 entity:get_shape(shape_name)
 
-            if target_shape ~= nil then
+            if target_shape ~= nil
+                and (target_filter == nil or target_filter(entity)) then
                 local hit =
                     SpatialQuery.sweep_polygons(
                         shape,

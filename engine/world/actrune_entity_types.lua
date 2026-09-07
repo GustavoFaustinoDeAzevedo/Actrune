@@ -171,18 +171,22 @@ function ActruneEntityTypes.register(catalog)
       displacement = context.catalog:create("displacement_expression", definition.displacement, factory_context),
       application = context.catalog:create("control_application", definition.application, factory_context),
       source_shape = definition.source_shape,
-      target_shape = definition.target_shape
+      target_shape = definition.target_shape,
+      source_vertical_range = definition.source_vertical_range,
+      target_vertical_range = definition.target_vertical_range,
     })
   end, {
     fields = {
-      { name = "controls",         type = "string",                  default = "controls" },
-      { name = "input",            type = "string",                  required = true },
-      { name = "direction",        type = "string",                  required = true },
-      { name = "direction_policy", type = "direction_policy",        optional = true },
-      { name = "displacement",     type = "displacement_expression", required = true },
-      { name = "application",      type = "control_application",     required = true },
-      { name = "source_shape",     type = "shape_reference",         required = true },
-      { name = "target_shape",     type = "shape_reference",         required = true }
+      { name = "controls",              type = "string",                  default = "controls" },
+      { name = "input",                 type = "string",                  required = true },
+      { name = "direction",             type = "string",                  required = true },
+      { name = "direction_policy",      type = "direction_policy",        optional = true },
+      { name = "displacement",          type = "displacement_expression", required = true },
+      { name = "application",           type = "control_application",     required = true },
+      { name = "source_shape",          type = "shape_reference",         required = true },
+      { name = "target_shape",          type = "shape_reference",         required = true },
+      { name = "source_vertical_range", type = "string",                  optional = true },
+      { name = "target_vertical_range", type = "string",                  optional = true },
     }
   })
 
