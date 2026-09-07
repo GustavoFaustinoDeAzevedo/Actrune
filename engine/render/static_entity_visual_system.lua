@@ -1,24 +1,15 @@
-local StaticEntityVisual = require("engine.render.static_entity_visual")
+local EntityVisual = require("engine.render.entity_visual")
 local EntityVisualCollection = require("engine.render.entity_visual_collection")
 
 local StaticEntityVisualSystem = {}
 StaticEntityVisualSystem.__index = StaticEntityVisualSystem
 
--- Creates a static representation from resolved binding dependencies.
-local function create_static_visual(entity_id, entity, visual, elevation_source)
-  return StaticEntityVisual.new(entity_id, entity, visual, elevation_source)
-end
-
--- Creates runtime static entity visuals from an indexed binding collection.
+-- Creates entity representations that directly share their drawable resources.
 function StaticEntityVisualSystem.new(entities_by_id, bindings)
-  assert(type(entities_by_id) == "table",
-    "static entity visual system requires entities_by_id")
-
-  -- The generic collection handles binding resolution while this system selects the static representation type.
   local collection = EntityVisualCollection.new(
     entities_by_id,
     bindings,
-    create_static_visual
+    EntityVisual.new
   )
 
   return setmetatable({
@@ -26,12 +17,12 @@ function StaticEntityVisualSystem.new(entities_by_id, bindings)
   }, StaticEntityVisualSystem)
 end
 
--- Returns the number of static runtime representations owned by this system.
+-- Returns the number of runtime representations.
 function StaticEntityVisualSystem:get_count()
   return self.collection:get_count()
 end
 
--- Returns one static runtime representation by its one-based index.
+-- Returns one runtime representation by its one-based index.
 function StaticEntityVisualSystem:get(index)
   return self.collection:get(index)
 end

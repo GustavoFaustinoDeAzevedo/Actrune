@@ -46,6 +46,12 @@ function AnimatedEntityVisualRuntimeSystem:get(index)
   return self.system:get(index)
 end
 
+-- Returns the playback associated with one runtime representation index.
+function AnimatedEntityVisualRuntimeSystem:get_animation(index)
+  assert(self.system ~= nil, "animated entity visual runtime system is not initialized")
+  return self.system:get_animation(index)
+end
+
 -- Updates every runtime animated entity visual.
 function AnimatedEntityVisualRuntimeSystem:update(dt, context)
   self.system:update(dt)
