@@ -41,7 +41,15 @@ function PerspectiveProjection.new(options)
   self.far_distance = options.far_distance or 800
   self.horizontal_fov = options.horizontal_fov or math.rad(75)
   self.rotation_offset = options.rotation_offset or 0
+  self.reference_distance = options.reference_distance or 32
+  self.camera_elevation = options.camera_elevation or 32
 
+  assert(type(self.reference_distance) == "number"
+    and self.reference_distance > 0 and self.reference_distance < math.huge,
+    "perspective projection reference distance must be finite and positive")
+  assert(type(self.camera_elevation) == "number"
+    and self.camera_elevation > -math.huge and self.camera_elevation < math.huge,
+    "perspective projection camera elevation must be finite")
   assert(self.horizon >= 0 and self.horizon < 1,
     "perspective projection horizon must be between zero and one")
   assert(self.near_distance > 0,
@@ -80,18 +88,29 @@ function PerspectiveProjection:get_parameters()
     horizon = self.horizon,
     near_distance = self.near_distance,
     far_distance = self.far_distance,
-    horizontal_fov = self.horizontal_fov
+    horizontal_fov = self.horizontal_fov,
+    camera_elevation = self.camera_elevation,
   }
 end
 
--- Projects one world-space point into the projected output surface.
-function PerspectiveProjection:project_world_point(x, y, width, height)
-  assert(type(x) == "number" and type(y) == "number", "projected world point coordinates must be numeric")
-  assert(type(width) == "number" and width > 0, "projection output width must be greater than zero")
-  assert(type(height) == "number" and height > 0, "projection output height must be greater than zero")
+-- Projects a world point with an optional absolute elevation.
+function PerspectiveProjection:project_world_point(x, y, width, height, elevation)
+  elevation = elevation or 0
 
-  local view_x, view_y = self.viewpoint:get_position()
-  local forward_x, forward_y, right_x, right_y, half_fov_tangent = self:_get_projection_factors()
+  assert(type(x) == "number" and type(y) == "number",
+    "projected world point coordinates must be numeric")
+  assert(type(width) == "number" and width > 0,
+    "projection output width must be greater than zero")
+  assert(type(height) == "number" and height > 0,
+    "projection output height must be greater than zero")
+  assert(type(elevation) == "number"
+    and elevation > -math.huge and elevation < math.huge,
+    "projected world point elevation must be finite")
+
+  local view_x, view_y = self:get_view_position()
+  local forward_x, forward_y, right_x, right_y, half_fov_tangent =
+      self:_get_projection_factors()
+
   local relative_x = x - view_x
   local relative_y = y - view_y
   local distance = relative_x * forward_x + relative_y * forward_y
@@ -100,34 +119,43 @@ function PerspectiveProjection:project_world_point(x, y, width, height)
   local result = {
     distance = distance,
     lateral = lateral,
+    elevation = elevation,
     visible = false
   }
 
   if distance <= 0 then return result end
 
-  local scale = self.near_distance / distance
   local horizontal = lateral / (distance * half_fov_tangent)
+  local vertical = (self.camera_elevation - elevation) / distance
   local u = 0.5 + horizontal * 0.5
-  local v = self.horizon + scale * (1 - self.horizon)
+  local v = self.horizon + vertical * (1 - self.horizon)
 
   result.x = u * width
   result.y = v * height
   result.u = u
   result.v = v
-  result.scale = scale
+  result.scale = self.reference_distance / distance
   result.visible = distance >= self.near_distance
       and distance <= self.far_distance
       and u >= 0 and u <= 1
-      and v >= self.horizon and v <= 1
+      and v >= 0 and v <= 1
 
   return result
 end
 
--- Resolves one output-space point back onto the projected world plane.
-function PerspectiveProjection:unproject_screen_point(x, y, width, height)
-  assert(type(x) == "number" and type(y) == "number", "projected screen point coordinates must be numeric")
-  assert(type(width) == "number" and width > 0, "projection output width must be greater than zero")
-  assert(type(height) == "number" and height > 0, "projection output height must be greater than zero")
+-- Resolves a screen point onto a horizontal plane at the requested elevation.
+function PerspectiveProjection:unproject_screen_point(x, y, width, height, elevation)
+  elevation = elevation or 0
+
+  assert(type(x) == "number" and type(y) == "number",
+    "projected screen point coordinates must be numeric")
+  assert(type(width) == "number" and width > 0,
+    "projection output width must be greater than zero")
+  assert(type(height) == "number" and height > 0,
+    "projection output height must be greater than zero")
+  assert(type(elevation) == "number"
+    and elevation > -math.huge and elevation < math.huge,
+    "projection plane elevation must be finite")
 
   local u = x / width
   local v = y / height
@@ -135,31 +163,34 @@ function PerspectiveProjection:unproject_screen_point(x, y, width, height)
   local result = {
     u = u,
     v = v,
+    elevation = elevation,
     visible = false
   }
 
-  if v <= self.horizon then return result end
-
+  local relative_elevation = self.camera_elevation - elevation
   local normalized_y = (v - self.horizon) / (1 - self.horizon)
-  if normalized_y <= 0 then return result end
 
-  local forward_x, forward_y, right_x, right_y, half_fov_tangent = self:_get_projection_factors()
+  -- The horizon and a plane through the camera have no unique finite intersection.
+  if normalized_y == 0 or relative_elevation == 0 then return result end
 
-  local distance = self.near_distance / normalized_y
-  local horizontal = (u - 0.5) * 2
-  local lateral = horizontal * distance * half_fov_tangent
+  local distance = relative_elevation / normalized_y
+  if distance <= 0 then return result end
 
-  local view_x, view_y = self.viewpoint:get_position()
+  local forward_x, forward_y, right_x, right_y, half_fov_tangent =
+      self:_get_projection_factors()
+
+  local lateral = (u - 0.5) * 2 * distance * half_fov_tangent
+  local view_x, view_y = self:get_view_position()
 
   result.x = view_x + forward_x * distance + right_x * lateral
   result.y = view_y + forward_y * distance + right_y * lateral
   result.distance = distance
   result.lateral = lateral
-  result.scale = normalized_y
+  result.scale = self.reference_distance / distance
   result.visible = distance >= self.near_distance
       and distance <= self.far_distance
       and u >= 0 and u <= 1
-      and v <= 1
+      and v >= 0 and v <= 1
 
   return result
 end
@@ -171,7 +202,7 @@ function PerspectiveProjection:set_horizon(horizon)
   self.horizon = horizon
 end
 
--- Changes the world distance represented at the bottom edge of the projection.
+-- Changes the nearest visible depth without changing projection scale.
 function PerspectiveProjection:set_near_distance(distance)
   assert(type(distance) == "number" and distance > 0, "projected world plane near_distance must be greater than zero")
   assert(distance < self.far_distance, "projected world plane near_distance must be less than far_distance")
@@ -196,6 +227,23 @@ end
 function PerspectiveProjection:set_rotation_offset(rotation)
   assert(type(rotation) == "number", "projected world plane rotation offset must be numeric")
   self.rotation_offset = rotation
+end
+
+-- Changes camera elevation independently from clipping and billboard scale.
+function PerspectiveProjection:set_camera_elevation(elevation)
+  assert(type(elevation) == "number"
+    and elevation > -math.huge and elevation < math.huge,
+    "perspective projection camera elevation must be finite")
+
+  self.camera_elevation = elevation
+end
+
+-- Changes the distance at which projected billboards have unit scale.
+function PerspectiveProjection:set_reference_distance(distance)
+  assert(type(distance) == "number" and distance > 0 and distance < math.huge,
+    "perspective projection reference distance must be finite and positive")
+
+  self.reference_distance = distance
 end
 
 return PerspectiveProjection

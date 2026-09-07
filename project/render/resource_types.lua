@@ -15,6 +15,17 @@ function ProjectRenderResourceTypes.register(register)
     {
       fields = {
         {
+          name = "camera_elevation",
+          type = "number",
+          required = true
+        },
+        {
+          name = "reference_distance",
+          type = "number",
+          required = true,
+          min_exclusive = 0
+        },
+        {
           name = "world_camera_target_entity",
           type = "entity_reference",
           required = true

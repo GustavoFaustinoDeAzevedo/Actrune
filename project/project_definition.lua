@@ -3,6 +3,9 @@ local project_definition = {
 
     test_scene_render_configuration = {
       main = {
+        camera_elevation = 32,
+        reference_distance = 32,
+
         world_camera_target_entity = "player",
         projected_camera_target_entity = "player",
 
@@ -148,7 +151,8 @@ local project_definition = {
     image_billboard_binding = {
       static_test_character = {
         entity = "step_player",
-        visual = "static_test_character"
+        visual = "static_test_character",
+        elevation_component = "elevation"
       },
     },
 
@@ -710,7 +714,7 @@ local project_definition = {
           type = "spatial_elevation",
           levels = "main",
           level = 0,
-          offset = 0
+          offset = 16
         },
         controls = {
           type = "controls",

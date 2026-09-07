@@ -161,7 +161,9 @@ local function create_projected_world(self)
     horizon = configuration:get_horizon(),
     near_distance = configuration:get_near_distance(),
     far_distance = configuration:get_far_distance(),
-    horizontal_fov = configuration:get_horizontal_fov()
+    horizontal_fov = configuration:get_horizontal_fov(),
+    camera_elevation = configuration:get_camera_elevation(),
+    reference_distance = configuration:get_reference_distance(),
   })
 
   -- The ground presenter supplies only its captured region and presentation state.

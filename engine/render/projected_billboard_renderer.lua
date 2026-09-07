@@ -25,6 +25,24 @@ local function resolve_position(entry)
   return entry.x, entry.y
 end
 
+-- Resolves absolute elevation from a live provider or a fixed value.
+local function resolve_elevation(entry)
+  local elevation = entry.elevation or 0
+
+  if entry.elevation_provider ~= nil then
+    assert(type(entry.elevation_provider) == "function",
+      "billboard elevation provider must be a function")
+
+    elevation = entry.elevation_provider()
+  end
+
+  assert(type(elevation) == "number"
+    and elevation > -math.huge and elevation < math.huge,
+    "billboard elevation must be finite")
+
+  return elevation
+end
+
 -- Normalizes an angle to the signed range from -pi to pi.
 local function normalize_angle(angle)
   return (angle + math.pi) % (math.pi * 2) - math.pi
@@ -90,7 +108,8 @@ function ProjectedBillboardRenderer:draw(entries, width, height, context)
 
     if entry.enabled ~= false then
       local x, y = resolve_position(entry)
-      local projected = self.projection:project_world_point(x, y, width, height)
+      local elevation = resolve_elevation(entry)
+      local projected = self.projection:project_world_point(x, y, width, height, elevation)
 
       assert(type(projected) == "table", "world-to-screen projection must return a table")
       assert(type(projected.visible) == "boolean", "world-to-screen projection must return boolean visible")
