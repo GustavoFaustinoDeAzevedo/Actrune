@@ -1,9 +1,17 @@
 local SpatialQuery = require("engine.world.spatial.spatial_query")
 
+---@class ElevationMover: ElevationMoverFields
 local ElevationMover = {}
 ElevationMover.__index = ElevationMover
 
--- Creates vertical movement using a fixed horizontal footprint and named body ranges.
+--- Creates collision-aware vertical movement for one entity.
+--- Resolves and retains the elevation and source range components.
+--- The source range must follow the same elevation component being moved.
+--- Recreate the mover if either retained component is replaced.
+---@param world table World exposing query_shape.
+---@param entity table Entity containing the configured shapes and components.
+---@param options ElevationMoverOptions Names used to resolve movement dependencies.
+---@return ElevationMover mover Bound vertical movement operation.
 function ElevationMover.new(world, entity, options)
   assert(world ~= nil and type(world.query_shape) == "function",
     "elevation mover requires a world exposing query_shape")
@@ -39,7 +47,16 @@ function ElevationMover.new(world, entity, options)
   }, ElevationMover)
 end
 
--- Moves vertically up to first contact and returns applied displacement and contact entity.
+--- Attempts a signed vertical displacement, stopping at the first body contact.
+--- Preserves planar X and Y coordinates and the reference level.
+--- Checks the vertical path, so a large displacement cannot skip a blocking body.
+---
+--- Horizontal boundary-only contact does not block vertical movement.
+--- Existing body penetration blocks movement without resolving the penetration.
+--- A zero displacement returns 0 and nil without querying collisions.
+---@param delta number Finite displacement in world units; positive moves up.
+---@return number applied Actual signed displacement, which may be partial or zero.
+---@return table|nil contact Contact entity, including contact exactly at the destination.
 function ElevationMover:try_move(delta)
   assert(type(delta) == "number" and delta > -math.huge and delta < math.huge,
     "elevation displacement must be finite")
@@ -98,7 +115,12 @@ function ElevationMover:try_move(delta)
   return applied, contact
 end
 
--- Attempts to reach an absolute elevation through the existing collision-aware movement.
+--- Attempts to reach an absolute Z through the existing vertical collision checks.
+--- Converts the destination into a displacement from the current absolute elevation.
+--- Preserves X, Y and the reference level; obstacles may prevent reaching the destination.
+---@param target_elevation number Finite absolute Z in world units, not a level index.
+---@return number applied Actual signed displacement, not the final absolute Z.
+---@return table|nil contact Contact entity, or nil when no contact occurs.
 function ElevationMover:try_move_to(target_elevation)
   assert(type(target_elevation) == "number"
     and target_elevation > -math.huge and target_elevation < math.huge,
