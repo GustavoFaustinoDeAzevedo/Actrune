@@ -45,18 +45,24 @@ function Entity:set_position(x, y)
     self.transform:set_position(x, y)
 end
 
--- Returns the current rotation of this entity in radians.
+--- Returns planar rotation in radians.
+--- Rotation occurs around the Z axis and does not change elevation.
+---@return number rotation Current rotation in radians.
 function Entity:get_rotation()
     return self.transform.rotation
 end
 
--- Changes the entity rotation in world space.
+--- Changes planar rotation without changing position or elevation.
+---@param rotation number New rotation in radians.
 function Entity:set_rotation(rotation)
     assert(type(rotation) == "number", "entity rotation must be numeric")
     self.transform:set_rotation(rotation)
 end
 
--- Assigns a spatial shape to this entity under the given name.
+--- Assigns or replaces a named spatial shape.
+--- The shape remains in local entity space and uses the entity transform in queries.
+---@param name string Shape name.
+---@param shape table Spatial shape instance.
 function Entity:set_shape(name, shape)
     assert(type(name) == "string", "shape name must be a string")
     assert(shape ~= nil, "shape is required")
@@ -64,17 +70,22 @@ function Entity:set_shape(name, shape)
     self.shapes[name] = shape
 end
 
--- Returns the spatial shape assigned to the given name.
+--- Returns a named spatial shape.
+---@param name string Shape name.
+---@return table|nil shape Shape instance, or nil when absent.
 function Entity:get_shape(name)
     return self.shapes[name]
 end
 
--- Removes the spatial shape assigned to the given name.
+--- Removes a named spatial shape.
+--- This method does not return the removed shape.
+---@param name string Shape name.
 function Entity:remove_shape(name)
     self.shapes[name] = nil
 end
 
--- Associates an event with this entity using the event identifier.
+--- Adds or replaces an event using event.id as its key.
+---@param event EntityEvent Event containing a string identifier.
 function Entity:add_event(event)
     assert(event ~= nil, "event is required")
     assert(type(event.id) == "string", "event id must be a string")
@@ -82,22 +93,30 @@ function Entity:add_event(event)
     self.events[event.id] = event
 end
 
--- Returns the event associated with the given identifier.
+--- Returns an event by identifier.
+---@param id string Event identifier.
+---@return EntityEvent|nil event Event instance, or nil when absent.
 function Entity:get_event(id)
     return self.events[id]
 end
 
--- Removes the event associated with the given identifier.
+--- Removes an event by identifier.
+--- This method does not return the removed event.
+---@param id string Event identifier.
 function Entity:remove_event(id)
     self.events[id] = nil
 end
 
--- Checks whether this entity has an event with the given identifier.
+--- Returns whether this entity contains an event with the requested identifier.
+---@param id string Event identifier.
+---@return boolean exists True when the event exists.
 function Entity:has_event(id)
     return self.events[id] ~= nil
 end
 
--- Returns all events currently associated with this entity.
+--- Returns the live event table owned by this entity.
+--- Changes made to the returned table affect the entity directly.
+---@return table<string, EntityEvent> events Events indexed by identifier.
 function Entity:get_events()
     return self.events
 end
