@@ -1,7 +1,12 @@
+---@class VerticalRange: VerticalRangeFields
 local VerticalRange = {}
 VerticalRange.__index = VerticalRange
 
--- Creates a vertical interval relative to an optional entity elevation component.
+--- Creates a vertical interval relative to an optional elevation component.
+--- Without an elevation component, lower and upper are absolute Z values.
+--- Bounds must be finite and ordered; equal bounds are allowed.
+---@param options? VerticalRangeOptions Interval configuration; omitted bounds default to zero.
+---@return VerticalRange range New interval component.
 function VerticalRange.new(options)
   options = options or {}
 
@@ -25,7 +30,13 @@ function VerticalRange.new(options)
   }, VerticalRange)
 end
 
--- Returns absolute bounds using the entity's current elevation.
+--- Returns absolute Z bounds using the entity's current elevation.
+--- Resolves the configured elevation component on each call.
+--- Raises an error if that component is missing or cannot provide elevation.
+--- Only calculates bounds; collision and interaction policies decide whether they overlap.
+---@param entity? table Required when elevation_component is configured; otherwise ignored.
+---@return number lower_z Absolute lower bound in world units.
+---@return number upper_z Absolute upper bound in world units.
 function VerticalRange:get_bounds(entity)
   local elevation = 0
 
