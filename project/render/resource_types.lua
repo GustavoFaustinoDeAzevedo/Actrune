@@ -14,6 +14,7 @@ function ProjectRenderResourceTypes.register(register)
     TestSceneRenderConfigurationFactory.create,
     {
       fields = {
+        { name = "world_camera_elevation_component",    type = "string",             optional = true },
         { name = "camera_elevation_component",          type = "string",             optional = true },
         { name = "camera_elevation_half_life",          type = "number",             default = 0.08,                             min = 0 },
         { name = "render_mode",                         type = "enum",               values = { "perspective", "orthographic" }, required = true },

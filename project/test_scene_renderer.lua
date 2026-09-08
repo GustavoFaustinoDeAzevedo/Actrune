@@ -55,56 +55,35 @@ local function resolve_entities(self)
   self.free_area = require_entity(self.project, "free_area")
 end
 
--- Creates the regular and projected cameras together with their independent target controls.
-local function create_cameras(self)
+-- Creates camera controls, including optional elevation tracking for the orthographic view.
+local function create_cameras(self, elevation_source)
   local configuration = self.render_configuration
+  local world_x, world_y = self.world_camera_target:get_position()
+  local projected_x, projected_y = self.projected_camera_target:get_position()
 
-  -- Each camera starts at the current position of its independently configured target.
-  local world_target_x, world_target_y =
-      self.world_camera_target:get_position()
-
-  local projected_target_x, projected_target_y =
-      self.projected_camera_target:get_position()
-
-  -- This camera renders the ordinary top-down/debug world view.
-  self.camera = Camera2D.new({
-    x = world_target_x,
-    y = world_target_y
-  })
-
-  -- This camera provides the viewpoint used by the perspective projection.
+  self.camera = Camera2D.new({ x = world_x, y = world_y })
   self.projected_camera = Camera2D.new({
-    x = projected_target_x,
-    y = projected_target_y,
+    x = projected_x,
+    y = projected_y,
     rotation = self.projected_camera_target:get_rotation()
   })
 
-  -- Project data controls how quickly projected camera rotation follows its configured target.
   self.projected_camera_rotation_response = RotationResponse.new({
     half_life = configuration:get_projected_camera_rotation_half_life()
   })
 
-  -- Rotation tracking depends only on the configured projected camera target.
   self.projected_camera_rotation = CameraRotationControl.new(
     self.projected_camera,
     EntityRotationPolicy.new(self.projected_camera_target),
-    {
-      response = self.projected_camera_rotation_response
-    }
+    { response = self.projected_camera_rotation_response }
   )
 
-  -- This policy keeps the projected viewpoint behind its target using the current camera orientation.
   self.projected_camera_offset = OrientedOffsetPositionPolicy.new(
     EntityPositionPolicy.new(self.projected_camera_target),
-    function()
-      return self.projected_camera:get_rotation()
-    end,
-    {
-      forward = configuration:get_projected_camera_forward_offset()
-    }
+    function() return self.projected_camera:get_rotation() end,
+    { forward = configuration:get_projected_camera_forward_offset() }
   )
 
-  -- Projected position smoothing remains independent from projected rotation smoothing.
   self.projected_camera_position = CameraPositionControl.new(
     self.projected_camera,
     self.projected_camera_offset,
@@ -115,17 +94,27 @@ local function create_cameras(self)
     }
   )
 
-  -- The regular camera follows its own configured target without projected-world orientation rules.
+  -- The perspective debug view keeps its ordinary ground-space camera target.
+  if configuration:get_render_mode() ~= "orthographic" then
+    elevation_source = nil
+  end
+
+  local world_policy = EntityPositionPolicy.new(self.world_camera_target, {
+    elevation_source = elevation_source,
+    elevation_scale = configuration:get_orthographic_elevation_scale()
+  })
+
+  -- Start at the visual target to avoid sliding from ground level during loading.
+  self.camera:set_position(world_policy:resolve({ camera = self.camera }))
+
   self.camera_position_response = PositionResponse.new({
     half_life = configuration:get_world_camera_position_half_life()
   })
 
   self.camera_position = CameraPositionControl.new(
     self.camera,
-    EntityPositionPolicy.new(self.world_camera_target),
-    {
-      response = self.camera_position_response
-    }
+    world_policy,
+    { response = self.camera_position_response }
   )
 end
 
@@ -407,7 +396,7 @@ function TestSceneRenderer.new(options)
 
   -- Each construction step owns one clearly separated part of the renderer setup.
   resolve_entities(self)
-  create_cameras(self)
+  create_cameras(self, options.world_camera_elevation_source)
   create_projected_world(self)
   if options.projected_camera_elevation_source ~= nil then
     self.projected_camera_elevation = CameraElevationControl.new(
@@ -519,16 +508,22 @@ function TestSceneRenderer:_draw_world()
   SpatialDebugRenderer.draw_shape(self.step_player, "collision")
 end
 
--- Draws the player's current world coordinates in screen space.
+-- Displays planar coordinates and absolute elevation as separate spatial axes.
 function TestSceneRenderer:_draw_player_coordinates()
-  local player_x, player_y = self.player:get_position()
-  love.graphics.printf(string.format("Player position: %.2f, %.2f", player_x, player_y), -20, 180, width, "right")
+  local x, y = self.player:get_position()
+  ---@type SpatialElevation
+  local elevation = self.player:get_component("elevation")
+  local z = elevation:get_elevation()
+
+  love.graphics.printf(string.format("Player | X: %.2f | Y: %.2f | Z: %.2f", x, y, z), -20, 180, width, "right")
 end
 
 -- Draws the door's current world coordinates in screen space.
 function TestSceneRenderer:_draw_door_coordinates()
   local door_x, door_y = self.door:get_position()
-  love.graphics.printf(string.format("Door position: %.2f, %.2f", door_x, door_y), -20, 200, width, "right")
+
+  love.graphics.printf(string.format("Door position: | X: %.2f | Y: %.2f ", door_x, door_y), -20, 200, width,
+    "right")
 end
 
 -- Draws development overlays that share the projected world plane.

@@ -5,6 +5,12 @@ TestSceneRenderConfiguration.__index = TestSceneRenderConfiguration
 function TestSceneRenderConfiguration.new(options)
   options = options or {}
 
+  local world_elevation_component = options.world_camera_elevation_component
+
+  assert(world_elevation_component == nil
+    or type(world_elevation_component) == "string" and world_elevation_component ~= "",
+    "world camera elevation component must be a non-empty name")
+
   local elevation_component = options.camera_elevation_component
   local elevation_half_life = options.camera_elevation_half_life or 0.08
 
@@ -67,6 +73,7 @@ function TestSceneRenderConfiguration.new(options)
   -- These values define which entities drive each camera and how they follow their targets.
   local camera = {
     world_target_entity = options.world_camera_target_entity,
+    world_elevation_component = world_elevation_component,
     projected_target_entity = options.projected_camera_target_entity,
     world_position_half_life = options.world_camera_position_half_life,
     projected_position_half_life = options.projected_camera_position_half_life,
@@ -190,6 +197,11 @@ end
 -- Returns vertical tracking smoothing, with zero selecting immediate following.
 function TestSceneRenderConfiguration:get_camera_elevation_half_life()
   return self.projection.camera_elevation_half_life
+end
+
+-- Returns the optional elevation component followed by the orthographic camera.
+function TestSceneRenderConfiguration:get_world_camera_elevation_component()
+  return self.camera.world_elevation_component
 end
 
 return TestSceneRenderConfiguration

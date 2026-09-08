@@ -1,4 +1,6 @@
+---@class SpatialElevation
 local SpatialElevation = {}
+
 SpatialElevation.__index = SpatialElevation
 
 -- Creates independent vertical placement backed by a shared level mapping.
@@ -32,7 +34,11 @@ function SpatialElevation:get_offset()
   return self.offset
 end
 
--- Returns the absolute world-space elevation.
+--- Returns absolute Z elevation in world units.
+---
+--- Calculated as the reference level elevation plus the local offset.
+--- Does not change the entity's planar X and Y coordinates.
+---@return number z Absolute elevation, including level height and offset.
 function SpatialElevation:get_elevation()
   return self.levels:get_elevation(self.level) + self.offset
 end

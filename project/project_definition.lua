@@ -3,10 +3,11 @@ local project_definition = {
 
     test_scene_render_configuration = {
       main = {
-        render_mode = "perspective",
+        render_mode = "orthographic",
         orthographic_elevation_scale = 1,
 
         world_camera_target_entity = "player",
+        world_camera_elevation_component = "elevation",
         projected_camera_target_entity = "player",
 
         world_camera_position_half_life = 0.08,

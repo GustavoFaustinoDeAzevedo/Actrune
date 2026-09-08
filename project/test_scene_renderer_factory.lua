@@ -211,6 +211,16 @@ function TestSceneRendererFactory.create(options)
     renderer_options.projected_camera_elevation_source = source
   end
 
+  local world_component_name = render_configuration:get_world_camera_elevation_component()
+
+  if world_component_name ~= nil then
+    local source = world_camera_target:get_component(world_component_name)
+    assert(source ~= nil and type(source.get_elevation) == "function",
+      "world camera target requires elevation component: " .. world_component_name)
+
+    renderer_options.world_camera_elevation_source = source
+  end
+
   -- The renderer is constructed only after every external dependency has been resolved.
   return TestSceneRenderer.new(renderer_options)
 end

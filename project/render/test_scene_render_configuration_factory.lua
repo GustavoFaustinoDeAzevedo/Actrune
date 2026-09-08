@@ -18,6 +18,7 @@ function TestSceneRenderConfigurationFactory.create(definition, context)
   return TestSceneRenderConfiguration.new({
     -- Camera target associations remain serialized as entity ids.
     world_camera_target_entity = definition.world_camera_target_entity,
+    world_camera_elevation_component = definition.world_camera_elevation_component,
     projected_camera_target_entity = definition.projected_camera_target_entity,
 
     world_camera_position_half_life = definition.world_camera_position_half_life,

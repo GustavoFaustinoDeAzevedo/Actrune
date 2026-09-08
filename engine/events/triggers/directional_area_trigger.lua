@@ -27,11 +27,9 @@ function DirectionalAreaTrigger:matches(trigger_type, context)
         return false
     end
 
-    local activator_x, activator_y =
-        context.activator:get_position()
+    local activator_x, activator_y = context.activator:get_position()
 
-    local target_x, target_y =
-        context.entity:get_position()
+    local target_x, target_y = context.entity:get_position()
 
     local direction_x = target_x - activator_x
     local direction_y = target_y - activator_y
