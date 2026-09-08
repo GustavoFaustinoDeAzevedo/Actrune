@@ -1,7 +1,12 @@
+---@class SpatialLevels: SpatialLevelsFields
 local SpatialLevels = {}
 SpatialLevels.__index = SpatialLevels
 
--- Creates an ordered mapping from zero-based levels to world-space elevations.
+--- Creates a level mapping by copying a non-empty sequence of elevations.
+--- Values must be finite and strictly increasing.
+--- Array index 1 represents level 0, index 2 represents level 1, and so on.
+---@param elevations number[] Absolute Z values in world units.
+---@return SpatialLevels levels New level mapping.
 function SpatialLevels.new(elevations)
   assert(type(elevations) == "table" and #elevations > 0,
     "spatial levels require a non-empty elevation sequence")
@@ -26,12 +31,16 @@ function SpatialLevels.new(elevations)
   }, SpatialLevels)
 end
 
--- Returns the number of levels defined by this mapping.
+--- Returns how many levels this mapping contains.
+---@return integer count Number of available levels.
 function SpatialLevels:get_count()
   return #self.elevations
 end
 
--- Returns the elevation associated with one zero-based level.
+--- Returns the absolute Z assigned to a level.
+--- Raises an error when the index is not an integer or is outside this mapping.
+---@param level integer Zero-based index, from 0 to get_count() - 1.
+---@return number z Absolute level elevation in world units.
 function SpatialLevels:get_elevation(level)
   assert(type(level) == "number" and level % 1 == 0,
     "spatial level must be an integer")

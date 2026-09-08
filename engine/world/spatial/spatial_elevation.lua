@@ -1,9 +1,11 @@
----@class SpatialElevation
+---@class SpatialElevation: SpatialElevationFields
 local SpatialElevation = {}
-
 SpatialElevation.__index = SpatialElevation
 
--- Creates independent vertical placement backed by a shared level mapping.
+--- Creates vertical placement using a shared level mapping.
+--- The initial level must exist, and the offset must be finite.
+---@param options SpatialElevationOptions Initial vertical placement.
+---@return SpatialElevation elevation New elevation component.
 function SpatialElevation.new(options)
   options = options or {}
 
@@ -19,31 +21,37 @@ function SpatialElevation.new(options)
   return self
 end
 
--- Returns the level mapping used by this component.
+--- Returns the shared level mapping without copying it.
+---@return SpatialLevels levels Mapping used by this component.
 function SpatialElevation:get_levels()
   return self.levels
 end
 
--- Returns the current zero-based reference level.
+--- Returns the reference level index, not the absolute height.
+---@return integer level Current zero-based reference level.
 function SpatialElevation:get_level()
   return self.level
 end
 
--- Returns the vertical displacement relative to the reference level.
+--- Returns vertical displacement relative to the reference level.
+--- Positive values are above the level; negative values are below it.
+---@return number offset Signed displacement in world units.
 function SpatialElevation:get_offset()
   return self.offset
 end
 
---- Returns absolute Z elevation in world units.
----
---- Calculated as the reference level elevation plus the local offset.
+--- Returns absolute Z: reference level elevation plus local offset.
 --- Does not change the entity's planar X and Y coordinates.
----@return number z Absolute elevation, including level height and offset.
+---@return number z Absolute elevation in world units.
 function SpatialElevation:get_elevation()
   return self.levels:get_elevation(self.level) + self.offset
 end
 
--- Changes the reference level and its local offset together.
+--- Assigns the reference level and offset together after validating both.
+--- Does not check collisions or preserve the previous absolute Z.
+--- Use ElevationMover when movement must respect obstacles.
+---@param level integer Existing zero-based reference level.
+---@param offset number Finite displacement relative to the selected level.
 function SpatialElevation:set_position(level, offset)
   assert(type(offset) == "number"
     and offset > -math.huge and offset < math.huge,
@@ -56,7 +64,9 @@ function SpatialElevation:set_position(level, offset)
   self.offset = offset
 end
 
--- Changes vertical displacement while preserving the reference level.
+--- Changes the offset while preserving the reference level.
+--- Does not check collisions or automatically select another level.
+---@param offset number Finite displacement relative to the current level.
 function SpatialElevation:set_offset(offset)
   self:set_position(self.level, offset)
 end
