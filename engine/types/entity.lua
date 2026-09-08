@@ -16,7 +16,7 @@
 
 ---@class EntityFields
 ---@field id string Unique entity identifier.
----@field transform table Planar position, rotation and scale.
+---@field transform Transform Planar position, rotation and scale.
 ---@field shapes table<string, table> Spatial shapes indexed by name.
 ---@field events table<string, EntityEvent> Events indexed by identifier.
 ---@field components table<string, any> Components indexed by name.
