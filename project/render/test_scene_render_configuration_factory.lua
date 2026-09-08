@@ -26,6 +26,8 @@ function TestSceneRenderConfigurationFactory.create(definition, context)
     projected_camera_forward_offset = definition.projected_camera_forward_offset,
 
     camera_elevation = definition.camera_elevation,
+    camera_elevation_component = definition.camera_elevation_component,
+    camera_elevation_half_life = definition.camera_elevation_half_life,
     reference_distance = definition.reference_distance,
 
     render_mode = definition.render_mode,

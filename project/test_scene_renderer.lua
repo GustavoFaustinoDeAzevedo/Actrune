@@ -3,6 +3,7 @@ local love = require("love")
 -- Camera components control the regular and projected viewpoints independently.
 local Camera2D = require("engine.render.camera_2d")
 local CameraPositionControl = require("engine.render.camera_position_control")
+local CameraElevationControl = require("engine.render.camera_elevation_control")
 local EntityPositionPolicy = require("engine.render.camera_position.entity_position_policy")
 local OrientedOffsetPositionPolicy = require("engine.render.camera_position.oriented_offset_position_policy")
 local PositionResponse = require("engine.render.camera_position.position_response")
@@ -408,6 +409,16 @@ function TestSceneRenderer.new(options)
   resolve_entities(self)
   create_cameras(self)
   create_projected_world(self)
+  if options.projected_camera_elevation_source ~= nil then
+    self.projected_camera_elevation = CameraElevationControl.new(
+      self.perspective_projection,
+      options.projected_camera_elevation_source,
+      {
+        offset = self.render_configuration:get_camera_elevation(),
+        half_life = self.render_configuration:get_camera_elevation_half_life()
+      }
+    )
+  end
   create_layers(self)
   create_billboards(self, options)
 
@@ -527,21 +538,23 @@ function TestSceneRenderer:_draw_ground_debug()
   SpatialDebugRenderer.draw_shape(self.free_area, "area")
 end
 
--- Updates time-dependent rendering behavior and the captured projected world region.
+-- Updates camera tracking and the captured projected world region.
 function TestSceneRenderer:update(dt)
-  -- The regular camera follows the player independently from projected rendering.
   self.camera_position:update(dt)
 
-  -- Rotation is updated first because the projected position offset depends on camera orientation.
+  -- Resolve rotation before the position offset that depends on it.
   self.projected_camera_rotation:update(dt)
   self.projected_camera_position:update(dt)
 
-  local projected_x, projected_y = self.projected_camera:get_position()
+  if self.projected_camera_elevation ~= nil then
+    self.projected_camera_elevation:update(dt)
+  end
 
+  local projected_x, projected_y = self.projected_camera:get_position()
   local half_width = self.ground_region_width * 0.5
   local half_height = self.ground_region_height * 0.5
 
-  -- The capture region follows the camera while preserving its configured width and height.
+  -- Preserve capture dimensions while following the horizontal viewpoint.
   self.ground_world_region:set_bounds(
     projected_x - half_width,
     projected_y - half_height,
@@ -549,7 +562,6 @@ function TestSceneRenderer:update(dt)
     projected_y + half_height
   )
 
-  -- The temporary ball source still owns render-specific playback and advances once per render update.
   self.bounce_ball_billboard_source:update(dt)
 end
 

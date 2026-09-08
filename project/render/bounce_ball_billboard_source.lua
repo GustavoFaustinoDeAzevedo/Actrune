@@ -31,7 +31,7 @@ function BounceBallBillboardSource.new(options)
     height = 20,
     draw = function(width, height)
       love.graphics.setColor(1, 1, 1, 0.7)
-      love.graphics.circle("fill", width * 0.5, height * 0.5, 50)
+      love.graphics.circle("fill", width * 0.5, height * 0.5, 20)
     end
   })
 
@@ -40,7 +40,7 @@ function BounceBallBillboardSource.new(options)
     height = 20,
     draw = function(width, height)
       love.graphics.setColor(1, 1, 1, 0.8)
-      love.graphics.circle("fill", width * 0.5, height * 0.5, 60)
+      love.graphics.circle("fill", width * 0.5, height * 0.5, 30)
     end
   })
 
@@ -49,7 +49,7 @@ function BounceBallBillboardSource.new(options)
     height = 20,
     draw = function(width, height)
       love.graphics.setColor(1, 1, 1, 0.9)
-      love.graphics.circle("fill", width * 0.5, height * 0.5, 55)
+      love.graphics.circle("fill", width * 0.5, height * 0.5, 20)
     end
   })
 

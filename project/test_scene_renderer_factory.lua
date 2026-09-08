@@ -187,28 +187,29 @@ function TestSceneRendererFactory.create(options)
       static_billboard_source
 
   -- Billboard sources are injected independently so their implementations remain outside the renderer.
-  renderer_options.projected_character_billboard_source =
-      character_source
-  renderer_options.bounce_ball_billboard_source =
-      bounce_ball_source
-  renderer_options.projected_debug_billboard_source =
-      debug_source
+  renderer_options.projected_character_billboard_source = character_source
+  renderer_options.bounce_ball_billboard_source = bounce_ball_source
+  renderer_options.projected_debug_billboard_source = debug_source
 
   -- Diagnostics receive only the physics capabilities and event metric they consume.
-  renderer_options.physics_backend =
-      physics_backend
-  renderer_options.physics_step =
-      physics_step
-  renderer_options.active_event_count_provider =
-      active_event_count_provider
+  renderer_options.physics_backend = physics_backend
+  renderer_options.physics_step = physics_step
+  renderer_options.active_event_count_provider = active_event_count_provider
 
   -- Camera and projection behavior comes from validated project data.
-  renderer_options.render_configuration =
-      render_configuration
-  renderer_options.world_camera_target =
-      world_camera_target
-  renderer_options.projected_camera_target =
-      projected_camera_target
+  renderer_options.render_configuration = render_configuration
+  renderer_options.world_camera_target = world_camera_target
+  renderer_options.projected_camera_target = projected_camera_target
+
+  local component_name = render_configuration:get_camera_elevation_component()
+
+  if component_name ~= nil then
+    local source = projected_camera_target:get_component(component_name)
+    assert(source ~= nil and type(source.get_elevation) == "function",
+      "projected camera target requires elevation component: " .. component_name)
+
+    renderer_options.projected_camera_elevation_source = source
+  end
 
   -- The renderer is constructed only after every external dependency has been resolved.
   return TestSceneRenderer.new(renderer_options)

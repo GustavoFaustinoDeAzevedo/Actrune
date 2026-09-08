@@ -5,6 +5,15 @@ TestSceneRenderConfiguration.__index = TestSceneRenderConfiguration
 function TestSceneRenderConfiguration.new(options)
   options = options or {}
 
+  local elevation_component = options.camera_elevation_component
+  local elevation_half_life = options.camera_elevation_half_life or 0.08
+
+  assert(elevation_component == nil
+    or type(elevation_component) == "string" and elevation_component ~= "",
+    "camera elevation component must be a non-empty name")
+  assert(type(elevation_half_life) == "number"
+    and elevation_half_life >= 0 and elevation_half_life < math.huge,
+    "camera elevation half-life must be finite and non-negative")
   assert(type(options.world_camera_target_entity) == "string"
     and options.world_camera_target_entity ~= "",
     "test scene render configuration requires a world camera target entity")
@@ -74,6 +83,8 @@ function TestSceneRenderConfiguration.new(options)
     far_distance = options.far_distance,
     horizontal_fov = options.horizontal_fov,
     camera_elevation = options.camera_elevation,
+    camera_elevation_component = elevation_component,
+    camera_elevation_half_life = elevation_half_life,
     reference_distance = options.reference_distance,
     ground_elevation = ground_elevation,
     render_mode = options.render_mode,
@@ -146,7 +157,7 @@ function TestSceneRenderConfiguration:get_horizontal_fov()
   return self.projection.horizontal_fov
 end
 
--- Returns the absolute elevation of the projected camera.
+-- Returns fixed camera elevation or the target-relative offset when tracking is enabled.
 function TestSceneRenderConfiguration:get_camera_elevation()
   return self.projection.camera_elevation
 end
@@ -169,6 +180,16 @@ end
 -- Returns screen-vertical displacement per elevation unit before camera zoom.
 function TestSceneRenderConfiguration:get_orthographic_elevation_scale()
   return self.projection.orthographic_elevation_scale
+end
+
+-- Returns the optional elevation component on the projected camera target.
+function TestSceneRenderConfiguration:get_camera_elevation_component()
+  return self.projection.camera_elevation_component
+end
+
+-- Returns vertical tracking smoothing, with zero selecting immediate following.
+function TestSceneRenderConfiguration:get_camera_elevation_half_life()
+  return self.projection.camera_elevation_half_life
 end
 
 return TestSceneRenderConfiguration
