@@ -1,0 +1,42 @@
+---@meta
+---@class TestSceneRendererFields
+---@field project table Loaded project data.
+---@field messages string[] Diagnostic messages.
+---@field player_elevation SpatialElevation Live source of the player's absolute Z.
+---@field active_event_count_provider fun(): number
+---@field render_configuration table
+---@field physics_backend table
+---@field physics_step table
+---@field player table
+---@field step_player table
+---@field bounce_ball table
+---@field floor table
+---@field door table
+---@field small_grid_area table
+---@field large_grid_area table
+---@field free_area table
+---@field world_camera_target table
+---@field projected_camera_target table
+---@field camera table
+---@field camera_position table
+---@field camera_position_response table
+---@field projected_camera table
+---@field projected_camera_rotation table
+---@field projected_camera_rotation_response table
+---@field projected_camera_offset table
+---@field projected_camera_position table
+---@field projected_camera_elevation table?
+---@field ground_transform table
+---@field ground_region_width number
+---@field ground_region_height number
+---@field ground_world_region table
+---@field ground_plane table
+---@field ground_canvas table
+---@field projected_world table
+---@field perspective_projection table
+---@field orthographic_projection table
+---@field billboard_renderer table
+---@field orthographic_billboard_renderer table
+---@field projected_billboards table
+---@field bounce_ball_billboard_source table
+---@field layers table

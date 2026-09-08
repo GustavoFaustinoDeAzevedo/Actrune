@@ -30,6 +30,8 @@ local PerspectiveProjection = require("engine.render.projections.perspective_pro
 -- Spatial debug rendering remains independent from the projected visual pipeline.
 local SpatialDebugRenderer = require("engine.debug.spatial_debug_renderer")
 
+
+---@class TestSceneRenderer: TestSceneRendererFields
 local TestSceneRenderer = {}
 TestSceneRenderer.__index = TestSceneRenderer
 
@@ -345,6 +347,11 @@ function TestSceneRenderer.new(options)
   -- Project data remains available because this renderer still represents a concrete test scene.
   self.project = options.project
   self.messages = options.messages or {}
+  self.player_elevation = options.player_elevation
+
+  assert(self.player_elevation ~= nil
+    and type(self.player_elevation.get_elevation) == "function",
+    "test scene renderer requires a player elevation source")
 
   assert(self.project ~= nil, "test scene renderer requires a project")
 
@@ -508,14 +515,13 @@ function TestSceneRenderer:_draw_world()
   SpatialDebugRenderer.draw_shape(self.step_player, "collision")
 end
 
--- Displays planar coordinates and absolute elevation as separate spatial axes.
+--- Displays planar X and Y coordinates and the player's current absolute Z.
 function TestSceneRenderer:_draw_player_coordinates()
   local x, y = self.player:get_position()
-  ---@type SpatialElevation
-  local elevation = self.player:get_component("elevation")
-  local z = elevation:get_elevation()
+  local z = self.player_elevation:get_elevation()
 
-  love.graphics.printf(string.format("Player | X: %.2f | Y: %.2f | Z: %.2f", x, y, z), -20, 180, width, "right")
+  love.graphics.printf(string.format("Player | X: %.2f | Y: %.2f | Z: %.2f", x, y, z), -20, 180, width, "right"
+  )
 end
 
 -- Draws the door's current world coordinates in screen space.

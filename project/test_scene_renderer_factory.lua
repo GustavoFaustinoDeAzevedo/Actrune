@@ -221,6 +221,15 @@ function TestSceneRendererFactory.create(options)
     renderer_options.world_camera_elevation_source = source
   end
 
+  -- Resolve the live elevation component once for player diagnostics.
+  local player = require_entity(options.project, "player")
+  local player_elevation = player:get_component("elevation")
+
+  assert(player_elevation ~= nil and type(player_elevation.get_elevation) == "function",
+    "player diagnostics require an elevation component exposing get_elevation")
+
+  renderer_options.player_elevation = player_elevation
+
   -- The renderer is constructed only after every external dependency has been resolved.
   return TestSceneRenderer.new(renderer_options)
 end
