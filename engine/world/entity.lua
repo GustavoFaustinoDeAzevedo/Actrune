@@ -1,9 +1,13 @@
 local Transform = require("engine.world.transform")
 
+---@class Entity: EntityFields
 local Entity = {}
 Entity.__index = Entity
 
--- Creates a new entity with an identifier, transform, and optional spatial shapes.
+--- Creates an entity with a unique identifier and planar transform.
+--- X and Y describe position on the 2D plane; elevation is supplied by a component.
+---@param options EntityOptions Initial entity data.
+---@return Entity entity New entity.
 function Entity.new(options)
     assert(type(options) == "table", "options must be a table")
     assert(type(options.id) == "string", "entity id must be a string")
@@ -26,12 +30,17 @@ function Entity.new(options)
     return self
 end
 
--- Returns the current position of this entity.
+--- Returns the current position on the 2D world plane.
+--- This method does not include elevation or Z.
+---@return number x Planar X coordinate.
+---@return number y Planar Y coordinate.
 function Entity:get_position()
     return self.transform.x, self.transform.y
 end
 
--- Changes the entity position in world space.
+--- Changes position on the 2D world plane without changing elevation.
+---@param x number New planar X coordinate.
+---@param y number New planar Y coordinate.
 function Entity:set_position(x, y)
     self.transform:set_position(x, y)
 end
@@ -93,7 +102,10 @@ function Entity:get_events()
     return self.events
 end
 
--- Associates a named component with this entity.
+--- Assigns or replaces a component under a name.
+--- Existing references to the previous component are not updated automatically.
+---@param name string Component name used for later lookup.
+---@param component any Component instance.
 function Entity:set_component(name, component)
     assert(name ~= nil, "component name is required")
     assert(component ~= nil, "component is required")
@@ -101,17 +113,25 @@ function Entity:set_component(name, component)
     self.components[name] = component
 end
 
--- Returns a named component associated with this entity.
+--- Returns a component by name.
+--- The entity does not know the concrete type associated with each name.
+---@param name string Component name.
+---@return any component Component instance, or nil when absent.
 function Entity:get_component(name)
     return self.components[name]
 end
 
--- Returns whether this entity has a named component.
+--- Returns whether a component is assigned under the requested name.
+---@param name string Component name.
+---@return boolean exists True when the component exists.
 function Entity:has_component(name)
     return self.components[name] ~= nil
 end
 
--- Removes a named component from this entity.
+--- Removes and returns a named component.
+--- Objects retaining a reference to that component keep their old reference.
+---@param name string Component name.
+---@return any component Removed component, or nil when absent.
 function Entity:remove_component(name)
     local component =
         self.components[name]
