@@ -13,6 +13,7 @@ local RotationControl = require("engine.world.control.rotation_control")
 local SpatialActionControl = require("engine.world.control.spatial_action_control")
 local SpatialElevation = require("engine.world.spatial.spatial_elevation")
 local VerticalRange = require("engine.world.spatial.vertical_range")
+local ElevationControl = require("engine.world.control.elevation_control")
 
 local ActruneEntityTypes = {}
 
@@ -22,6 +23,34 @@ function ActruneEntityTypes.register(catalog)
 
   catalog:ensure_registry("shape", { kind = "shape" })
   catalog:ensure_registry("component", { kind = "component" })
+
+  catalog:register("component", "elevation_control", function(definition, context)
+    local factory_context = { factory = context.factory }
+
+    return ElevationControl.new({
+      controls = definition.controls,
+      input = definition.input,
+      amount = context.catalog:create("value_expression", definition.amount, factory_context),
+      application = context.catalog:create("control_application", definition.application, factory_context),
+      elevation_component = definition.elevation_component,
+      source_shape = definition.source_shape,
+      target_shape = definition.target_shape,
+      source_vertical_range = definition.source_vertical_range,
+      target_vertical_range = definition.target_vertical_range
+    })
+  end, {
+    fields = {
+      { name = "controls",              type = "string",              default = "controls" },
+      { name = "input",                 type = "string",              required = true },
+      { name = "amount",                type = "value_expression",    required = true },
+      { name = "application",           type = "control_application", required = true },
+      { name = "elevation_component",   type = "string",              required = true },
+      { name = "source_shape",          type = "shape_reference",     required = true },
+      { name = "target_shape",          type = "shape_reference",     required = true },
+      { name = "source_vertical_range", type = "string",              required = true },
+      { name = "target_vertical_range", type = "string",              required = true }
+    }
+  })
 
   catalog:register("component", "vertical_range", function(definition)
     return VerticalRange.new({

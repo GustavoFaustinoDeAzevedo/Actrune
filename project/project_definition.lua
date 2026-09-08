@@ -301,20 +301,22 @@ local project_definition = {
     input_map = {
       default = {
         keys = {
-          { action = "interact",   key = "space" },
+          { action = "interact",       key = "space" },
+          { action = "elevation_up",   key = "pageup" },
+          { action = "elevation_down", key = "pagedown" },
 
-          { action = "move_up",    key = "w" },
-          { action = "move_left",  key = "a" },
-          { action = "move_down",  key = "s" },
-          { action = "move_right", key = "d" },
+          { action = "move_up",        key = "w" },
+          { action = "move_left",      key = "a" },
+          { action = "move_down",      key = "s" },
+          { action = "move_right",     key = "d" },
 
-          { action = "turn_left",  key = "q" },
-          { action = "turn_right", key = "e" },
+          { action = "turn_left",      key = "q" },
+          { action = "turn_right",     key = "e" },
 
-          { action = "step_up",    key = "up" },
-          { action = "step_left",  key = "left" },
-          { action = "step_down",  key = "down" },
-          { action = "step_right", key = "right" }
+          { action = "step_up",        key = "up" },
+          { action = "step_left",      key = "left" },
+          { action = "step_down",      key = "down" },
+          { action = "step_right",     key = "right" }
         },
 
         spatial_actions = {
@@ -350,6 +352,12 @@ local project_definition = {
           turn = {
             negative_action = "turn_left",
             positive_action = "turn_right",
+            activation = "down"
+          },
+
+          elevate = {
+            negative_action = "elevation_down",
+            positive_action = "elevation_up",
             activation = "down"
           }
         },
@@ -573,6 +581,29 @@ local project_definition = {
 
         movement_direction = {
           type = "facing_direction"
+        },
+
+        elevation_control = {
+          type = "elevation_control",
+          controls = "controls",
+          input = "elevate",
+
+          elevation_component = "elevation",
+          source_shape = "collision",
+          target_shape = "collision",
+          source_vertical_range = "collision_height",
+          target_vertical_range = "collision_height",
+
+          amount = {
+            type = "value",
+            value = 16
+          },
+
+          application = {
+            type = "on_activation"
+          },
+
+          control_order = 15
         },
 
         rotation_control = {

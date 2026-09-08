@@ -98,4 +98,17 @@ function ElevationMover:try_move(delta)
   return applied, contact
 end
 
+-- Attempts to reach an absolute elevation through the existing collision-aware movement.
+function ElevationMover:try_move_to(target_elevation)
+  assert(type(target_elevation) == "number"
+    and target_elevation > -math.huge and target_elevation < math.huge,
+    "target elevation must be finite")
+  assert(type(self.elevation.get_elevation) == "function",
+    "elevation mover requires an elevation source exposing get_elevation")
+
+  local current_elevation = self.elevation:get_elevation()
+
+  return self:try_move(target_elevation - current_elevation)
+end
+
 return ElevationMover
