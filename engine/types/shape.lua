@@ -1,5 +1,7 @@
 ---@meta
 
+---@alias WorldPointList number[] Alternating world coordinates: x1, y1, x2, y2, and so on.
+
 ---@class ShapeOptions
 ---@field material? any Optional physical material.
 ---@field offset_x? number Local X offset from the entity origin. Defaults to 0.

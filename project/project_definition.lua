@@ -1,6 +1,17 @@
 local project_definition = {
   resources = {
 
+    world_topology = {
+      main = {
+        min_x = 0,
+        min_y = 0,
+        width = 1024,
+        height = 768,
+        loop_x = true,
+        loop_y = false
+      }
+    },
+
     test_scene_render_configuration = {
       main = {
         render_mode = "orthographic",
