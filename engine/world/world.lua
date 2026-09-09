@@ -1,4 +1,7 @@
 local SpatialQuery = require("engine.world.spatial.spatial_query")
+local PeriodicQuery = require("engine.world.spatial.periodic_query")
+
+---@class World: WorldFields
 local World = {}
 World.__index = World
 
@@ -83,69 +86,97 @@ function World:query_shape(shape, transform, shape_name)
     return results
 end
 
--- Finds entities and contact information intersected during a swept shape movement.
-function World:sweep_shape(
-    shape,
-    transform,
-    dx,
-    dy,
-    shape_name,
-    ignored_entity,
-    target_filter
-)
+--- Sweeps the actual path without shortening it to the nearest periodic destination.
+--- Keeps the earliest image contact per logical entity and ignores all self images.
+---@param shape table Moving shape.
+---@param transform Transform Original source transform.
+---@param dx number Requested X travel.
+---@param dy number Requested Y travel.
+---@param shape_name string Target shape name.
+---@param ignored_entity? Entity Entity excluded from all images.
+---@param target_filter? fun(entity: Entity): boolean Optional logical target filter.
+---@return WorldSweepHit[] hits Contacts sorted by travel fraction and entity identifier.
+function World:sweep_shape(shape, transform, dx, dy, shape_name, ignored_entity, target_filter)
     assert(target_filter == nil or type(target_filter) == "function",
         "world sweep target filter must be a function")
 
-    local hits = {}
+    local t, hits = self.topology, {}
+    local periodic = t ~= nil and (t.loop_x or t.loop_y)
+    local bounds
+
+    if periodic then
+        bounds = PeriodicQuery.get_bounds(shape, transform)
+        bounds.min_x, bounds.max_x = bounds.min_x + math.min(0, dx), bounds.max_x + math.max(0, dx)
+        bounds.min_y, bounds.max_y = bounds.min_y + math.min(0, dy), bounds.max_y + math.max(0, dy)
+    end
 
     for _, entity in pairs(self.entities) do
-        if entity ~= ignored_entity then
-            local target_shape =
-                entity:get_shape(shape_name)
+        local target = entity:get_shape(shape_name)
 
-            if target_shape ~= nil
-                and (target_filter == nil or target_filter(entity)) then
-                local hit =
-                    SpatialQuery.sweep_polygons(
-                        shape,
-                        transform,
-                        dx,
-                        dy,
-                        target_shape,
-                        entity.transform
-                    )
+        if entity ~= ignored_entity and target ~= nil
+            and (target_filter == nil or target_filter(entity)) then
+            local first
 
-                if hit ~= nil then
-                    table.insert(
-                        hits,
-                        {
-                            entity = entity,
+            local function visit(image)
+                local hit = SpatialQuery.sweep_polygons(shape, transform, dx, dy, target, image)
+                if hit ~= nil and (first == nil or hit.fraction < first.fraction) then first = hit end
+            end
 
-                            source_shape = shape,
-                            target_shape = target_shape,
+            if periodic then
+                ---@cast t WorldTopology
+                PeriodicQuery.visit_transforms(t, bounds, target, entity.transform, visit)
+            else
+                visit(entity.transform)
+            end
 
-                            fraction = hit.fraction,
-
-                            normal_x = hit.normal_x,
-                            normal_y = hit.normal_y,
-
-                            point_x = hit.point_x,
-                            point_y = hit.point_y
-                        }
-                    )
-                end
+            if first ~= nil then
+                hits[#hits + 1] = {
+                    entity = entity,
+                    source_shape = shape,
+                    target_shape = target,
+                    fraction = first.fraction,
+                    normal_x = first.normal_x,
+                    normal_y = first.normal_y,
+                    point_x = first.point_x,
+                    point_y = first.point_y
+                }
             end
         end
     end
 
-    table.sort(
-        hits,
-        function(left, right)
-            return left.fraction < right.fraction
-        end
-    )
+    table.sort(hits, function(a, b)
+        if a.fraction ~= b.fraction then return a.fraction < b.fraction end
+        return a.entity.id < b.entity.id
+    end)
 
     return hits
+end
+
+--- Assigns the optional coordinate topology used by this world.
+--- Does not reposition entities or change their elevation.
+---@param topology? WorldTopology Map coordinate configuration; nil disables it.
+function World:set_topology(topology)
+    assert(topology == nil or type(topology.wrap_position) == "function",
+        "world topology must expose wrap_position")
+
+    self.topology = topology
+end
+
+--- Returns the coordinate topology currently assigned to this world.
+---@return WorldTopology|nil topology Active map coordinate configuration.
+function World:get_topology()
+    return self.topology
+end
+
+--- Resolves equivalent coordinates inside the configured looping axes.
+--- Does not modify entities, clamp non-looping axes or affect Z.
+---@param x number Original planar X coordinate.
+---@param y number Original planar Y coordinate.
+---@return number x Resolved planar X coordinate.
+---@return number y Resolved planar Y coordinate.
+function World:wrap_position(x, y)
+    if self.topology == nil then return x, y end
+    return self.topology:wrap_position(x, y)
 end
 
 return World
