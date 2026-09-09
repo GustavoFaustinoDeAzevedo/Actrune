@@ -3,6 +3,7 @@ local love = require("love")
 -- Camera components control the regular and projected viewpoints independently.
 local Camera2D = require("engine.render.camera_2d")
 local CameraPositionControl = require("engine.render.camera_position_control")
+local AxisAlignedBoundsConstraint = require("engine.render.camera_position.axis_aligned_bounds_constraint")
 local CameraElevationControl = require("engine.render.camera_elevation_control")
 local EntityPositionPolicy = require("engine.render.camera_position.entity_position_policy")
 local OrientedOffsetPositionPolicy = require("engine.render.camera_position.oriented_offset_position_policy")
@@ -57,7 +58,10 @@ local function resolve_entities(self)
   self.free_area = require_entity(self.project, "free_area")
 end
 
--- Creates camera controls, including optional elevation tracking for the orthographic view.
+--- Creates independent camera controls and optional bounds for the orthographic view.
+--- Applies bounds during initialization, before the first frame is drawn.
+---@param self TestSceneRenderer Renderer receiving the camera controls.
+---@param elevation_source? table Live source exposing get_elevation.
 local function create_cameras(self, elevation_source)
   local configuration = self.render_configuration
   local world_x, world_y = self.world_camera_target:get_position()
@@ -109,6 +113,13 @@ local function create_cameras(self, elevation_source)
   -- Start at the visual target to avoid sliding from ground level during loading.
   self.camera:set_position(world_policy:resolve({ camera = self.camera }))
 
+  local constraints = {}
+  local bounds = configuration:get_world_camera_bounds()
+
+  if configuration:get_render_mode() == "orthographic" and bounds ~= nil then
+    constraints[1] = AxisAlignedBoundsConstraint.new(bounds)
+  end
+
   self.camera_position_response = PositionResponse.new({
     half_life = configuration:get_world_camera_position_half_life()
   })
@@ -116,8 +127,14 @@ local function create_cameras(self, elevation_source)
   self.camera_position = CameraPositionControl.new(
     self.camera,
     world_policy,
-    { response = self.camera_position_response }
+    {
+      response = self.camera_position_response,
+      constraints = constraints
+    }
   )
+
+  -- A zero-time update applies constraints without advancing position smoothing.
+  self.camera_position:update(0)
 end
 
 -- Creates the captured world region and the perspective projection used by the ground and billboards.

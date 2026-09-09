@@ -14,6 +14,10 @@ function ProjectRenderResourceTypes.register(register)
     TestSceneRenderConfigurationFactory.create,
     {
       fields = {
+        { name = "world_camera_min_x",                  type = "number",             optional = true },
+        { name = "world_camera_min_y",                  type = "number",             optional = true },
+        { name = "world_camera_max_x",                  type = "number",             optional = true },
+        { name = "world_camera_max_y",                  type = "number",             optional = true },
         { name = "world_camera_elevation_component",    type = "string",             optional = true },
         { name = "camera_elevation_component",          type = "string",             optional = true },
         { name = "camera_elevation_half_life",          type = "number",             default = 0.08,                             min = 0 },

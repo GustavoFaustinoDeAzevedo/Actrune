@@ -8,6 +8,13 @@ local project_definition = {
 
         world_camera_target_entity = "player",
         world_camera_elevation_component = "elevation",
+
+        -- Fixed view bounds for the orthographic scene.
+        world_camera_min_x = -1024,
+        world_camera_min_y = -256,
+        world_camera_max_x = 1024,
+        world_camera_max_y = 1536,
+
         projected_camera_target_entity = "player",
 
         world_camera_position_half_life = 0.08,

@@ -62,7 +62,7 @@ end
 --- Assigns or replaces a named spatial shape.
 --- The shape remains in local entity space and uses the entity transform in queries.
 ---@param name string Shape name.
----@param shape table Spatial shape instance.
+---@param shape Shape Spatial shape instance.
 function Entity:set_shape(name, shape)
     assert(type(name) == "string", "shape name must be a string")
     assert(shape ~= nil, "shape is required")
@@ -72,7 +72,7 @@ end
 
 --- Returns a named spatial shape.
 ---@param name string Shape name.
----@return table|nil shape Shape instance, or nil when absent.
+---@return Shape|nil shape Shape instance, or nil when absent.
 function Entity:get_shape(name)
     return self.shapes[name]
 end

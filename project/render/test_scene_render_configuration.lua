@@ -5,6 +5,28 @@ TestSceneRenderConfiguration.__index = TestSceneRenderConfiguration
 function TestSceneRenderConfiguration.new(options)
   options = options or {}
 
+  -- All four coordinates are required together; omission keeps camera movement unrestricted.
+  local world_bounds = {
+    min_x = options.world_camera_min_x,
+    min_y = options.world_camera_min_y,
+    max_x = options.world_camera_max_x,
+    max_y = options.world_camera_max_y
+  }
+
+  if next(world_bounds) == nil then
+    world_bounds = nil
+  else
+    for _, name in ipairs({ "min_x", "min_y", "max_x", "max_y" }) do
+      local value = world_bounds[name]
+      assert(type(value) == "number" and value > -math.huge and value < math.huge,
+        "world camera bounds require a finite " .. name)
+    end
+
+    assert(world_bounds.max_x >= world_bounds.min_x
+      and world_bounds.max_y >= world_bounds.min_y,
+      "world camera maximum bounds must not be below minimum bounds")
+  end
+
   local world_elevation_component = options.world_camera_elevation_component
 
   assert(world_elevation_component == nil
@@ -73,6 +95,7 @@ function TestSceneRenderConfiguration.new(options)
   -- These values define which entities drive each camera and how they follow their targets.
   local camera = {
     world_target_entity = options.world_camera_target_entity,
+    world_bounds = world_bounds,
     world_elevation_component = world_elevation_component,
     projected_target_entity = options.projected_camera_target_entity,
     world_position_half_life = options.world_camera_position_half_life,
@@ -202,6 +225,13 @@ end
 -- Returns the optional elevation component followed by the orthographic camera.
 function TestSceneRenderConfiguration:get_world_camera_elevation_component()
   return self.camera.world_elevation_component
+end
+
+--- Returns the optional fixed bounds used by the orthographic camera.
+--- Coordinates describe the view area at Z = 0, not entity movement limits.
+---@return CameraBounds|nil bounds Validated rectangle; nil means unrestricted tracking.
+function TestSceneRenderConfiguration:get_world_camera_bounds()
+  return self.camera.world_bounds
 end
 
 return TestSceneRenderConfiguration
