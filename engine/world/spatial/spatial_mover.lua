@@ -30,6 +30,16 @@ function SpatialMover.new(world, entity, options)
     return self
 end
 
+--- Applies resolved movement and normalizes only the looping axes.
+--- Changes planar position without changing entity elevation.
+---@param dx number Applied displacement along X.
+---@param dy number Applied displacement along Y.
+function SpatialMover:_apply_displacement(dx, dy)
+    local x, y = self.entity:get_position()
+    x, y = self.world:wrap_position(x + dx, y + dy)
+    self.entity:set_position(x, y)
+end
+
 -- Attempts a displacement and moves up to the first spatial collision.
 function SpatialMover:try_move(dx, dy)
     local result = MotionResult.new(dx, dy)
@@ -56,7 +66,7 @@ function SpatialMover:try_move(dx, dy)
         )
 
     if #hits == 0 then
-        self.entity.transform:translate(dx, dy)
+        self:_apply_displacement(dx, dy)
 
         result:add_applied(dx, dy)
 
@@ -82,10 +92,7 @@ function SpatialMover:try_move(dx, dy)
 
     local applied_y = dy * safe_fraction
 
-    self.entity.transform:translate(
-        applied_x,
-        applied_y
-    )
+    self:_apply_displacement(applied_x, applied_y)
 
     result:add_applied(
         applied_x,
