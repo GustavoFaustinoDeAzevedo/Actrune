@@ -14,6 +14,7 @@ function ProjectRenderResourceTypes.register(register)
     TestSceneRenderConfigurationFactory.create,
     {
       fields = {
+        { name = "loop_visual_padding",                 type = "number",             default = 1024,                             min = 0 },
         { name = "world_camera_min_x",                  type = "number",             optional = true },
         { name = "world_camera_min_y",                  type = "number",             optional = true },
         { name = "world_camera_max_x",                  type = "number",             optional = true },

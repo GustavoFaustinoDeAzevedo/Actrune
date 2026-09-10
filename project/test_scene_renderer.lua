@@ -21,6 +21,7 @@ local LayerTransform2D = require("engine.render.layer_transform_2d")
 local RenderViewStack = require("engine.render.render_view_stack")
 local CanvasRenderView = require("engine.render.canvas_render_view")
 local WorldRegionView = require("engine.render.world_region_view")
+local PeriodicBillboardSource = require("engine.render.periodic_billboard_source")
 
 -- Projected rendering converts the captured world region and entity visuals into perspective output.
 local ProjectedWorldPlane = require("project.render.projections.projected_world_plane")
@@ -449,12 +450,24 @@ function TestSceneRenderer.new(options)
   create_layers(self)
   create_billboards(self, options)
 
+  local topology = self.world_topology
+  if self.render_configuration:get_render_mode() == "orthographic"
+      and topology ~= nil and (topology.loop_x or topology.loop_y) then
+    self.periodic_billboards = PeriodicBillboardSource.new(
+      self.projected_billboards, topology, self.camera, {
+        padding = self.render_configuration:get_loop_visual_padding(),
+        elevation_scale = self.render_configuration:get_orthographic_elevation_scale()
+      }
+    )
+  end
+
   return self
 end
 
 -- Draws shared billboard entries through the presentation selected by this scene.
 function TestSceneRenderer:_draw_projected_billboards()
-  local entries = self.projected_billboards:get_entries()
+  local source = self.periodic_billboards or self.projected_billboards
+  local entries = source:get_entries()
 
   if self.render_configuration:get_render_mode() == "orthographic" then
     local viewport_x, viewport_y, viewport_width, viewport_height =

@@ -77,7 +77,13 @@ local function compare_billboards(a, b)
 
   if order_a ~= order_b then return order_a < order_b end
 
-  return tostring(a.entry.id or "") < tostring(b.entry.id or "")
+  local id_a, id_b = tostring(a.entry.id or ""), tostring(b.entry.id or "")
+  if id_a ~= id_b then return id_a < id_b end
+
+  local y_a, y_b = a.entry.repeat_y or 0, b.entry.repeat_y or 0
+  if y_a ~= y_b then return y_a < y_b end
+
+  return (a.entry.repeat_x or 0) < (b.entry.repeat_x or 0)
 end
 
 -- Validates one visible projection result before it enters the drawing queue.

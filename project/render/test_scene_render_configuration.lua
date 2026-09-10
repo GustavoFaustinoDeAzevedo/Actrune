@@ -5,6 +5,11 @@ TestSceneRenderConfiguration.__index = TestSceneRenderConfiguration
 function TestSceneRenderConfiguration.new(options)
   options = options or {}
 
+  local loop_visual_padding = options.loop_visual_padding or 1024
+  assert(type(loop_visual_padding) == "number"
+    and loop_visual_padding >= 0 and loop_visual_padding < math.huge,
+    "loop visual padding must be finite and non-negative")
+
   -- All four coordinates are required together; omission keeps camera movement unrestricted.
   local world_bounds = {
     min_x = options.world_camera_min_x,
@@ -118,6 +123,7 @@ function TestSceneRenderConfiguration.new(options)
     reference_distance = options.reference_distance,
     ground_elevation = ground_elevation,
     render_mode = options.render_mode,
+    loop_visual_padding = loop_visual_padding,
     orthographic_elevation_scale = options.orthographic_elevation_scale,
   }
 
@@ -232,6 +238,13 @@ end
 ---@return CameraBounds|nil bounds Validated rectangle; nil means unrestricted tracking.
 function TestSceneRenderConfiguration:get_world_camera_bounds()
   return self.camera.world_bounds
+end
+
+--- Returns the world-space margin used to select repeated visuals.
+--- Must cover their extent from the anchor, including scale and local transforms.
+---@return number padding Extra viewport margin in world units.
+function TestSceneRenderConfiguration:get_loop_visual_padding()
+  return self.projection.loop_visual_padding
 end
 
 return TestSceneRenderConfiguration

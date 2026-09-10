@@ -36,6 +36,7 @@ function TestSceneRenderConfigurationFactory.create(definition, context)
     reference_distance = definition.reference_distance,
 
     render_mode = definition.render_mode,
+    loop_visual_padding = definition.loop_visual_padding,
     orthographic_elevation_scale = definition.orthographic_elevation_scale,
 
     ground_region_width = definition.ground_region_width,
