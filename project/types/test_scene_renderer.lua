@@ -40,3 +40,4 @@
 ---@field projected_billboards table
 ---@field bounce_ball_billboard_source table
 ---@field layers table
+---@field world_topology WorldTopology? Map coordinates used by orthographic camera tracking.

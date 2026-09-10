@@ -198,6 +198,7 @@ function TestSceneRendererFactory.create(options)
 
   -- Camera and projection behavior comes from validated project data.
   renderer_options.render_configuration = render_configuration
+  renderer_options.world_topology = options.runtime.world:get_topology()
   renderer_options.world_camera_target = world_camera_target
   renderer_options.projected_camera_target = projected_camera_target
 

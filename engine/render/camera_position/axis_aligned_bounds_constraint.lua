@@ -1,10 +1,9 @@
----@class AxisAlignedBoundsConstraint: CameraBounds
+---@class AxisAlignedBoundsConstraint: AxisAlignedBoundsConstraintFields
 local AxisAlignedBoundsConstraint = {}
 AxisAlignedBoundsConstraint.__index = AxisAlignedBoundsConstraint
 
---- Creates a fixed rectangle that constrains the orthographic camera's visible area.
---- Bounds use world coordinates and must be finite and ordered.
----@param options CameraBounds Rectangle containing the intended visible area.
+--- Creates finite camera bounds with independently enabled axes.
+---@param options AxisAlignedBoundsConstraintOptions Bounds and axis settings.
 ---@return AxisAlignedBoundsConstraint constraint New camera position constraint.
 function AxisAlignedBoundsConstraint.new(options)
   assert(type(options) == "table", "camera bounds require options")
@@ -19,8 +18,14 @@ function AxisAlignedBoundsConstraint.new(options)
     "camera bounds max_x must be greater than or equal to min_x")
   assert(options.max_y >= options.min_y,
     "camera bounds max_y must be greater than or equal to min_y")
+  assert(options.constrain_x == nil or type(options.constrain_x) == "boolean",
+    "camera constrain_x must be boolean")
+  assert(options.constrain_y == nil or type(options.constrain_y) == "boolean",
+    "camera constrain_y must be boolean")
 
   return setmetatable({
+    constrain_x = options.constrain_x ~= false,
+    constrain_y = options.constrain_y ~= false,
     min_x = options.min_x,
     min_y = options.min_y,
     max_x = options.max_x,
@@ -60,22 +65,23 @@ local function constrain_axis(value, minimum, maximum, half_extent)
   return math.max(minimum_center, math.min(maximum_center, value))
 end
 
---- Constrains the visible viewport after position smoothing.
---- Centers axes where the viewport is larger than the scene; exterior space remains visible.
---- Does not constrain entities, perform collision queries or change camera zoom.
----@param x number Requested camera X in world units.
----@param y number Requested camera Y in world units.
----@param context { camera: table } Camera used to calculate the current visible extents.
----@return number x Constrained camera X.
----@return number y Constrained camera Y.
+--- Constrains enabled viewport axes after position smoothing.
+--- Centers enabled axes when the viewport cannot fit inside their bounds.
+---@param x number Requested camera X.
+---@param y number Requested camera Y.
+---@param context { camera: table } Camera providing viewport, rotation and zoom.
+---@return number x Resolved camera X.
+---@return number y Resolved camera Y.
 function AxisAlignedBoundsConstraint:resolve(x, y, context)
   local camera = context and context.camera
   assert(camera ~= nil, "camera bounds constraint requires context.camera")
 
   local half_x, half_y = resolve_view_half_extents(camera)
 
-  return constrain_axis(x, self.min_x, self.max_x, half_x),
-      constrain_axis(y, self.min_y, self.max_y, half_y)
+  if self.constrain_x then x = constrain_axis(x, self.min_x, self.max_x, half_x) end
+  if self.constrain_y then y = constrain_axis(y, self.min_y, self.max_y, half_y) end
+
+  return x, y
 end
 
 return AxisAlignedBoundsConstraint

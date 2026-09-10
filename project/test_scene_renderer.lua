@@ -105,9 +105,15 @@ local function create_cameras(self, elevation_source)
     elevation_source = nil
   end
 
+  local topology = nil
+  if configuration:get_render_mode() == "orthographic" then
+    topology = self.world_topology
+  end
+
   local world_policy = EntityPositionPolicy.new(self.world_camera_target, {
     elevation_source = elevation_source,
-    elevation_scale = configuration:get_orthographic_elevation_scale()
+    elevation_scale = configuration:get_orthographic_elevation_scale(),
+    topology = topology
   })
 
   -- Start at the visual target to avoid sliding from ground level during loading.
@@ -117,7 +123,14 @@ local function create_cameras(self, elevation_source)
   local bounds = configuration:get_world_camera_bounds()
 
   if configuration:get_render_mode() == "orthographic" and bounds ~= nil then
-    constraints[1] = AxisAlignedBoundsConstraint.new(bounds)
+    constraints[1] = AxisAlignedBoundsConstraint.new({
+      min_x = bounds.min_x,
+      min_y = bounds.min_y,
+      max_x = bounds.max_x,
+      max_y = bounds.max_y,
+      constrain_x = topology == nil or not topology.loop_x,
+      constrain_y = topology == nil or not topology.loop_y
+    })
   end
 
   self.camera_position_response = PositionResponse.new({
@@ -365,6 +378,7 @@ function TestSceneRenderer.new(options)
   self.project = options.project
   self.messages = options.messages or {}
   self.player_elevation = options.player_elevation
+  self.world_topology = options.world_topology
 
   assert(self.player_elevation ~= nil
     and type(self.player_elevation.get_elevation) == "function",
