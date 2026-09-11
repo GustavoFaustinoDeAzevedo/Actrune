@@ -12,6 +12,31 @@ local function contains(map, x, y)
   return x >= map.min_x and x < map.max_x and y >= map.min_y and y < map.max_y
 end
 
+--- Copies a dense list of authored entity identifiers.
+---@param values? string[] Declared map content.
+---@param map_id string Map identifier used in validation errors.
+---@return string[] ids Independent list owned by the layout.
+local function copy_entity_ids(values, map_id)
+  if values == nil then return {} end
+  assert(type(values) == "table", "map entities must be a list: " .. map_id)
+
+  local count = 0
+  for index in pairs(values) do
+    assert(type(index) == "number" and index >= 1 and index % 1 == 0,
+      "map entity list must use positive integer indices: " .. map_id)
+    count = count + 1
+  end
+
+  local ids = {}
+  for index = 1, count do
+    local id = values[index]
+    assert(type(id) == "string" and id ~= "",
+      "map " .. map_id .. " requires an entity identifier at index " .. index)
+    ids[index] = id
+  end
+  return ids
+end
+
 --- Creates non-overlapping map regions in one continuous world coordinate space.
 --- Copies definitions once; returned regions must be treated as read-only.
 ---@param definitions table<string, MapRegionDefinition> Bounds indexed by map identifier.
@@ -37,7 +62,8 @@ function MapLayout.new(definitions)
       min_x = definition.min_x,
       min_y = definition.min_y,
       max_x = definition.max_x,
-      max_y = definition.max_y
+      max_y = definition.max_y,
+      entities = copy_entity_ids(definition.entities, id)
     }
 
     assert(map.max_x > map.min_x and map.max_y > map.min_y,

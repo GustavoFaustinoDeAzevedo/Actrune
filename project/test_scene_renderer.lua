@@ -580,7 +580,7 @@ function TestSceneRenderer:_draw_world()
   self:_draw_shape(self.step_player, "collision")
 end
 
---- Displays the player's current map and global XYZ without changing runtime state.
+--- Displays map location, declared content count and the player's global XYZ.
 function TestSceneRenderer:_draw_player_coordinates()
   local x, y = self.player:get_position()
   local z = self.player_elevation:get_elevation()
@@ -590,9 +590,11 @@ function TestSceneRenderer:_draw_player_coordinates()
   local layout = layouts and layouts:get("main")
   local map = layout and layout:find_map(x, y)
   local map_id = map and map.id or "--"
+  local content_count = map and #map.entities or 0
 
   love.graphics.printf(
-    string.format("Player | Map: %s | X: %.2f | Y: %.2f | Z: %.2f", map_id, x, y, z),
+    string.format("Player | Map: %s | Content: %d | X: %.2f | Y: %.2f | Z: %.2f",
+      map_id, content_count, x, y, z),
     -20, 180, width, "right"
   )
 end

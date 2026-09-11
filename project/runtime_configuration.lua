@@ -1,5 +1,6 @@
 local AnimatedEntityVisualRuntimeSystem = require("engine.render.animated_entity_visual_runtime_system")
 local StaticEntityVisualRuntimeSystem = require("engine.render.static_entity_visual_runtime_system")
+local ResidentMapCollection = require("engine.world.maps.resident_map_collection")
 
 local RuntimeConfiguration = {}
 
@@ -22,6 +23,31 @@ function RuntimeConfiguration.register(register)
       end
     }
   end, 50)
+
+  register:register_runtime_system("resident_maps", function()
+    ---@type ResidentMapCollection?
+    local collection
+
+    return {
+      --- Resolves resident map content after project entities have been created.
+      ---@param self table Initialization adapter.
+      ---@param context table Loaded project and its runtime.
+      initialize = function(self, context)
+        local registry = context.project.resources.map_layout
+        local layout = registry and registry:get("main")
+        if layout ~= nil then
+          collection = ResidentMapCollection.new(layout, context.project.entities)
+        end
+      end,
+
+      --- Returns the resident content index when a main map layout exists.
+      ---@param self table Initialization adapter.
+      ---@return ResidentMapCollection|nil collection Resolved map content.
+      get_collection = function(self)
+        return collection
+      end
+    }
+  end, 60)
 
   register:register_runtime_system("animated_entity_visuals", function()
     return AnimatedEntityVisualRuntimeSystem.new({
