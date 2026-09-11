@@ -14,7 +14,7 @@ local project_definition = {
 
     test_scene_render_configuration = {
       main = {
-        render_mode = "orthographic",
+        render_mode = "perspective",
         orthographic_elevation_scale = 1,
 
         world_camera_target_entity = "player",

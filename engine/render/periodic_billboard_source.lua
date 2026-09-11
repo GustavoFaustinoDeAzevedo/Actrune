@@ -20,11 +20,11 @@ function PeriodicBillboardSource.get_view_bounds(camera, padding)
   return x - half_x, y - half_y, x + half_x, y + half_y
 end
 
---- Creates repeated orthographic entries without duplicating gameplay entities.
+--- Creates repeated entries using an orthographic viewport or supplied world bounds.
 --- Padding must cover visual extent from the anchor, including scale and local transforms.
 ---@param source table Original source exposing get_entries.
 ---@param topology WorldTopology Map repetition configuration.
----@param camera table Orthographic camera selecting visible repetitions.
+---@param camera table Camera supplying viewport and elevation displacement rotation.
 ---@param options PeriodicBillboardSourceOptions Coverage and elevation settings.
 ---@return PeriodicBillboardSource source Reusable visual adapter.
 function PeriodicBillboardSource.new(source, topology, camera, options)
@@ -38,6 +38,8 @@ function PeriodicBillboardSource.new(source, topology, camera, options)
   assert(type(options.elevation_scale) == "number"
     and options.elevation_scale >= 0 and options.elevation_scale < math.huge,
     "periodic billboard elevation scale must be finite and non-negative")
+  assert(options.bounds_provider == nil or type(options.bounds_provider) == "function",
+    "periodic billboard bounds provider must be a function")
 
   for _, name in ipairs({ "get_position", "get_viewport", "get_rotation", "get_zoom" }) do
     assert(camera ~= nil and type(camera[name]) == "function",
@@ -50,6 +52,7 @@ function PeriodicBillboardSource.new(source, topology, camera, options)
     camera = camera,
     padding = options.padding,
     elevation_scale = options.elevation_scale,
+    bounds_provider = options.bounds_provider,
     entries = {},
     copies = {}
   }, PeriodicBillboardSource)
@@ -74,7 +77,21 @@ function PeriodicBillboardSource:get_entries()
   local topology = self.topology
   local period_x = topology.loop_x and topology.width or nil
   local period_y = topology.loop_y and topology.height or nil
-  local min_x, min_y, max_x, max_y = self.get_view_bounds(self.camera, self.padding)
+  local min_x, min_y, max_x, max_y
+
+  if self.bounds_provider ~= nil then
+    min_x, min_y, max_x, max_y = self.bounds_provider(self.padding)
+
+    assert(type(min_x) == "number" and type(min_y) == "number"
+      and type(max_x) == "number" and type(max_y) == "number"
+      and min_x > -math.huge and min_y > -math.huge
+      and max_x < math.huge and max_y < math.huge
+      and min_x <= max_x and min_y <= max_y,
+      "periodic billboard bounds must be finite and ordered")
+  else
+    min_x, min_y, max_x, max_y = self.get_view_bounds(self.camera, self.padding)
+  end
+  
   local rotation = self.camera:get_rotation()
   local sine, cosine = math.sin(rotation), math.cos(rotation)
   local count = 0

@@ -452,13 +452,27 @@ function TestSceneRenderer.new(options)
   create_billboards(self, options)
 
   local topology = self.world_topology
-  if self.render_configuration:get_render_mode() == "orthographic"
-      and topology ~= nil and (topology.loop_x or topology.loop_y) then
+
+  if topology ~= nil and (topology.loop_x or topology.loop_y) then
+    local orthographic = self.render_configuration:get_render_mode() == "orthographic"
+
+    ---@type PeriodicBillboardSourceOptions
+    local repetition_options = {
+      padding = self.render_configuration:get_loop_visual_padding(),
+      elevation_scale = orthographic
+          and self.render_configuration:get_orthographic_elevation_scale() or 0
+    }
+
+    if not orthographic then
+      repetition_options.bounds_provider = function(padding)
+        return self.perspective_projection:get_view_bounds(padding)
+      end
+    end
+
     self.periodic_billboards = PeriodicBillboardSource.new(
-      self.projected_billboards, topology, self.camera, {
-        padding = self.render_configuration:get_loop_visual_padding(),
-        elevation_scale = self.render_configuration:get_orthographic_elevation_scale()
-      }
+      self.projected_billboards, topology,
+      orthographic and self.camera or self.projected_camera,
+      repetition_options
     )
   end
 
@@ -619,8 +633,9 @@ function TestSceneRenderer:draw()
   })
 end
 
---- Draws visible shape repetitions using the active graphics transform.
---- Must run inside the camera view, after any elevation or layer transforms.
+--- Draws periodic outlines inside the active world-space view.
+--- Uses the full active canvas during capture, or the camera viewport on screen.
+--- Call after applying the world view and any elevation or layer transforms.
 --- Requires an invertible graphics transform.
 ---@param entity? Entity Logical shape owner.
 ---@param shape_name string Name of the shape to draw.
@@ -628,8 +643,7 @@ function TestSceneRenderer:_draw_shape(entity, shape_name)
   if entity == nil then return end
   local topology = self.world_topology
 
-  if self.render_configuration:get_render_mode() ~= "orthographic"
-      or topology == nil or not (topology.loop_x or topology.loop_y) then
+  if topology == nil or not (topology.loop_x or topology.loop_y) then
     SpatialDebugRenderer.draw_shape(entity, shape_name)
     return
   end
@@ -637,7 +651,16 @@ function TestSceneRenderer:_draw_shape(entity, shape_name)
   local shape = entity:get_shape(shape_name)
   if shape == nil then return end
 
-  local vx, vy, width, height = self.camera:get_viewport()
+  local vx, vy, width, height
+  local canvas = love.graphics.getCanvas()
+
+  if canvas ~= nil then
+    vx, vy = 0, 0
+    width, height = canvas:getDimensions()
+  else
+    vx, vy, width, height = self.camera:get_viewport()
+  end
+
   local x1, y1 = love.graphics.inverseTransformPoint(vx, vy)
   local x2, y2 = love.graphics.inverseTransformPoint(vx + width, vy)
   local x3, y3 = love.graphics.inverseTransformPoint(vx + width, vy + height)

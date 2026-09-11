@@ -41,4 +41,4 @@
 ---@field bounce_ball_billboard_source table
 ---@field layers table
 ---@field world_topology WorldTopology? Map coordinates used by orthographic camera tracking.
----@field periodic_billboards PeriodicBillboardSource? Repeated orthographic visual entries.
+---@field periodic_billboards PeriodicBillboardSource? Repeated visual entries selected for the active projection.

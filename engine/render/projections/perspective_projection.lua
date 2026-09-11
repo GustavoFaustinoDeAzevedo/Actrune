@@ -246,4 +246,31 @@ function PerspectiveProjection:set_reference_distance(distance)
   self.reference_distance = distance
 end
 
+--- Encloses the horizontal view between the near and far clipping distances.
+--- Covers all elevations; screen visibility is resolved during point projection.
+---@param padding? number Extra margin in world units; defaults to zero.
+---@return number min_x Lower world X.
+---@return number min_y Lower world Y.
+---@return number max_x Upper world X.
+---@return number max_y Upper world Y.
+function PerspectiveProjection:get_view_bounds(padding)
+  padding = padding or 0
+  assert(type(padding) == "number" and padding >= 0 and padding < math.huge,
+    "perspective view padding must be finite and non-negative")
+  assert(self.far_distance < math.huge,
+    "perspective view bounds require a finite far distance")
+
+  local x, y = self:get_view_position()
+  local forward_x, forward_y, right_x, right_y, tangent = self:_get_projection_factors()
+  local spread_x, spread_y = math.abs(right_x) * tangent, math.abs(right_y) * tangent
+  local near, far = self.near_distance, self.far_distance
+  local left, right = forward_x - spread_x, forward_x + spread_x
+  local top, bottom = forward_y - spread_y, forward_y + spread_y
+
+  return x + math.min(left * near, left * far) - padding,
+      y + math.min(top * near, top * far) - padding,
+      x + math.max(right * near, right * far) + padding,
+      y + math.max(bottom * near, bottom * far) + padding
+end
+
 return PerspectiveProjection
