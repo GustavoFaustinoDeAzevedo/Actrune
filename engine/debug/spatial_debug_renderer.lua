@@ -2,14 +2,17 @@ local love = require "love"
 
 local SpatialDebugRenderer = {}
 
--- Draws a named spatial shape belonging to an Actrune entity.
-function SpatialDebugRenderer.draw_shape(entity, shape_name)
+--- Draws a named shape with an optional rendering-only transform.
+---@param entity? Entity Logical shape owner.
+---@param shape_name string Name of the shape to draw.
+---@param transform? Transform Overrides the entity transform for this draw only.
+function SpatialDebugRenderer.draw_shape(entity, shape_name, transform)
   if entity == nil then return end
 
   local shape = entity:get_shape(shape_name)
   if shape == nil then return end
 
-  love.graphics.polygon("line", shape:get_world_points(entity.transform))
+  love.graphics.polygon("line", shape:get_world_points(transform or entity.transform))
 end
 
 -- Draws an orientation marker using a circular entity shape.

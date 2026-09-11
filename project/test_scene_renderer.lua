@@ -28,6 +28,7 @@ local ProjectedWorldPlane = require("project.render.projections.projected_world_
 local ProjectedBillboardRenderer = require("engine.render.projected_billboard_renderer")
 local BillboardSourceGroup = require("engine.render.billboard_source_group")
 local PerspectiveProjection = require("engine.render.projections.perspective_projection")
+local PeriodicQuery = require("engine.world.spatial.periodic_query")
 
 -- Spatial debug rendering remains independent from the projected visual pipeline.
 local SpatialDebugRenderer = require("engine.debug.spatial_debug_renderer")
@@ -549,14 +550,14 @@ function TestSceneRenderer:_draw_orthographic_ground()
   self:_draw_ground_debug()
 end
 
--- Draws world surfaces that conceptually belong below regular entities.
+--- Draws ground outlines through the current layer transform.
 function TestSceneRenderer:_draw_ground()
-  SpatialDebugRenderer.draw_shape(self.floor, "physics")
+  self:_draw_shape(self.floor, "physics")
 end
 
--- Draws regular world entities that are not currently part of the projected billboard space.
+--- Draws the planar collision outline of the static test entity.
 function TestSceneRenderer:_draw_world()
-  SpatialDebugRenderer.draw_shape(self.step_player, "collision")
+  self:_draw_shape(self.step_player, "collision")
 end
 
 --- Displays planar X and Y coordinates and the player's current absolute Z.
@@ -576,11 +577,11 @@ function TestSceneRenderer:_draw_door_coordinates()
     "right")
 end
 
--- Draws development overlays that share the projected world plane.
+--- Draws development areas in the active ground view.
 function TestSceneRenderer:_draw_ground_debug()
-  SpatialDebugRenderer.draw_shape(self.small_grid_area, "area")
-  SpatialDebugRenderer.draw_shape(self.large_grid_area, "area")
-  SpatialDebugRenderer.draw_shape(self.free_area, "area")
+  self:_draw_shape(self.small_grid_area, "area")
+  self:_draw_shape(self.large_grid_area, "area")
+  self:_draw_shape(self.free_area, "area")
 end
 
 -- Updates camera tracking and the captured projected world region.
@@ -616,6 +617,43 @@ function TestSceneRenderer:draw()
   self.layers:draw({
     renderer = self
   })
+end
+
+--- Draws visible shape repetitions using the active graphics transform.
+--- Must run inside the camera view, after any elevation or layer transforms.
+--- Requires an invertible graphics transform.
+---@param entity? Entity Logical shape owner.
+---@param shape_name string Name of the shape to draw.
+function TestSceneRenderer:_draw_shape(entity, shape_name)
+  if entity == nil then return end
+  local topology = self.world_topology
+
+  if self.render_configuration:get_render_mode() ~= "orthographic"
+      or topology == nil or not (topology.loop_x or topology.loop_y) then
+    SpatialDebugRenderer.draw_shape(entity, shape_name)
+    return
+  end
+
+  local shape = entity:get_shape(shape_name)
+  if shape == nil then return end
+
+  local vx, vy, width, height = self.camera:get_viewport()
+  local x1, y1 = love.graphics.inverseTransformPoint(vx, vy)
+  local x2, y2 = love.graphics.inverseTransformPoint(vx + width, vy)
+  local x3, y3 = love.graphics.inverseTransformPoint(vx + width, vy + height)
+  local x4, y4 = love.graphics.inverseTransformPoint(vx, vy + height)
+
+  local bounds = {
+    min_x = math.min(x1, x2, x3, x4),
+    min_y = math.min(y1, y2, y3, y4),
+    max_x = math.max(x1, x2, x3, x4),
+    max_y = math.max(y1, y2, y3, y4)
+  }
+
+  PeriodicQuery.visit_transforms(topology, bounds, shape, entity.transform,
+    function(transform)
+      SpatialDebugRenderer.draw_shape(entity, shape_name, transform)
+    end)
 end
 
 return TestSceneRenderer
