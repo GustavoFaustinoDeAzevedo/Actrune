@@ -1,6 +1,15 @@
 local project_definition = {
   resources = {
 
+    map_layout = {
+      main = {
+        maps = {
+          west_hall = { min_x = 0, min_y = 0, max_x = 512, max_y = 768 },
+          east_hall = { min_x = 512, min_y = 0, max_x = 1024, max_y = 768 }
+        }
+      }
+    },
+
     world_topology = {
       main = {
         min_x = 0,
@@ -14,7 +23,7 @@ local project_definition = {
 
     test_scene_render_configuration = {
       main = {
-        render_mode = "perspective",
+        render_mode = "orthographic", -- "orthographic" or "perspective"
         orthographic_elevation_scale = 1,
 
         world_camera_target_entity = "player",
@@ -641,7 +650,7 @@ local project_definition = {
             type = "on_activation"
           },
 
-          control_order = 10
+          control_order = 15
         },
 
         translation_control = {
@@ -660,7 +669,7 @@ local project_definition = {
 
               value = {
                 type = "value",
-                value = 120
+                value = 250
               }
             }
           },

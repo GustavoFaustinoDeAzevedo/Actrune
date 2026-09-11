@@ -92,10 +92,16 @@ local function create_cameras(self, elevation_source)
     { forward = configuration:get_projected_camera_forward_offset() }
   )
 
+  -- Start at the complete target, including the configured oriented offset.
+  self.projected_camera:set_position(
+    self.projected_camera_offset:resolve({ camera = self.projected_camera })
+  )
+
   self.projected_camera_position = CameraPositionControl.new(
     self.projected_camera,
     self.projected_camera_offset,
     {
+      topology = self.world_topology,
       response = PositionResponse.new({
         half_life = configuration:get_projected_camera_position_half_life()
       })
@@ -574,12 +580,20 @@ function TestSceneRenderer:_draw_world()
   self:_draw_shape(self.step_player, "collision")
 end
 
---- Displays planar X and Y coordinates and the player's current absolute Z.
+--- Displays the player's current map and global XYZ without changing runtime state.
 function TestSceneRenderer:_draw_player_coordinates()
   local x, y = self.player:get_position()
   local z = self.player_elevation:get_elevation()
+  local layouts = self.project.resources.map_layout
 
-  love.graphics.printf(string.format("Player | X: %.2f | Y: %.2f | Z: %.2f", x, y, z), -20, 180, width, "right"
+  ---@type MapLayout?
+  local layout = layouts and layouts:get("main")
+  local map = layout and layout:find_map(x, y)
+  local map_id = map and map.id or "--"
+
+  love.graphics.printf(
+    string.format("Player | Map: %s | X: %.2f | Y: %.2f | Z: %.2f", map_id, x, y, z),
+    -20, 180, width, "right"
   )
 end
 

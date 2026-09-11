@@ -14,6 +14,7 @@ local ImageBillboardVisualFactory = require("engine.render.image_billboard_visua
 local EntityVisualConfigurationFactory = require("engine.render.entity_visual_configuration_factory")
 local SpatialLevels = require("engine.world.spatial.spatial_levels")
 local WorldTopology = require("engine.world.spatial.world_topology")
+local MapLayout = require("engine.world.maps.map_layout")
 
 local ActruneResourceTypes = {}
 
@@ -30,6 +31,13 @@ function ActruneResourceTypes.register(register)
         { name = "height", type = "number",  required = true, min_exclusive = 0 },
         { name = "loop_x", type = "boolean", default = false },
         { name = "loop_y", type = "boolean", default = false }
+      }
+    })
+
+  register:register_resource_type("map_layout",
+    function(definition) return MapLayout.new(definition.maps) end, {
+      fields = {
+        { name = "maps", type = "property_map", required = true }
       }
     })
 

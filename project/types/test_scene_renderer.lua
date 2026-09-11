@@ -24,7 +24,7 @@
 ---@field projected_camera_rotation table
 ---@field projected_camera_rotation_response table
 ---@field projected_camera_offset table
----@field projected_camera_position table
+---@field projected_camera_position CameraPositionControl Continuous planar tracking for the perspective camera.
 ---@field projected_camera_elevation table?
 ---@field ground_transform table
 ---@field ground_region_width number

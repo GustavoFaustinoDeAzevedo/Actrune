@@ -1,14 +1,23 @@
 local PositionResponse = require("engine.render.camera_position.position_response")
 
+---@class CameraPositionControl: CameraPositionControlFields
 local CameraPositionControl = {}
 CameraPositionControl.__index = CameraPositionControl
 
--- Creates a control that resolves and applies a camera position through configurable policies.
+--- Creates camera tracking with optional periodic target selection.
+--- Periodicity is applied after the complete position policy and before smoothing.
+---@param camera table Camera exposing get_position and set_position.
+---@param policy table Position policy exposing resolve.
+---@param options? CameraPositionControlOptions Response, constraints and map topology.
+---@return CameraPositionControl control New camera position control.
 function CameraPositionControl.new(camera, policy, options)
   options = options or {}
 
   assert(camera ~= nil, "camera position control requires a camera")
-  assert(policy ~= nil and type(policy.resolve) == "function", "camera position control requires a resolvable policy")
+  assert(policy ~= nil and type(policy.resolve) == "function",
+    "camera position control requires a resolvable policy")
+  assert(options.topology == nil or type(options.topology.get_nearest_position) == "function",
+    "camera position control topology must expose get_nearest_position")
 
   local self = setmetatable({}, CameraPositionControl)
 
@@ -16,18 +25,24 @@ function CameraPositionControl.new(camera, policy, options)
   self.policy = policy
   self.response = options.response or PositionResponse.new()
   self.constraints = options.constraints or {}
+  self.topology = options.topology
 
   assert(type(self.response.resolve) == "function", "camera position control response must be resolvable")
   assert(type(self.constraints) == "table", "camera position control constraints must be a table")
 
   for _, constraint in ipairs(self.constraints) do
-    assert(constraint ~= nil and type(constraint.resolve) == "function", "camera position constraints must be resolvable")
+    assert(constraint ~= nil and type(constraint.resolve) == "function",
+      "camera position constraints must be resolvable")
   end
 
   return self
 end
 
--- Resolves the target, response, and configured position constraints for the current update.
+--- Resolves the complete target, its nearest image, smoothing and final constraints.
+--- Periodic following assumes final target-camera separation below half a period.
+--- Large teleports require explicitly repositioning the camera.
+---@param dt number Elapsed time in seconds.
+---@param context? any Additional context forwarded to policies and constraints.
 function CameraPositionControl:update(dt, context)
   local resolve_context = {
     camera = self.camera,
@@ -41,6 +56,13 @@ function CameraPositionControl:update(dt, context)
     "camera position policy must resolve numeric coordinates")
 
   local current_x, current_y = self.camera:get_position()
+
+  if self.topology ~= nil then
+    target_x, target_y = self.topology:get_nearest_position(
+      target_x, target_y, current_x, current_y
+    )
+  end
+
   local x, y = self.response:resolve(current_x, current_y, target_x, target_y, dt)
 
   for _, constraint in ipairs(self.constraints) do
@@ -48,7 +70,6 @@ function CameraPositionControl:update(dt, context)
   end
 
   assert(type(x) == "number" and type(y) == "number", "camera position control must resolve numeric coordinates")
-
   self.camera:set_position(x, y)
 end
 
