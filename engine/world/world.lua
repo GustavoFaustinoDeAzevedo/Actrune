@@ -40,7 +40,61 @@ function World:has_entity(id)
     return self.entities[id] ~= nil
 end
 
--- Returns all entities whose named shape contains the given world-space point.
+--- Tests a point against the original shape and relevant map repetitions.
+---@param shape Shape Shape to test.
+---@param transform Transform Original shape transform.
+---@param x number World X coordinate.
+---@param y number World Y coordinate.
+---@param accept_offset? fun(offset_x: number, offset_y: number): boolean Optional image filter.
+---@return boolean matches Whether any image contains the point and passes the filter.
+function World:shape_contains_point(shape, transform, x, y, accept_offset)
+    local topology = self.topology
+
+    if topology == nil or not (topology.loop_x or topology.loop_y) then
+        return shape:contains_point(x, y, transform)
+            and (accept_offset == nil or accept_offset(0, 0))
+    end
+
+    local bounds = { min_x = x, min_y = y, max_x = x, max_y = y }
+
+    return PeriodicQuery.visit_transforms(topology, bounds, shape, transform, function(image)
+        return shape:contains_point(x, y, image)
+            and (accept_offset == nil or accept_offset(image.x - transform.x, image.y - transform.y))
+    end)
+end
+
+--- Tests polygon overlap using target images in the source coordinate frame.
+--- Image filters receive the target translation, not its absolute position.
+---@param shape table Source polygon.
+---@param transform Transform Source transform.
+---@param target_shape table Target polygon.
+---@param target_transform Transform Original target transform.
+---@param strict? boolean True excludes boundary-only contact; defaults to false.
+---@param accept_offset? fun(offset_x: number, offset_y: number): boolean Optional target image filter.
+---@return boolean matches Whether any overlapping target image passes the filter.
+function World:shapes_overlap(shape, transform, target_shape, target_transform, strict, accept_offset)
+    local intersects = strict and SpatialQuery.polygons_overlap_strict or SpatialQuery.polygons_intersect
+    local topology = self.topology
+
+    if topology == nil or not (topology.loop_x or topology.loop_y) then
+        return intersects(shape, transform, target_shape, target_transform)
+            and (accept_offset == nil or accept_offset(0, 0))
+    end
+
+    local bounds = PeriodicQuery.get_bounds(shape, transform)
+
+    return PeriodicQuery.visit_transforms(topology, bounds, target_shape, target_transform, function(image)
+        return intersects(shape, transform, target_shape, image)
+            and (accept_offset == nil
+                or accept_offset(image.x - target_transform.x, image.y - target_transform.y))
+    end)
+end
+
+--- Returns each logical entity at most once, including matches across looping edges.
+---@param x number World X coordinate.
+---@param y number World Y coordinate.
+---@param shape_name string Target shape name.
+---@return Entity[] entities Original entities containing the point.
 function World:query_point(x, y, shape_name)
     assert(type(shape_name) == "string", "shape name must be a string")
 
@@ -49,15 +103,20 @@ function World:query_point(x, y, shape_name)
     for _, entity in pairs(self.entities) do
         local shape = entity:get_shape(shape_name)
 
-        if shape and shape:contains_point(x, y, entity.transform) then
-            table.insert(results, entity)
+        if shape ~= nil and self:shape_contains_point(shape, entity.transform, x, y) then
+            results[#results + 1] = entity
         end
     end
 
     return results
 end
 
--- Returns all entities whose named polygon shape overlaps the given polygon shape.
+--- Returns each logical entity at most once, including matches across looping edges.
+--- Polygon boundary contact counts as an intersection; Z is checked by consumers.
+---@param shape table Source polygon.
+---@param transform Transform Source transform.
+---@param shape_name string Target polygon shape name.
+---@return Entity[] entities Original entities intersecting the source polygon.
 function World:query_shape(shape, transform, shape_name)
     assert(shape ~= nil, "shape is required")
     assert(transform ~= nil, "transform is required")
@@ -66,20 +125,10 @@ function World:query_shape(shape, transform, shape_name)
     local results = {}
 
     for _, entity in pairs(self.entities) do
-        local target_shape = entity:get_shape(shape_name)
+        local target = entity:get_shape(shape_name)
 
-        if target_shape then
-            local intersects =
-                SpatialQuery.polygons_intersect(
-                    shape,
-                    transform,
-                    target_shape,
-                    entity.transform
-                )
-
-            if intersects then
-                table.insert(results, entity)
-            end
+        if target ~= nil and self:shapes_overlap(shape, transform, target, entity.transform) then
+            results[#results + 1] = entity
         end
     end
 

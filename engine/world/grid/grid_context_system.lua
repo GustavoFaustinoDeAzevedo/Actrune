@@ -26,9 +26,11 @@ local function contains_point(vertices, x, y)
   return inside
 end
 
--- Creates a system that resolves active grid areas for project entities.
-function GridContextSystem.new()
+--- Creates contextual grid resolution with optional world topology support.
+---@param world? World World used to resolve equivalent map positions.
+function GridContextSystem.new(world)
   return setmetatable({
+    world = world,
     areas = {},
     targets = {}
   }, GridContextSystem)
@@ -68,15 +70,24 @@ function GridContextSystem:add_project(project)
   end
 end
 
--- Returns the highest-priority grid area containing an entity's origin.
+--- Returns the highest-priority area containing the entity or an equivalent map position.
+---@param entity Entity Entity whose planar origin is tested.
+---@return table|nil selected Registered area entry, or nil outside all areas.
 function GridContextSystem:_find_area(entity)
   local selected = nil
+  local x, y = entity:get_position()
 
   for _, entry in ipairs(self.areas) do
-    local vertices = entry.shape:get_world_points(entry.entity.transform)
+    local inside
 
-    if contains_point(vertices, entity.transform.x, entity.transform.y) then
-      if selected == nil or entry.area:get_priority() > selected.area:get_priority() then selected = entry end
+    if self.world ~= nil then
+      inside = self.world:shape_contains_point(entry.shape, entry.entity.transform, x, y)
+    else
+      inside = contains_point(entry.shape:get_world_points(entry.entity.transform), x, y)
+    end
+
+    if inside and (selected == nil or entry.area:get_priority() > selected.area:get_priority()) then
+      selected = entry
     end
   end
 

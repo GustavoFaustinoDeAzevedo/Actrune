@@ -63,8 +63,12 @@ function AreaTrigger:_matches_vertical(context)
     return activator_max >= target_min and target_max >= activator_min
 end
 
--- Checks action, vertical reach, and horizontal area overlap.
-function AreaTrigger:matches(trigger_type, context)
+--- Checks action, vertical reach and horizontal overlap against the same target image.
+---@param trigger_type string Requested action type.
+---@param context table Event context containing entity, activator and optional world.
+---@param accept_offset? fun(offset_x: number, offset_y: number): boolean Optional target image filter.
+---@return boolean matches Whether all interaction rules allow a match.
+function AreaTrigger:matches(trigger_type, context, accept_offset)
     if not self.enabled then return false end
     if self.type ~= trigger_type then return false end
     if context.entity == nil or context.activator == nil then return false end
@@ -73,20 +77,35 @@ function AreaTrigger:matches(trigger_type, context)
     local target_shape = context.entity:get_shape(self.shape_name)
     if target_shape == nil then return false end
 
+    local target_transform = context.entity.transform
+    local world = context.world
+    local matches
+
     if self.activator_shape_name ~= nil then
         local activator_shape = context.activator:get_shape(self.activator_shape_name)
         if activator_shape == nil then return false end
 
-        return SpatialQuery.polygons_intersect(
-            target_shape,
-            context.entity.transform,
-            activator_shape,
-            context.activator.transform
+        if world ~= nil then
+            return world:shapes_overlap(
+                activator_shape, context.activator.transform, target_shape, target_transform,
+                false, accept_offset
+            )
+        end
+
+        matches = SpatialQuery.polygons_intersect(
+            target_shape, target_transform, activator_shape, context.activator.transform
         )
+    else
+        local x, y = context.activator:get_position()
+
+        if world ~= nil then
+            return world:shape_contains_point(target_shape, target_transform, x, y, accept_offset)
+        end
+
+        matches = target_shape:contains_point(x, y, target_transform)
     end
 
-    local x, y = context.activator:get_position()
-    return target_shape:contains_point(x, y, context.entity.transform)
+    return matches and (accept_offset == nil or accept_offset(0, 0))
 end
 
 -- Enables or blocks future matches without changing the interaction rules.

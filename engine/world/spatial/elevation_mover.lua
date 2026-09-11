@@ -1,5 +1,3 @@
-local SpatialQuery = require("engine.world.spatial.spatial_query")
-
 ---@class ElevationMover: ElevationMoverFields
 local ElevationMover = {}
 ElevationMover.__index = ElevationMover
@@ -8,13 +6,14 @@ ElevationMover.__index = ElevationMover
 --- Resolves and retains the elevation and source range components.
 --- The source range must follow the same elevation component being moved.
 --- Recreate the mover if either retained component is replaced.
----@param world table World exposing query_shape.
+---@param world World World exposing query_shape and shapes_overlap.
 ---@param entity table Entity containing the configured shapes and components.
 ---@param options ElevationMoverOptions Names used to resolve movement dependencies.
 ---@return ElevationMover mover Bound vertical movement operation.
 function ElevationMover.new(world, entity, options)
-  assert(world ~= nil and type(world.query_shape) == "function",
-    "elevation mover requires a world exposing query_shape")
+  assert(world ~= nil and type(world.query_shape) == "function"
+    and type(world.shapes_overlap) == "function",
+    "elevation mover requires a world exposing query_shape and shapes_overlap")
   assert(entity ~= nil and type(entity.get_component) == "function",
     "elevation mover requires an entity exposing get_component")
   assert(type(options) == "table", "elevation mover requires options")
@@ -78,8 +77,8 @@ function ElevationMover:try_move(delta)
       local target_shape = target:get_shape(self.target_shape)
 
       -- Boundary-only horizontal contact must not prevent sliding vertically.
-      if SpatialQuery.polygons_overlap_strict(
-            shape, self.entity.transform, target_shape, target.transform
+      if self.world:shapes_overlap(
+            shape, self.entity.transform, target_shape, target.transform, true
           ) then
         local range = target:get_component(self.target_vertical_range)
         assert(range ~= nil and type(range.get_bounds) == "function",

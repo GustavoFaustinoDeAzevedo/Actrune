@@ -21,41 +21,25 @@ function DirectionalAreaTrigger.new(options)
     return self
 end
 
--- Checks whether the activator overlaps the area and is facing the target entity.
+--- Requires facing the same target image that passed the area overlap test.
+---@param trigger_type string Requested action type.
+---@param context table Event context containing entity, activator and optional world.
+---@return boolean matches Whether an overlapping target image is inside the facing angle.
 function DirectionalAreaTrigger:matches(trigger_type, context)
-    if not AreaTrigger.matches(self, trigger_type, context) then
-        return false
-    end
+    if context.entity == nil or context.activator == nil then return false end
 
     local activator_x, activator_y = context.activator:get_position()
-
     local target_x, target_y = context.entity:get_position()
-
-    local direction_x = target_x - activator_x
-    local direction_y = target_y - activator_y
-
-    local distance = math.sqrt(
-        direction_x * direction_x
-        + direction_y * direction_y
-    )
-
-    if distance == 0 then
-        return true
-    end
-
-    direction_x = direction_x / distance
-    direction_y = direction_y / distance
-
-    local forward_x, forward_y =
-        context.activator.transform:get_forward()
-
-    local dot =
-        forward_x * direction_x
-        + forward_y * direction_y
-
+    local forward_x, forward_y = context.activator.transform:get_forward()
     local minimum_dot = math.cos(self.max_angle)
 
-    return dot >= minimum_dot
+    return AreaTrigger.matches(self, trigger_type, context, function(offset_x, offset_y)
+        local dx, dy = target_x + offset_x - activator_x, target_y + offset_y - activator_y
+        local distance = math.sqrt(dx * dx + dy * dy)
+
+        if distance == 0 then return true end
+        return (forward_x * dx + forward_y * dy) / distance >= minimum_dot
+    end)
 end
 
 return DirectionalAreaTrigger

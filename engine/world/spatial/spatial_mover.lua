@@ -1,5 +1,4 @@
-local MotionResult =
-    require("engine.world.spatial.motion_result")
+local MotionResult = require("engine.world.spatial.motion_result")
 
 local SpatialMover = {}
 SpatialMover.__index = SpatialMover

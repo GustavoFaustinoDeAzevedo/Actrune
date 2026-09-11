@@ -10,9 +10,9 @@ function GridContextRuntimeSystem.new()
   }, GridContextRuntimeSystem)
 end
 
--- Initializes contextual grid resolution for the loaded project.
+-- Initializes contextual grid resolution using the runtime world.
 function GridContextRuntimeSystem:initialize(context)
-  self.system = GridContextSystem.new()
+  self.system = GridContextSystem.new(context.runtime.world)
   self.system:add_project(context.project)
   self.system:update()
 end
