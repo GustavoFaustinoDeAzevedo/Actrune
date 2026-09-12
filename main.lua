@@ -98,6 +98,15 @@ local function on_test_event_finished()
     add_message("Evento finalizado.")
 end
 
+--- Reports a sampled map change while keeping both map contents resident.
+---@param entity Entity Original travelling entity.
+---@param previous MapRegion? Region before the change.
+---@param current MapRegion? Region after the change.
+local function on_player_map_changed(entity, previous, current)
+    print(string.format("Map | %s: %s -> %s",
+        entity.id, previous and previous.id or "--", current and current.id or "--"))
+end
+
 -- Loads and validates the current project definition.
 local function load_project()
     local project_loader = ActruneProjectLoader.new()
@@ -107,7 +116,7 @@ local function load_project()
         project_loader:create_register("project")
 
     -- Runtime and rendering extensions use the same project-owned configuration boundary.
-    ProjectRuntimeConfiguration.register(project_register)
+    ProjectRuntimeConfiguration.register(project_register, on_player_map_changed)
     ProjectRenderResourceTypes.register(project_register)
 
     local configuration = project_loader:get_configuration()

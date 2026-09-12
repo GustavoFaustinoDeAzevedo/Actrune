@@ -96,7 +96,9 @@ function ProjectRuntime:get_system_provider(name)
   return self.system_registry:get_provider(name)
 end
 
--- Advances all registered runtime systems, the underlying Actrune runtime, and render behavior.
+--- Runs systems, events, optional after_update observers, then the renderer update.
+--- The after_update phase follows registry order and observes completed simulation updates.
+---@param dt number Elapsed simulation time in seconds.
 function ProjectRuntime:update(dt)
   local context = self:_create_context()
 
@@ -106,6 +108,11 @@ function ProjectRuntime:update(dt)
   end
 
   self.runtime:update(dt)
+
+  for _, entry in ipairs(self.systems) do
+    local system = entry.system
+    if type(system.after_update) == "function" then system:after_update(dt, context) end
+  end
 
   if self.renderer ~= nil and type(self.renderer.update) == "function" then
     self.renderer:update(dt)
