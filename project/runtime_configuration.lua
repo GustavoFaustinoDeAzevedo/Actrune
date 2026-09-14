@@ -2,6 +2,7 @@ local AnimatedEntityVisualRuntimeSystem = require("engine.render.animated_entity
 local StaticEntityVisualRuntimeSystem = require("engine.render.static_entity_visual_runtime_system")
 local ResidentMapCollection = require("engine.world.maps.resident_map_collection")
 local MapLocationTracker = require("engine.world.maps.map_location_tracker")
+local MapEventDispatcher = require("engine.world.maps.map_event_dispatcher")
 
 local RuntimeConfiguration = {}
 
@@ -70,7 +71,7 @@ function RuntimeConfiguration.register(register, on_map_changed)
         tracker = MapLocationTracker.new(layout, player)
       end,
 
-      --- Reports the final sampled location after movement and scheduled events.
+      --- Queues map events after simulation; commands begin on the next scheduler update.
       ---@param self table Location observer adapter.
       ---@param dt number Elapsed simulation time in seconds.
       ---@param context table Loaded project and its runtime.
@@ -78,7 +79,12 @@ function RuntimeConfiguration.register(register, on_map_changed)
         if tracker == nil then return end
 
         local changed, previous, current = tracker:refresh()
-        if changed and on_map_changed ~= nil then
+        if not changed then return end
+
+        local maps = context.project_runtime:get_system("resident_maps"):get_collection()
+        MapEventDispatcher.dispatch(context.runtime, maps, tracker.entity, previous, current)
+
+        if on_map_changed ~= nil then
           on_map_changed(tracker.entity, previous, current)
         end
       end,

@@ -1,6 +1,7 @@
 local DirectionalAreaTrigger = require("engine.events.triggers.directional_area_trigger")
 local CallCommand = require("engine.events.commands.call_command")
 local WaitCommand = require("engine.events.commands.wait_command")
+local EventTrigger = require("engine.events.event_trigger")
 
 local ActruneEventTypes = {}
 
@@ -10,6 +11,17 @@ function ActruneEventTypes.register(catalog)
 
   catalog:ensure_registry("trigger", { kind = "trigger" })
   catalog:ensure_registry("command", { kind = "command" })
+
+  -- Named signals reuse the existing trigger without requiring spatial shapes.
+  catalog:register("trigger", "signal", function(definition)
+    assert(type(definition.action) == "string" and definition.action ~= "",
+      "signal trigger requires a non-empty action")
+    return EventTrigger.new(definition.action)
+  end, {
+    fields = {
+      { name = "action", type = "string", required = true }
+    }
+  })
 
   catalog:register("trigger", "directional_area", function(definition)
     return DirectionalAreaTrigger.new({

@@ -107,6 +107,20 @@ local function on_player_map_changed(entity, previous, current)
         entity.id, previous and previous.id or "--", current and current.id or "--"))
 end
 
+--- Reports the map captured when the arrival event was queued.
+---@param context MapEventContext Map signal and its original traveller.
+local function on_map_arrival_started(context)
+    print(string.format("Map event started | %s | %s",
+        context.variables.map_id, context.activator.id))
+end
+
+--- Reports completion even if the traveller has already left the map.
+---@param context MapEventContext Preserved execution context.
+local function on_map_arrival_finished(context)
+    print(string.format("Map event finished | %s | %s",
+        context.variables.map_id, context.activator.id))
+end
+
 -- Loads and validates the current project definition.
 local function load_project()
     local project_loader = ActruneProjectLoader.new()
@@ -128,6 +142,8 @@ local function load_project()
 
     project_loader:register_event_action("test_event_started", on_test_event_started)
     project_loader:register_event_action("test_event_finished", on_test_event_finished)
+    project_loader:register_event_action("map_arrival_started", on_map_arrival_started)
+    project_loader:register_event_action("map_arrival_finished", on_map_arrival_finished)
 
     return project_loader:load(project_definition)
 end

@@ -16,7 +16,7 @@ local project_definition = {
             min_y = 0,
             max_x = 1024,
             max_y = 768,
-            entities = { "large_grid_area", "free_area" }
+            entities = { "large_grid_area", "free_area", "east_hall_events" }
           }
         }
       }
@@ -430,6 +430,8 @@ local project_definition = {
   },
 
   entities = {
+    require("project.maps.east_hall_events"),
+
     {
       id = "bounce_ball",
 
