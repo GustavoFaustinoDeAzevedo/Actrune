@@ -1,4 +1,5 @@
 local west_hall_entities = require("project.maps.west_hall_entities")
+local east_hall_entities = require("project.maps.east_hall_entities")
 
 local project_definition = {
   resources = {
@@ -427,7 +428,7 @@ local project_definition = {
   },
 
   entities = {
-    require("project.maps.east_hall_events"),
+    east_hall_entities.east_hall_events,
 
     {
       id = "bounce_ball",
@@ -586,67 +587,8 @@ local project_definition = {
     },
 
     west_hall_entities.small_grid_area,
-
-    {
-      id = "large_grid_area",
-
-      transform = {
-        x = 600,
-        y = 200
-      },
-
-      shapes = {
-        area = {
-          type = "polygon",
-
-          points = {
-            { x = -100, y = -100 },
-            { x = 100,  y = -100 },
-            { x = 100,  y = 100 },
-            { x = -100, y = 100 }
-          }
-        }
-      },
-
-      components = {
-        grid_area = {
-          type = "grid_area",
-          shape = "area",
-          metrics = "large_grid",
-          priority = 10
-        }
-      }
-    },
-
-    {
-      id = "free_area",
-
-      transform = {
-        x = 800,
-        y = 200
-      },
-
-      shapes = {
-        area = {
-          type = "polygon",
-
-          points = {
-            { x = -100, y = -100 },
-            { x = 100,  y = -100 },
-            { x = 100,  y = 100 },
-            { x = -100, y = 100 }
-          }
-        }
-      },
-
-      components = {
-        grid_area = {
-          type = "grid_area",
-          shape = "area",
-          priority = 20
-        }
-      }
-    },
+    east_hall_entities.large_grid_area,
+    east_hall_entities.free_area,
 
     {
       id = "step_player",
