@@ -3,7 +3,6 @@ local MapLayout = {}
 MapLayout.__index = MapLayout
 
 --- Tests map membership using half-open bounds.
---- A shared edge belongs to the map beginning at that edge.
 ---@param map MapRegion Region being tested.
 ---@param x number Global world X.
 ---@param y number Global world Y.
@@ -12,18 +11,20 @@ local function contains(map, x, y)
   return x >= map.min_x and x < map.max_x and y >= map.min_y and y < map.max_y
 end
 
---- Copies a dense list of authored entity identifiers.
----@param values? string[] Declared map content.
+--- Copies a dense identifier list without retaining the authored table.
+---@param values? string[] Declared identifiers.
 ---@param map_id string Map identifier used in validation errors.
+---@param field string Definition field used in validation errors.
 ---@return string[] ids Independent list owned by the layout.
-local function copy_entity_ids(values, map_id)
+local function copy_ids(values, map_id, field)
   if values == nil then return {} end
-  assert(type(values) == "table", "map entities must be a list: " .. map_id)
+  local label = "map " .. map_id .. " " .. field
+  assert(type(values) == "table", label .. " must be a list")
 
   local count = 0
   for index in pairs(values) do
     assert(type(index) == "number" and index >= 1 and index % 1 == 0,
-      "map entity list must use positive integer indices: " .. map_id)
+      label .. " must use positive integer indices")
     count = count + 1
   end
 
@@ -31,21 +32,24 @@ local function copy_entity_ids(values, map_id)
   for index = 1, count do
     local id = values[index]
     assert(type(id) == "string" and id ~= "",
-      "map " .. map_id .. " requires an entity identifier at index " .. index)
+      label .. " requires an identifier at index " .. index)
     ids[index] = id
   end
   return ids
 end
 
---- Creates non-overlapping map regions in one continuous world coordinate space.
---- Copies definitions once; returned regions must be treated as read-only.
----@param definitions table<string, MapRegionDefinition> Bounds indexed by map identifier.
+--- Creates non-overlapping regions and resolves their declared neighbors once.
+--- Neighbor links are directed and independent of geometric adjacency.
+--- Copies definitions; returned regions and neighbor lists must be treated as read-only.
+---@param definitions table<string, MapRegionDefinition> Definitions indexed by map identifier.
 ---@return MapLayout layout Resident map layout.
 function MapLayout.new(definitions)
   assert(type(definitions) == "table" and next(definitions) ~= nil,
     "map layout requires at least one map")
 
-  local self = setmetatable({ maps = {}, ordered_maps = {} }, MapLayout)
+  local self = setmetatable({
+    maps = {}, ordered_maps = {}, neighbors_by_map = {}
+  }, MapLayout)
 
   for id, definition in pairs(definitions) do
     assert(type(id) == "string" and id ~= "", "map identifiers must be non-empty strings")
@@ -63,7 +67,8 @@ function MapLayout.new(definitions)
       min_y = definition.min_y,
       max_x = definition.max_x,
       max_y = definition.max_y,
-      entities = copy_entity_ids(definition.entities, id)
+      entities = copy_ids(definition.entities, id, "entities"),
+      neighbors = copy_ids(definition.neighbors, id, "neighbors")
     }
 
     assert(map.max_x > map.min_x and map.max_y > map.min_y,
@@ -80,6 +85,19 @@ function MapLayout.new(definitions)
   end
 
   table.sort(self.ordered_maps, function(a, b) return a.id < b.id end)
+
+  for _, map in ipairs(self.ordered_maps) do
+    local neighbors, seen = {}, {}
+    for _, id in ipairs(map.neighbors) do
+      assert(id ~= map.id, "map cannot reference itself as a neighbor: " .. map.id)
+      assert(self.maps[id] ~= nil, "map " .. map.id .. " references unknown neighbor: " .. id)
+      assert(not seen[id], "map " .. map.id .. " repeats neighbor: " .. id)
+      seen[id] = true
+      neighbors[#neighbors + 1] = self.maps[id]
+    end
+    self.neighbors_by_map[map.id] = neighbors
+  end
+
   return self
 end
 
@@ -88,6 +106,14 @@ end
 ---@return MapRegion|nil map Read-only region, or nil when unknown.
 function MapLayout:get_map(id)
   return self.maps[id]
+end
+
+--- Returns resolved neighbors in their declared order without allocating another list.
+--- An existing map with no declared neighbors returns an empty list.
+---@param id string Source map identifier.
+---@return MapRegion[]|nil neighbors Read-only region list, or nil for an unknown source map.
+function MapLayout:get_neighbors(id)
+  return self.neighbors_by_map[id]
 end
 
 --- Finds the map containing a global XY position without changing runtime state.
