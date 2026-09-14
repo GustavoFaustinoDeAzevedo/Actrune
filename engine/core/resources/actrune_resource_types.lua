@@ -34,6 +34,29 @@ function ActruneResourceTypes.register(register)
       }
     })
 
+  -- Resolves configuration data before entity instances and trackers are created.
+  register:register_resource_type("map_location_binding", function(definition, context)
+    assert(type(definition.entity) == "string" and definition.entity ~= "",
+      "map location binding requires a non-empty entity id")
+
+    ---@type MapLocationBinding
+    local binding = {
+      entity_id = definition.entity,
+      layout = context.resolve_resource("map_layout", definition.layout)
+    }
+    return binding
+  end, {
+    fields = {
+      { name = "entity", type = "entity_reference", required = true },
+      {
+        name = "layout",
+        type = "resource_reference",
+        resource_type = "map_layout",
+        required = true
+      }
+    }
+  })
+
   register:register_resource_type("map_layout",
     function(definition) return MapLayout.new(definition.maps) end, {
       fields = {

@@ -33,12 +33,16 @@ function RuntimeConfiguration.register(register, on_map_changed)
     local collection
 
     return {
-      --- Resolves resident map content after project entities have been created.
+      --- Resolves content from the selected layout, falling back to the main layout.
       ---@param self table Initialization adapter.
       ---@param context table Loaded project and its runtime.
       initialize = function(self, context)
-        local registry = context.project.resources.map_layout
-        local layout = registry and registry:get("main")
+        local bindings = context.project.resources.map_location_binding
+        ---@type MapLocationBinding?
+        local binding = bindings and bindings:get("main")
+        local layouts = context.project.resources.map_layout
+        local layout = binding and binding.layout or layouts and layouts:get("main")
+
         if layout ~= nil then
           collection = ResidentMapCollection.new(layout, context.project.entities)
         end
@@ -58,17 +62,18 @@ function RuntimeConfiguration.register(register, on_map_changed)
     local tracker
 
     return {
-      --- Captures the player's initial map without emitting a transition.
+      --- Resolves the configured entity once and captures its initial map silently.
       ---@param self table Location observer adapter.
       ---@param context table Loaded project and its runtime.
       initialize = function(self, context)
-        local registry = context.project.resources.map_layout
-        local layout = registry and registry:get("main")
-        if layout == nil then return end
+        local bindings = context.project.resources.map_location_binding
+        ---@type MapLocationBinding?
+        local binding = bindings and bindings:get("main")
+        if binding == nil then return end
 
-        local player = context.project.entities_by_id.player
-        assert(player ~= nil, "player map location requires the player entity")
-        tracker = MapLocationTracker.new(layout, player)
+        local entity = context.project.entities_by_id[binding.entity_id]
+        assert(entity ~= nil, "map location references missing entity: " .. binding.entity_id)
+        tracker = MapLocationTracker.new(binding.layout, entity)
       end,
 
       --- Queues map events after simulation; commands begin on the next scheduler update.
@@ -89,9 +94,9 @@ function RuntimeConfiguration.register(register, on_map_changed)
         end
       end,
 
-      --- Returns the observer when this project has a main map layout.
+      --- Returns the observer created from the main map location binding.
       ---@param self table Location observer adapter.
-      ---@return MapLocationTracker|nil tracker Player location observer.
+      ---@return MapLocationTracker|nil tracker Observer, or nil when no binding is configured.
       get_tracker = function(self)
         return tracker
       end

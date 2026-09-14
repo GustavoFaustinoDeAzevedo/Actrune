@@ -1,6 +1,13 @@
 local project_definition = {
   resources = {
 
+    map_location_binding = {
+      main = {
+        entity = "player",
+        layout = "main"
+      }
+    },
+
     map_layout = {
       main = {
         maps = {
