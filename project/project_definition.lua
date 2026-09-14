@@ -11,20 +11,8 @@ local project_definition = {
     map_layout = {
       main = {
         maps = {
-          west_hall = {
-            min_x = 0,
-            min_y = 0,
-            max_x = 512,
-            max_y = 768,
-            entities = { "floor", "door", "small_grid_area" }
-          },
-          east_hall = {
-            min_x = 512,
-            min_y = 0,
-            max_x = 1024,
-            max_y = 768,
-            entities = { "large_grid_area", "free_area", "east_hall_events" }
-          }
+          west_hall = require("project.maps.west_hall"),
+          east_hall = require("project.maps.east_hall")
         }
       }
     },
