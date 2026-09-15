@@ -98,13 +98,21 @@ local function on_test_event_finished()
     add_message("Evento finalizado.")
 end
 
---- Reports a sampled map change while keeping both map contents resident.
+--- Reports the observed transition and its updated desired map selection.
 ---@param entity Entity Original travelling entity.
 ---@param previous MapRegion? Region before the change.
 ---@param current MapRegion? Region after the change.
 local function on_player_map_changed(entity, previous, current)
     print(string.format("Map | %s: %s -> %s",
         entity.id, previous and previous.id or "--", current and current.id or "--"))
+
+    ---@type MapResidencySelection?
+    local selection = game:get_system("player_map_location"):get_selection()
+    if selection == nil then return end
+
+    local ids = {}
+    for _, map in ipairs(selection:get_maps()) do ids[#ids + 1] = map.id end
+    print("Desired resident maps | " .. (#ids > 0 and table.concat(ids, ", ") or "--"))
 end
 
 --- Reports the map captured when the arrival event was queued.

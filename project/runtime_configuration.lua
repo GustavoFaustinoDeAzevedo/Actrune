@@ -3,6 +3,7 @@ local StaticEntityVisualRuntimeSystem = require("engine.render.static_entity_vis
 local ResidentMapCollection = require("engine.world.maps.resident_map_collection")
 local MapLocationTracker = require("engine.world.maps.map_location_tracker")
 local MapEventDispatcher = require("engine.world.maps.map_event_dispatcher")
+local MapResidencySelection = require("engine.world.maps.map_residency_selection")
 
 local RuntimeConfiguration = {}
 
@@ -60,10 +61,12 @@ function RuntimeConfiguration.register(register, on_map_changed)
   register:register_runtime_system("player_map_location", function()
     ---@type MapLocationTracker?
     local tracker
+    ---@type MapResidencySelection?
+    local selection
 
     return {
-      --- Resolves the configured entity once and captures its initial map silently.
-      ---@param self table Location observer adapter.
+      --- Resolves the configured entity and initializes location and desired residency.
+      ---@param self table Map observation adapter.
       ---@param context table Loaded project and its runtime.
       initialize = function(self, context)
         local bindings = context.project.resources.map_location_binding
@@ -74,17 +77,20 @@ function RuntimeConfiguration.register(register, on_map_changed)
         local entity = context.project.entities_by_id[binding.entity_id]
         assert(entity ~= nil, "map location references missing entity: " .. binding.entity_id)
         tracker = MapLocationTracker.new(binding.layout, entity)
+        selection = MapResidencySelection.new(binding.layout)
+        selection:set_current_map(tracker:get_map())
       end,
 
-      --- Queues map events after simulation; commands begin on the next scheduler update.
-      ---@param self table Location observer adapter.
+      --- Updates desired residency before queuing events and notifying the project.
+      ---@param self table Map observation adapter.
       ---@param dt number Elapsed simulation time in seconds.
       ---@param context table Loaded project and its runtime.
       after_update = function(self, dt, context)
-        if tracker == nil then return end
+        if tracker == nil or selection == nil then return end
 
         local changed, previous, current = tracker:refresh()
         if not changed then return end
+        selection:set_current_map(current)
 
         local maps = context.project_runtime:get_system("resident_maps"):get_collection()
         MapEventDispatcher.dispatch(context.runtime, maps, tracker.entity, previous, current)
@@ -95,10 +101,17 @@ function RuntimeConfiguration.register(register, on_map_changed)
       end,
 
       --- Returns the observer created from the main map location binding.
-      ---@param self table Location observer adapter.
-      ---@return MapLocationTracker|nil tracker Observer, or nil when no binding is configured.
+      ---@param self table Map observation adapter.
+      ---@return MapLocationTracker|nil tracker Observer, or nil without a binding.
       get_tracker = function(self)
         return tracker
+      end,
+
+      --- Returns desired residency without changing the actual resident content.
+      ---@param self table Map observation adapter.
+      ---@return MapResidencySelection|nil selection Desired maps, or nil without a binding.
+      get_selection = function(self)
+        return selection
       end
     }
   end, 70)
