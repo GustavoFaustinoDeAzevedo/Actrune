@@ -98,7 +98,16 @@ local function on_test_event_finished()
     add_message("Evento finalizado.")
 end
 
---- Reports the observed transition and its updated desired map selection.
+--- Formats region identifiers for transition diagnostics.
+---@param maps MapRegion[] Regions in display order.
+---@return string text Comma-separated identifiers, or "--" when empty.
+local function format_map_ids(maps)
+    local ids = {}
+    for _, map in ipairs(maps) do ids[#ids + 1] = map.id end
+    return #ids > 0 and table.concat(ids, ", ") or "--"
+end
+
+--- Reports the observed transition and its desired membership changes.
 ---@param entity Entity Original travelling entity.
 ---@param previous MapRegion? Region before the change.
 ---@param current MapRegion? Region after the change.
@@ -110,9 +119,11 @@ local function on_player_map_changed(entity, previous, current)
     local selection = game:get_system("player_map_location"):get_selection()
     if selection == nil then return end
 
-    local ids = {}
-    for _, map in ipairs(selection:get_maps()) do ids[#ids + 1] = map.id end
-    print("Desired resident maps | " .. (#ids > 0 and table.concat(ids, ", ") or "--"))
+    print("Desired resident maps | " .. format_map_ids(selection:get_maps()))
+    local changes = selection:get_changes()
+    print(string.format("Selection #%d | Added: %s | Removed: %s | Retained: %s",
+        changes.revision, format_map_ids(changes.added),
+        format_map_ids(changes.removed), format_map_ids(changes.retained)))
 end
 
 --- Reports the map captured when the arrival event was queued.
