@@ -4,17 +4,21 @@ local ResidentMapCollection = require("engine.world.maps.resident_map_collection
 local MapLocationTracker = require("engine.world.maps.map_location_tracker")
 local MapEventDispatcher = require("engine.world.maps.map_event_dispatcher")
 local MapResidencySelection = require("engine.world.maps.map_residency_selection")
+local MapEventRetention = require("engine.world.maps.map_event_retention")
 
 local RuntimeConfiguration = {}
 
 --- Registers the runtime systems selected by this project.
 ---@param register table Project configuration exposing register_runtime_system.
----@param on_map_changed? MapLocationChanged Optional observer, called once per sampled change.
-function RuntimeConfiguration.register(register, on_map_changed)
+---@param on_map_changed? MapLocationChanged Optional observer of sampled location changes.
+---@param on_event_maps_changed? fun(retention: MapEventRetention) Observer of event requirement changes.
+function RuntimeConfiguration.register(register, on_map_changed, on_event_maps_changed)
   assert(register ~= nil and type(register.register_runtime_system) == "function",
     "project runtime configuration requires a project configuration register")
   assert(on_map_changed == nil or type(on_map_changed) == "function",
     "map location callback must be a function")
+  assert(on_event_maps_changed == nil or type(on_event_maps_changed) == "function",
+    "event map callback must be a function")
 
   register:register_runtime_system("world_topology", function()
     return {
@@ -115,6 +119,40 @@ function RuntimeConfiguration.register(register, on_map_changed)
       end
     }
   end, 70)
+
+  register:register_runtime_system("map_event_retention", function()
+    ---@type MapEventRetention?
+    local retention
+
+    return {
+      --- Resolves ownership after the resident content index has initialized.
+      ---@param self table Event requirement adapter.
+      ---@param context table Loaded project and its runtime.
+      initialize = function(self, context)
+        local maps = context.project_runtime:get_system("resident_maps"):get_collection()
+        if maps ~= nil then
+          retention = MapEventRetention.new(maps, context.runtime.event_scheduler)
+        end
+      end,
+
+      --- Refreshes even without movement, after map signals and their observer.
+      ---@param self table Event requirement adapter.
+      ---@param dt number Elapsed simulation time in seconds.
+      ---@param context table Loaded project and its runtime.
+      after_update = function(self, dt, context)
+        if retention ~= nil and retention:refresh() and on_event_maps_changed ~= nil then
+          on_event_maps_changed(retention)
+        end
+      end,
+
+      --- Returns event requirements without changing simulation or rendering.
+      ---@param self table Event requirement adapter.
+      ---@return MapEventRetention? retention Index, or nil without a map layout.
+      get_retention = function(self)
+        return retention
+      end
+    }
+  end, 500)
 
   register:register_runtime_system("animated_entity_visuals", function()
     return AnimatedEntityVisualRuntimeSystem.new({

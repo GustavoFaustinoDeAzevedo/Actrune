@@ -140,16 +140,26 @@ local function on_map_arrival_finished(context)
         context.variables.map_id, context.activator.id))
 end
 
+--- Reports event requirements whenever maps are retained or released.
+---@param retention MapEventRetention Refreshed event requirements.
+local function on_event_maps_changed(retention)
+    print(string.format("Event maps #%d | %s",
+        retention:get_revision(), format_map_ids(retention:get_maps())))
+end
+
 -- Loads and validates the current project definition.
 local function load_project()
     local project_loader = ActruneProjectLoader.new()
 
     -- This register groups extensions supplied by the current project under one provider.
-    local project_register =
-        project_loader:create_register("project")
+    local project_register = project_loader:create_register("project")
 
     -- Runtime and rendering extensions use the same project-owned configuration boundary.
-    ProjectRuntimeConfiguration.register(project_register, on_player_map_changed)
+    ProjectRuntimeConfiguration.register(
+        project_register,
+        on_player_map_changed,
+        on_event_maps_changed
+    )
     ProjectRenderResourceTypes.register(project_register)
 
     local configuration = project_loader:get_configuration()
