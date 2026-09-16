@@ -6,8 +6,8 @@ local EventScheduler = require("engine.events.event_scheduler")
 local Actrune = {}
 Actrune.__index = Actrune
 
--- This version marks the declarative runtime visual representation milestone.
-Actrune.VERSION = "0.4.0"
+-- This version marks spatial elevation and continuous maps with preserved runtime state.
+Actrune.VERSION = "0.5.0"
 
 -- Creates a new Actrune runtime with its world, input manager, and event scheduler.
 function Actrune.new()
