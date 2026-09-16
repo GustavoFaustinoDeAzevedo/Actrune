@@ -61,8 +61,16 @@ local function refresh_performance_text()
     )
 
     local activity = game:get_system("map_activity")
-
     performance.text = performance.text .. string.format("\nActive maps: %d", activity:get_active_count())
+
+    local statue = game:get_runtime():get_entity("south_statue")
+    ---@type SpatialElevation
+    local elevation = statue:get_component("elevation")
+    performance.text = performance.text .. string.format(
+        "\nSouth statue: %s | Z: %.0f",
+        statue:is_active() and "active" or "paused", elevation:get_elevation()
+    )
+
     performance.elapsed = 0
     performance.update_total = 0
     performance.update_count = 0
@@ -150,6 +158,14 @@ local function on_event_maps_changed(retention)
         retention:get_revision(), format_map_ids(retention:get_maps())))
 end
 
+--- Changes component state on the existing statue without replacing its entity.
+---@param context table Interaction context containing the original statue.
+local function on_raise_south_statue(context)
+    ---@type SpatialElevation
+    local elevation = context.entity:get_component("elevation")
+    elevation:set_offset((elevation:get_offset() + 16) % 64)
+end
+
 -- Loads and validates the current project definition.
 local function load_project()
     local project_loader = ActruneProjectLoader.new()
@@ -172,6 +188,7 @@ local function load_project()
     print(configuration:get_resource_provider("input_map"))
     print(configuration:get_resource_provider("control_profile"))
 
+    project_loader:register_event_action("raise_south_statue", on_raise_south_statue)
     project_loader:register_event_action("test_event_started", on_test_event_started)
     project_loader:register_event_action("test_event_finished", on_test_event_finished)
     project_loader:register_event_action("map_arrival_started", on_map_arrival_started)

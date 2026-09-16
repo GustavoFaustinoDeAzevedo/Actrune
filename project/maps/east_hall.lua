@@ -6,7 +6,7 @@ local definition = {
   max_x = 1024,
   max_y = 768,
   entities = { "large_grid_area", "free_area", "east_hall_events" },
-  neighbors = { "west_hall" }
+  neighbors = { "west_hall", "south_hall" }
 }
 
 return definition

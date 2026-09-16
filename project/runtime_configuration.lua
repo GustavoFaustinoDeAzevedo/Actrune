@@ -143,7 +143,7 @@ function RuntimeConfiguration.register(register, on_map_changed, on_event_maps_c
         self:after_update(dt, context)
       end,
 
-      --- Refreshes even without movement, after map signals and their observer.
+      --- Refreshes requirements after map signals and event execution.
       ---@param self table Event requirement adapter.
       ---@param dt number Elapsed simulation time in seconds.
       ---@param context table Loaded project and its runtime.
@@ -153,7 +153,7 @@ function RuntimeConfiguration.register(register, on_map_changed, on_event_maps_c
         end
       end,
 
-      --- Returns event requirements without changing simulation or rendering.
+      --- Returns the existing event requirement index.
       ---@param self table Event requirement adapter.
       ---@return MapEventRetention? retention Index, or nil without a map layout.
       get_retention = function(self)

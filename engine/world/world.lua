@@ -125,7 +125,7 @@ function World:query_shape(shape, transform, shape_name)
     local results = {}
 
     for _, entity in pairs(self.entities) do
-        local target = entity:get_shape(shape_name)
+        local target = entity:is_active() and entity:get_shape(shape_name) or nil
 
         if target ~= nil and self:shapes_overlap(shape, transform, target, entity.transform) then
             results[#results + 1] = entity
@@ -160,7 +160,7 @@ function World:sweep_shape(shape, transform, dx, dy, shape_name, ignored_entity,
     end
 
     for _, entity in pairs(self.entities) do
-        local target = entity:get_shape(shape_name)
+        local target = entity:is_active() and entity:get_shape(shape_name) or nil
 
         if entity ~= ignored_entity and target ~= nil
             and (target_filter == nil or target_filter(entity)) then

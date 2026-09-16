@@ -12,7 +12,8 @@ local project_definition = {
       main = {
         maps = {
           west_hall = require("project.maps.west_hall"),
-          east_hall = require("project.maps.east_hall")
+          east_hall = require("project.maps.east_hall"),
+          south_hall = require("project.maps.south_hall")
         }
       }
     },
@@ -22,7 +23,7 @@ local project_definition = {
         min_x = 0,
         min_y = 0,
         width = 1024,
-        height = 768,
+        height = 1536,
         loop_x = true,
         loop_y = false
       }
@@ -195,12 +196,18 @@ local project_definition = {
         visual = "static_test_character",
         elevation_component = "elevation"
       },
+      south_statue = {
+        entity = "south_statue",
+        visual = "static_test_character",
+        elevation_component = "elevation"
+      }
     },
 
     image_billboard_binding_sequence = {
       projected_static_entities = {
         items = {
           "static_test_character",
+          "south_statue"
         }
       }
     },
