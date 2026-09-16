@@ -7,7 +7,7 @@ local SpatialDebugRenderer = {}
 ---@param shape_name string Name of the shape to draw.
 ---@param transform? Transform Overrides the entity transform for this draw only.
 function SpatialDebugRenderer.draw_shape(entity, shape_name, transform)
-  if entity == nil then return end
+  if entity == nil or not entity:is_active() then return end
 
   local shape = entity:get_shape(shape_name)
   if shape == nil then return end

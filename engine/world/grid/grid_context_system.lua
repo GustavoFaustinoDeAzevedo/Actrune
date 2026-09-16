@@ -70,39 +70,39 @@ function GridContextSystem:add_project(project)
   end
 end
 
---- Returns the highest-priority area containing the entity or an equivalent map position.
+--- Returns the highest-priority active area containing the entity.
 ---@param entity Entity Entity whose planar origin is tested.
----@return table|nil selected Registered area entry, or nil outside all areas.
+---@return table|nil selected Registered area entry, or nil outside active areas.
 function GridContextSystem:_find_area(entity)
-  local selected = nil
+  local selected
   local x, y = entity:get_position()
 
   for _, entry in ipairs(self.areas) do
-    local inside
-
-    if self.world ~= nil then
-      inside = self.world:shape_contains_point(entry.shape, entry.entity.transform, x, y)
-    else
-      inside = contains_point(entry.shape:get_world_points(entry.entity.transform), x, y)
-    end
-
-    if inside and (selected == nil or entry.area:get_priority() > selected.area:get_priority()) then
-      selected = entry
+    if entry.entity:is_active() then
+      local inside
+      if self.world ~= nil then
+        inside = self.world:shape_contains_point(entry.shape, entry.entity.transform, x, y)
+      else
+        inside = contains_point(entry.shape:get_world_points(entry.entity.transform), x, y)
+      end
+      if inside and (selected == nil or entry.area:get_priority() > selected.area:get_priority()) then
+        selected = entry
+      end
     end
   end
-
   return selected
 end
 
--- Updates every entity grid context according to its current spatial area.
+--- Resolves active targets against active areas without clearing suspended state.
 function GridContextSystem:update()
   for _, target in ipairs(self.targets) do
-    local area = self:_find_area(target.entity)
-
-    if area ~= nil then
-      target.context:set_metrics(area.area:get_metrics())
-    else
-      target.context:reset_metrics()
+    if target.entity:is_active() then
+      local area = self:_find_area(target.entity)
+      if area ~= nil then
+        target.context:set_metrics(area.area:get_metrics())
+      else
+        target.context:reset_metrics()
+      end
     end
   end
 end

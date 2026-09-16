@@ -15,6 +15,7 @@ function Entity.new(options)
     local self = setmetatable({}, Entity)
 
     self.id = options.id
+    self.active = true
     self.shapes = options.shapes or {}
     self.events = options.events or {}
     self.components = options.components or {}
@@ -158,6 +159,20 @@ function Entity:remove_component(name)
     self.components[name] = nil
 
     return component
+end
+
+--- Sets runtime participation without replacing components or transform state.
+--- Map activity owns this flag for map-owned entities.
+---@param active boolean Whether systems should simulate and display this entity.
+function Entity:set_active(active)
+    assert(type(active) == "boolean", "entity activity must be a boolean")
+    self.active = active
+end
+
+--- Returns whether this entity participates in simulation, queries and rendering.
+---@return boolean active Current runtime activity.
+function Entity:is_active()
+    return self.active
 end
 
 return Entity

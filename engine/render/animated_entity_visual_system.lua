@@ -72,10 +72,11 @@ function AnimatedEntityVisualSystem:get_animation(index)
   return self.animations[index]
 end
 
--- Advances only the animation players owned by this system.
+--- Advances active representations while preserving suspended playback time.
+---@param dt number Elapsed simulation time in seconds.
 function AnimatedEntityVisualSystem:update(dt)
-  for index = 1, #self.animations do
-    self.animations[index]:update(dt)
+  for index, animation in ipairs(self.animations) do
+    if self.collection:get(index):get_entity():is_active() then animation:update(dt) end
   end
 end
 

@@ -11,17 +11,21 @@ function EntityVisualBillboardSource.new(entity_visuals)
     "entity visual billboard source requires a collection exposing get")
 
   return setmetatable({
+    entity_visuals = entity_visuals,
     entries = EntityVisualBillboardAdapter.create_all(entity_visuals)
   }, EntityVisualBillboardSource)
 end
 
--- Appends every billboard entry exposed by this source to a destination collection.
+--- Appends active representations without rebuilding their entries.
+---@param entries table[] Destination billboard list.
 function EntityVisualBillboardSource:append_entries(entries)
   assert(type(entries) == "table",
     "entity visual billboard source destination must be a table")
 
-  for _, entry in ipairs(self.entries) do
-    entries[#entries + 1] = entry
+  for index, entry in ipairs(self.entries) do
+    if self.entity_visuals:get(index):get_entity():is_active() then
+      entries[#entries + 1] = entry
+    end
   end
 end
 

@@ -149,6 +149,7 @@ function Box2DBackend:add_entity(entity)
   )
 
   body:setAngle(entity.transform.rotation)
+  body:setActive(entity:is_active())
 
   local entry = {
     entity = entity,
@@ -190,7 +191,7 @@ end
 -- Synchronizes Box2D-controlled dynamic bodies back to their Actrune entities.
 function Box2DBackend:sync_entities()
   for _, entry in ipairs(self.entries) do
-    if entry.body:getType() == "dynamic" then
+    if entry.body:isActive() and entry.body:getType() == "dynamic" then
       entry.entity.transform.x = entry.body:getX()
       entry.entity.transform.y = entry.body:getY()
       entry.entity.transform.rotation = entry.body:getAngle()
@@ -198,8 +199,25 @@ function Box2DBackend:sync_entities()
   end
 end
 
--- Advances Box2D and synchronizes resulting dynamic transforms.
+--- Applies activity outside Box2D stepping while retaining bodies and fixtures.
+--- Restoring a body uses the entity transform and preserves its stored velocity.
+function Box2DBackend:sync_activity()
+  for _, entry in ipairs(self.entries) do
+    local body = entry.body
+    local active = entry.entity:is_active()
+    if body:isActive() ~= active then
+      if active then
+        body:setPosition(entry.entity.transform.x, entry.entity.transform.y)
+        body:setAngle(entry.entity.transform.rotation)
+      end
+      body:setActive(active)
+    end
+  end
+end
+
+--- Advances active bodies and synchronizes only their resulting transforms.
 function Box2DBackend:update(dt)
+  self:sync_activity()
   self.world:update(dt)
   self:sync_entities()
 end

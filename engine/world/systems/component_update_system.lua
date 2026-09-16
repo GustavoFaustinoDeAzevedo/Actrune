@@ -63,10 +63,12 @@ function ComponentUpdateSystem:add_project(project)
   table.sort(self.entries, compare_entries)
 end
 
--- Updates every registered component using the configured capability method.
+--- Updates active entities without rebinding or resetting their components.
 function ComponentUpdateSystem:update(...)
   for _, entry in ipairs(self.entries) do
-    entry.component[self.update_method](entry.component, ...)
+    if entry.entity:is_active() then
+      entry.component[self.update_method](entry.component, ...)
+    end
   end
 end
 

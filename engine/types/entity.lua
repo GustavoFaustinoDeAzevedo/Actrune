@@ -15,6 +15,7 @@
 ---@field components? table<string, any> Initial named components.
 
 ---@class EntityFields
+---@field active boolean Runtime participation controlled by map activity for map-owned entities.
 ---@field id string Unique entity identifier.
 ---@field transform Transform Planar position, rotation and scale.
 ---@field shapes table<string, Shape> Spatial shapes indexed by name.

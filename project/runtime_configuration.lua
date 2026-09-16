@@ -135,6 +135,14 @@ function RuntimeConfiguration.register(register, on_map_changed, on_event_maps_c
         end
       end,
 
+      --- Includes events queued between frames before map activity is applied.
+      ---@param self table Event requirement adapter.
+      ---@param dt number Elapsed simulation time in seconds.
+      ---@param context table Loaded project and its runtime.
+      update = function(self, dt, context)
+        self:after_update(dt, context)
+      end,
+
       --- Refreshes even without movement, after map signals and their observer.
       ---@param self table Event requirement adapter.
       ---@param dt number Elapsed simulation time in seconds.
@@ -152,7 +160,110 @@ function RuntimeConfiguration.register(register, on_map_changed, on_event_maps_c
         return retention
       end
     }
-  end, 500)
+  end, 75)
+
+  register:register_runtime_system("map_activity", function()
+    local selection, retention, probe
+    local records, observers, required, states = {}, {}, {}, {}
+    local active_count = 0
+
+    --- Includes a spatial actor's current map and its direct neighbors.
+    local function include_map(map)
+      if map == nil then return end
+      required[map.id] = true
+      for _, neighbor in ipairs(selection.layout:get_neighbors(map.id)) do
+        required[neighbor.id] = true
+      end
+    end
+
+    --- Applies the union of location, event and shared spatial actor requirements.
+    local function refresh()
+      if selection == nil then return end
+      for id in pairs(required) do required[id] = nil end
+      for _, map in ipairs(selection:get_maps()) do required[map.id] = true end
+      for _, map in ipairs(retention:get_maps()) do required[map.id] = true end
+
+      for _, observer in ipairs(observers) do
+        if observer.entity:is_active() then
+          observer:refresh()
+          include_map(observer:get_map())
+        end
+      end
+
+      active_count = 0
+      for _, resident in ipairs(records) do
+        local id = resident.region.id
+        local active = required[id] == true
+        if active then active_count = active_count + 1 end
+        if states[id] ~= active then
+          states[id] = active
+          for _, entity in ipairs(resident.entities) do entity:set_active(active) end
+        end
+      end
+    end
+
+    return {
+      --- Resolves existing instances and applies initial activity before simulation setup.
+      ---@param self table Map activity adapter.
+      ---@param context table Loaded project and its runtime.
+      initialize = function(self, context)
+        local location = context.project_runtime:get_system("player_map_location")
+        local maps = context.project_runtime:get_system("resident_maps"):get_collection()
+        selection = location:get_selection()
+        if selection == nil or maps == nil then return end
+        retention = context.project_runtime:get_system("map_event_retention"):get_retention()
+        local tracker = location:get_tracker()
+        assert(maps:get_owner(tracker.entity) == nil,
+          "map activity requires the tracked traveller to be a shared entity")
+        probe = MapLocationTracker.new(selection.layout, tracker.entity)
+
+        for _, map in ipairs(selection.layout.ordered_maps) do
+          records[#records + 1] = maps:get_map(map.id)
+        end
+        for _, entity in ipairs(maps:get_shared_entities()) do
+          if next(entity.shapes) ~= nil then
+            observers[#observers + 1] = MapLocationTracker.new(selection.layout, entity)
+          end
+        end
+        retention:refresh()
+        refresh()
+      end,
+
+      --- Handles externally changed positions before controls, grid and physics.
+      ---@param self table Map activity adapter.
+      ---@param dt number Elapsed simulation time in seconds.
+      ---@param context table Loaded project and its runtime.
+      update = function(self, dt, context)
+        if probe == nil then return end
+        probe:refresh()
+        selection:set_current_map(probe:get_map())
+        refresh()
+      end,
+
+      --- Applies final location and event requirements before rendering.
+      ---@param self table Map activity adapter.
+      ---@param dt number Elapsed simulation time in seconds.
+      ---@param context table Loaded project and its runtime.
+      after_update = function(self, dt, context)
+        refresh()
+      end,
+
+      --- Returns applied activity; nil means an unknown map or no location binding.
+      ---@param self table Map activity adapter.
+      ---@param id string Map identifier.
+      ---@return boolean? active Applied map state.
+      is_map_active = function(self, id)
+        return states[id]
+      end,
+
+      --- Returns the number of active maps managed by this adapter.
+      ---@param self table Map activity adapter.
+      ---@return integer count Active map count, or zero without a location binding.
+      get_active_count = function(self)
+        return active_count
+      end
+    }
+  end, 80)
 
   register:register_runtime_system("animated_entity_visuals", function()
     return AnimatedEntityVisualRuntimeSystem.new({

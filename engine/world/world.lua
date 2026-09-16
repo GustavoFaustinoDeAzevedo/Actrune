@@ -101,7 +101,7 @@ function World:query_point(x, y, shape_name)
     local results = {}
 
     for _, entity in pairs(self.entities) do
-        local shape = entity:get_shape(shape_name)
+        local shape = entity:is_active() and entity:get_shape(shape_name) or nil
 
         if shape ~= nil and self:shape_contains_point(shape, entity.transform, x, y) then
             results[#results + 1] = entity

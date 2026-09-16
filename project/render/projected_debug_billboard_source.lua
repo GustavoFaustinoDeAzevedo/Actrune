@@ -58,15 +58,14 @@ function ProjectedDebugBillboardSource.new(options)
   return self
 end
 
--- Appends the temporary projected debug billboards to a destination collection.
+--- Appends only debug visuals whose original entities remain active.
+---@param entries table[] Destination billboard list.
 function ProjectedDebugBillboardSource:append_entries(entries)
   assert(type(entries) == "table",
     "projected debug billboard source destination must be a table")
 
-  -- The source contributes its entries without owning the final billboard ordering.
-  for _, entry in ipairs(self.entries) do
-    entries[#entries + 1] = entry
-  end
+  if self.floor:is_active() then entries[#entries + 1] = self.entries[1] end
+  if self.door:is_active() then entries[#entries + 1] = self.entries[2] end
 end
 
 return ProjectedDebugBillboardSource

@@ -60,6 +60,9 @@ local function refresh_performance_text()
         stats.texturememory / (1024 * 1024)
     )
 
+    local activity = game:get_system("map_activity")
+
+    performance.text = performance.text .. string.format("\nActive maps: %d", activity:get_active_count())
     performance.elapsed = 0
     performance.update_total = 0
     performance.update_count = 0

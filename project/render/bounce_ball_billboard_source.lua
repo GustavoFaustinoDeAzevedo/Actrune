@@ -83,12 +83,12 @@ function BounceBallBillboardSource:append_entries(entries)
   assert(type(entries) == "table",
     "bounce ball billboard source destination must be a table")
 
-  entries[#entries + 1] = self.entry
+  if self.entity:is_active() then entries[#entries + 1] = self.entry end
 end
 
 -- Advances the temporary bouncing-ball visual animation.
 function BounceBallBillboardSource:update(dt)
-  self.animation:update(dt)
+  if self.entity:is_active() then self.animation:update(dt) end
 end
 
 return BounceBallBillboardSource

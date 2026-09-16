@@ -376,7 +376,7 @@ local function create_billboards(self, options)
   self.projected_billboards:add_source(static_test_billboard_source)
 end
 
--- Creates the renderer used by the current Actrune test project.-- Creates the renderer used by the current Actrune test project.
+--- Creates the renderer used by the current Actrune test project.-- Creates the renderer used by the current Actrune test project.
 function TestSceneRenderer.new(options)
   options = options or {}
 
@@ -614,33 +614,6 @@ function TestSceneRenderer:_draw_ground_debug()
   self:_draw_shape(self.free_area, "area")
 end
 
--- Updates camera tracking and the captured projected world region.
-function TestSceneRenderer:update(dt)
-  self.camera_position:update(dt)
-
-  -- Resolve rotation before the position offset that depends on it.
-  self.projected_camera_rotation:update(dt)
-  self.projected_camera_position:update(dt)
-
-  if self.projected_camera_elevation ~= nil then
-    self.projected_camera_elevation:update(dt)
-  end
-
-  local projected_x, projected_y = self.projected_camera:get_position()
-  local half_width = self.ground_region_width * 0.5
-  local half_height = self.ground_region_height * 0.5
-
-  -- Preserve capture dimensions while following the horizontal viewpoint.
-  self.ground_world_region:set_bounds(
-    projected_x - half_width,
-    projected_y - half_height,
-    projected_x + half_width,
-    projected_y + half_height
-  )
-
-  self.bounce_ball_billboard_source:update(dt)
-end
-
 -- Draws all configured render layers in their current order.
 function TestSceneRenderer:draw()
   -- The layer stack owns ordering and applies each configured view before drawing.
@@ -656,7 +629,7 @@ end
 ---@param entity? Entity Logical shape owner.
 ---@param shape_name string Name of the shape to draw.
 function TestSceneRenderer:_draw_shape(entity, shape_name)
-  if entity == nil then return end
+  if entity == nil or not entity:is_active() then return end
   local topology = self.world_topology
 
   if topology == nil or not (topology.loop_x or topology.loop_y) then
@@ -693,6 +666,33 @@ function TestSceneRenderer:_draw_shape(entity, shape_name)
     function(transform)
       SpatialDebugRenderer.draw_shape(entity, shape_name, transform)
     end)
+end
+
+-- Updates camera tracking and the captured projected world region.
+function TestSceneRenderer:update(dt)
+  self.camera_position:update(dt)
+
+  -- Resolve rotation before the position offset that depends on it.
+  self.projected_camera_rotation:update(dt)
+  self.projected_camera_position:update(dt)
+
+  if self.projected_camera_elevation ~= nil then
+    self.projected_camera_elevation:update(dt)
+  end
+
+  local projected_x, projected_y = self.projected_camera:get_position()
+  local half_width = self.ground_region_width * 0.5
+  local half_height = self.ground_region_height * 0.5
+
+  -- Preserve capture dimensions while following the horizontal viewpoint.
+  self.ground_world_region:set_bounds(
+    projected_x - half_width,
+    projected_y - half_height,
+    projected_x + half_width,
+    projected_y + half_height
+  )
+
+  self.bounce_ball_billboard_source:update(dt)
 end
 
 return TestSceneRenderer
