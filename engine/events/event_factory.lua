@@ -51,7 +51,8 @@ function EventFactory:_build_page(definition)
 
   return EventPage.new({
     trigger = self:_build_trigger(definition.trigger),
-    commands = commands
+    commands = commands,
+    required_maps = definition.required_maps
   })
 end
 

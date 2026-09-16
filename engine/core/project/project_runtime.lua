@@ -96,7 +96,7 @@ function ProjectRuntime:get_system_provider(name)
   return self.system_registry:get_provider(name)
 end
 
---- Runs systems, events, optional after_update observers, then the renderer update.
+--- Runs systems, optional before_events preparation, events, after_update observers and rendering updates.
 --- The after_update phase follows registry order and observes completed simulation updates.
 ---@param dt number Elapsed simulation time in seconds.
 function ProjectRuntime:update(dt)
@@ -105,6 +105,12 @@ function ProjectRuntime:update(dt)
   for _, entry in ipairs(self.systems) do
     local system = entry.system
     if type(system.update) == "function" then system:update(dt, context) end
+  end
+
+  -- Prepare dependencies discovered by controls before running event commands.
+  for _, entry in ipairs(self.systems) do
+    local system = entry.system
+    if type(system.before_events) == "function" then system:before_events(dt, context) end
   end
 
   self.runtime:update(dt)

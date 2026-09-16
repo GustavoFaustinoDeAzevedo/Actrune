@@ -125,11 +125,12 @@ function RuntimeConfiguration.register(register, on_map_changed, on_event_maps_c
     local retention
 
     return {
-      --- Resolves ownership after the resident content index has initialized.
+      --- Validates declared dependencies against the selected resident content.
       ---@param self table Event requirement adapter.
       ---@param context table Loaded project and its runtime.
       initialize = function(self, context)
         local maps = context.project_runtime:get_system("resident_maps"):get_collection()
+        MapEventRetention.validate_entities(context.project.entities, maps)
         if maps ~= nil then
           retention = MapEventRetention.new(maps, context.runtime.event_scheduler)
         end
@@ -140,6 +141,14 @@ function RuntimeConfiguration.register(register, on_map_changed, on_event_maps_c
       ---@param dt number Elapsed simulation time in seconds.
       ---@param context table Loaded project and its runtime.
       update = function(self, dt, context)
+        self:after_update(dt, context)
+      end,
+
+      --- Refreshes requirements queued by systems before commands execute.
+      ---@param self table Event requirement adapter.
+      ---@param dt number Elapsed simulation time in seconds.
+      ---@param context table Loaded project and its runtime.
+      before_events = function(self, dt, context)
         self:after_update(dt, context)
       end,
 
@@ -237,6 +246,14 @@ function RuntimeConfiguration.register(register, on_map_changed, on_event_maps_c
         if probe == nil then return end
         probe:refresh()
         selection:set_current_map(probe:get_map())
+        refresh()
+      end,
+
+      --- Activates declared dependencies before their event commands execute.
+      ---@param self table Map activity adapter.
+      ---@param dt number Elapsed simulation time in seconds.
+      ---@param context table Loaded project and its runtime.
+      before_events = function(self, dt, context)
         refresh()
       end,
 

@@ -1,4 +1,5 @@
 local DefinitionValidator = require("engine.core.definitions.definition_validator")
+local EventPage = require("engine.events.event_page")
 
 local EventDefinitionValidator = {}
 
@@ -31,7 +32,8 @@ local function validate_page(errors, definition, path, context)
     add_error(errors, path, "must be a table")
     return
   end
-
+  local map_error = EventPage.validate_required_maps(definition.required_maps)
+  if map_error ~= nil then add_error(errors, path .. ".required_maps", map_error) end
   if definition.trigger == nil then
     add_error(errors, path .. ".trigger", "is required")
   else

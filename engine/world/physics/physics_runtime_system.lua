@@ -49,6 +49,13 @@ function PhysicsRuntimeSystem:get_fixed_step()
   return self.fixed_step
 end
 
+--- Applies activity before event commands inspect the physics world.
+---@param dt number Elapsed simulation time in seconds.
+---@param context table Loaded project and its runtime.
+function PhysicsRuntimeSystem:before_events(dt, context)
+  self.backend:sync_activity()
+end
+
 --- Applies map activity after events, even when no fixed step ran.
 ---@param dt number Elapsed simulation time in seconds.
 ---@param context table Loaded project and its runtime.

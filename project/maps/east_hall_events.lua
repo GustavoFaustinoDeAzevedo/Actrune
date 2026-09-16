@@ -9,6 +9,10 @@ return {
 
       pages = {
         {
+
+          -- Keep the southern room active until this execution finishes.
+          required_maps = { "south_hall" },
+
           trigger = {
             type = "signal",
             action = "map_enter"
