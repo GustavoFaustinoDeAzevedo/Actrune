@@ -4,6 +4,7 @@ local love = require("love")
 local Camera2D = require("engine.render.camera_2d")
 local CameraPositionControl = require("engine.render.camera_position_control")
 local AxisAlignedBoundsConstraint = require("engine.render.camera_position.axis_aligned_bounds_constraint")
+local MapBoundsConstraint = require("engine.render.camera_position.map_bounds_constraint")
 local CameraElevationControl = require("engine.render.camera_elevation_control")
 local EntityPositionPolicy = require("engine.render.camera_position.entity_position_policy")
 local OrientedOffsetPositionPolicy = require("engine.render.camera_position.oriented_offset_position_policy")
@@ -130,15 +131,25 @@ local function create_cameras(self, elevation_source)
   local constraints = {}
   local bounds = configuration:get_world_camera_bounds()
 
-  if configuration:get_render_mode() == "orthographic" and bounds ~= nil then
-    constraints[1] = AxisAlignedBoundsConstraint.new({
-      min_x = bounds.min_x,
-      min_y = bounds.min_y,
-      max_x = bounds.max_x,
-      max_y = bounds.max_y,
-      constrain_x = topology == nil or not topology.loop_x,
-      constrain_y = topology == nil or not topology.loop_y
-    })
+  if configuration:get_render_mode() == "orthographic" then
+    local map_bounds = configuration:get_world_camera_map_bounds()
+    local constrain_x = topology == nil or not topology.loop_x
+    local constrain_y = topology == nil or not topology.loop_y
+
+    if map_bounds ~= nil then
+      constraints[1] = MapBoundsConstraint.new(map_bounds, self.world_camera_target, {
+        fallback = bounds, constrain_x = constrain_x, constrain_y = constrain_y
+      })
+    elseif bounds ~= nil then
+      constraints[1] = AxisAlignedBoundsConstraint.new({
+        min_x = bounds.min_x,
+        min_y = bounds.min_y,
+        max_x = bounds.max_x,
+        max_y = bounds.max_y,
+        constrain_x = constrain_x,
+        constrain_y = constrain_y
+      })
+    end
   end
 
   self.camera_position_response = PositionResponse.new({

@@ -18,6 +18,8 @@ function TestSceneRenderConfigurationFactory.create(definition, context)
   return TestSceneRenderConfiguration.new({
     -- Camera target associations remain serialized as entity ids.
     world_camera_target_entity = definition.world_camera_target_entity,
+    world_camera_map_bounds = definition.world_camera_map_bounds ~= nil
+        and context.resolve_resource("map_camera_bounds", definition.world_camera_map_bounds) or nil,
     world_camera_min_x = definition.world_camera_min_x,
     world_camera_min_y = definition.world_camera_min_y,
     world_camera_max_x = definition.world_camera_max_x,

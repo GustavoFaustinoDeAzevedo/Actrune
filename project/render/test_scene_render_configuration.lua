@@ -101,6 +101,7 @@ function TestSceneRenderConfiguration.new(options)
   local camera = {
     world_target_entity = options.world_camera_target_entity,
     world_bounds = world_bounds,
+    world_map_bounds = options.world_camera_map_bounds,
     world_elevation_component = world_elevation_component,
     projected_target_entity = options.projected_camera_target_entity,
     world_position_half_life = options.world_camera_position_half_life,
@@ -245,6 +246,12 @@ end
 ---@return number padding Extra viewport margin in world units.
 function TestSceneRenderConfiguration:get_loop_visual_padding()
   return self.projection.loop_visual_padding
+end
+
+--- Returns optional map framing, independent from the global fallback bounds.
+---@return MapCameraBounds? configuration Shared map framing configuration.
+function TestSceneRenderConfiguration:get_world_camera_map_bounds()
+  return self.camera.world_map_bounds
 end
 
 return TestSceneRenderConfiguration

@@ -15,6 +15,7 @@ local EntityVisualConfigurationFactory = require("engine.render.entity_visual_co
 local SpatialLevels = require("engine.world.spatial.spatial_levels")
 local WorldTopology = require("engine.world.spatial.world_topology")
 local MapLayout = require("engine.world.maps.map_layout")
+local MapCameraBounds = require("engine.render.map_camera_bounds")
 
 local ActruneResourceTypes = {}
 
@@ -63,6 +64,19 @@ function ActruneResourceTypes.register(register)
         { name = "maps", type = "property_map", required = true }
       }
     })
+
+  register:register_resource_type("map_camera_bounds", function(definition, context)
+    return MapCameraBounds.new(
+      context.resolve_resource("map_layout", definition.layout),
+      definition.maps, definition.duration
+    )
+  end, {
+    fields = {
+      { name = "layout",   type = "resource_reference", resource_type = "map_layout", required = true },
+      { name = "maps",     type = "property_map",       required = true },
+      { name = "duration", type = "number",             default = 0,                  min = 0 }
+    }
+  })
 
   register:register_resource_type("spatial_levels",
     function(definition) return SpatialLevels.new(definition.elevations) end, {

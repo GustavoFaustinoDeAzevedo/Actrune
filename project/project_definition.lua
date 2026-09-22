@@ -1,6 +1,18 @@
 local project_definition = {
   resources = {
 
+    map_camera_bounds = {
+      main = {
+        layout = "main",
+        duration = 1,
+        maps = {
+          west_hall = { min_x = 0, min_y = -256, max_x = 1024, max_y = 768 },
+          east_hall = { min_x = 0, min_y = -256, max_x = 1024, max_y = 768 },
+          south_hall = { min_x = 512, min_y = 768, max_x = 1024, max_y = 1536 }
+        }
+      }
+    },
+
     map_location_binding = {
       main = {
         entity = "player",
@@ -35,6 +47,7 @@ local project_definition = {
         orthographic_elevation_scale = 1,
 
         world_camera_target_entity = "player",
+        world_camera_map_bounds = "main",
         world_camera_elevation_component = "elevation",
 
         -- Fixed view bounds for the orthographic scene.
