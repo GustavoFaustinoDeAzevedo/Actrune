@@ -65,7 +65,8 @@ end
 --- Applies bounds during initialization, before the first frame is drawn.
 ---@param self TestSceneRenderer Renderer receiving the camera controls.
 ---@param elevation_source? table Live source exposing get_elevation.
-local function create_cameras(self, elevation_source)
+---@param options table Injected scene capabilities.
+local function create_cameras(self, elevation_source, options)
   local configuration = self.render_configuration
   local world_x, world_y = self.world_camera_target:get_position()
   local projected_x, projected_y = self.projected_camera_target:get_position()
@@ -167,6 +168,19 @@ local function create_cameras(self, elevation_source)
 
   -- A zero-time update applies constraints without advancing position smoothing.
   self.camera_position:update(0)
+
+  local preset = configuration:get_world_camera_transition()
+  if preset ~= nil and configuration:get_render_mode() == "orthographic" then
+    assert(configuration:get_world_camera_map_bounds() ~= nil,
+      "camera transitions require map bounds")
+    self.camera_transition = preset:create({
+      control = self.camera_position,
+      bounds = constraints[1],
+      target = self.world_camera_target,
+      suspend = options.suspend_simulation,
+      retain_map = options.retain_camera_map
+    })
+  end
 end
 
 -- Creates the captured world region and the perspective projection used by the ground and billboards.
@@ -453,7 +467,7 @@ function TestSceneRenderer.new(options)
 
   -- Each construction step owns one clearly separated part of the renderer setup.
   resolve_entities(self)
-  create_cameras(self, options.world_camera_elevation_source)
+  create_cameras(self, options.world_camera_elevation_source, options)
   create_projected_world(self)
   if options.projected_camera_elevation_source ~= nil then
     self.projected_camera_elevation = CameraElevationControl.new(
@@ -625,12 +639,12 @@ function TestSceneRenderer:_draw_ground_debug()
   self:_draw_shape(self.free_area, "area")
 end
 
--- Draws all configured render layers in their current order.
+--- Draws the scene before its optional transition overlay.
 function TestSceneRenderer:draw()
-  -- The layer stack owns ordering and applies each configured view before drawing.
   self.layers:draw({
     renderer = self
   })
+  if self.camera_transition ~= nil then self.camera_transition:draw({ renderer = self }) end
 end
 
 --- Draws periodic outlines inside the active world-space view.
@@ -679,9 +693,17 @@ function TestSceneRenderer:_draw_shape(entity, shape_name)
     end)
 end
 
--- Updates camera tracking and the captured projected world region.
-function TestSceneRenderer:update(dt)
-  self.camera_position:update(dt)
+--- Updates presentation independently from optional simulation suspension.
+---@param dt number Presentation time in seconds.
+---@param simulation_dt? number World animation time; zero while simulation is suspended.
+function TestSceneRenderer:update(dt, simulation_dt)
+  simulation_dt = simulation_dt or dt
+  if self.camera_transition ~= nil then
+    self.camera_transition:update(dt, simulation_dt)
+  else
+    self.camera_position:update(simulation_dt)
+  end
+  dt = simulation_dt
 
   -- Resolve rotation before the position offset that depends on it.
   self.projected_camera_rotation:update(dt)

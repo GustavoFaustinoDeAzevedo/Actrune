@@ -102,6 +102,7 @@ function TestSceneRenderConfiguration.new(options)
     world_target_entity = options.world_camera_target_entity,
     world_bounds = world_bounds,
     world_map_bounds = options.world_camera_map_bounds,
+    world_transition = options.world_camera_transition,
     world_elevation_component = world_elevation_component,
     projected_target_entity = options.projected_camera_target_entity,
     world_position_half_life = options.world_camera_position_half_life,
@@ -134,7 +135,12 @@ function TestSceneRenderConfiguration.new(options)
   }, TestSceneRenderConfiguration)
 end
 
--- Returns the entity id followed by the regular world camera.
+--- Returns the selected camera transition preset, or nil for ordinary tracking.
+---@return table? preset Resource exposing create(options).
+function TestSceneRenderConfiguration:get_world_camera_transition()
+  return self.camera.world_transition
+end
+
 function TestSceneRenderConfiguration:get_world_camera_target_entity()
   return self.camera.world_target_entity
 end

@@ -1,10 +1,24 @@
 local project_definition = {
   resources = {
 
+    camera_transition = {
+      main = {
+        pause_simulation = true,
+        controller = {
+          type = "cut",
+          effect = {
+            type = "fade",
+            cover_duration = 0,
+            reveal_duration = 0
+          }
+        }
+      }
+    },
+
     map_camera_bounds = {
       main = {
         layout = "main",
-        duration = 1,
+        duration = 0.1,
         maps = {
           west_hall = { min_x = 0, min_y = -256, max_x = 1024, max_y = 768 },
           east_hall = { min_x = 0, min_y = -256, max_x = 1024, max_y = 768 },
@@ -48,6 +62,7 @@ local project_definition = {
 
         world_camera_target_entity = "player",
         world_camera_map_bounds = "main",
+        world_camera_transition = "main",
         world_camera_elevation_component = "elevation",
 
         -- Fixed view bounds for the orthographic scene.

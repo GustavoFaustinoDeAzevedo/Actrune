@@ -2,6 +2,7 @@ local ProjectConfiguration = require("engine.core.project.project_configuration"
 local ActruneTypeCatalog = require("engine.core.project.actrune_type_catalog")
 local ActruneRuntimeConfiguration = require("engine.core.project.actrune_runtime_configuration")
 local ActruneResourceTypes = require("engine.core.resources.actrune_resource_types")
+local TransitionResourceTypes = require("engine.core.resources.transition_resource_types")
 
 local ActruneProjectConfiguration = {}
 
@@ -14,6 +15,7 @@ function ActruneProjectConfiguration.create()
 
   local actrune = configuration:create_register("actrune")
   ActruneResourceTypes.register(actrune)
+  TransitionResourceTypes.register(actrune, configuration:get_type_catalog())
 
   return configuration
 end

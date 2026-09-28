@@ -20,6 +20,7 @@ function MapBoundsConstraint.new(configuration, entity, options)
 
   return setmetatable({
     configuration = configuration,
+    manual = options.manual == true,
     tracker = tracker,
     fallback = options.fallback,
     current_bounds = bounds,
@@ -52,33 +53,36 @@ local function include_current_view(self, bounds, camera)
   self.constraint:set_bounds(entry, 0)
 end
 
---- Selects framing from the entity's XY position, then advances and applies bounds.
---- Missing map settings use the global fallback; no fallback means unrestricted tracking.
---- Releasing bounds is immediate. Returning to finite bounds includes the current view.
---- Equal timed destinations preserve progress through the underlying constraint.
----@param x number Requested camera X after position smoothing.
----@param y number Requested camera Y after position smoothing.
+--- Selects bounds explicitly; zero duration also finishes an existing bounds transition.
+---@param map? table Region from this configuration's layout; nil selects fallback.
+---@param duration number Transition duration in seconds.
+---@param camera table Camera used when returning from unrestricted tracking.
+function MapBoundsConstraint:select_map(map, duration, camera)
+  assert(map == nil or self.configuration.layout:get_map(map.id) == map,
+    "camera bounds require a map from their layout")
+  local bounds = self.configuration:get_bounds(map and map.id) or self.fallback
+  if bounds ~= nil and (bounds ~= self.current_bounds or duration == 0) then
+    if self.current_bounds == nil and duration > 0 then
+      include_current_view(self, bounds, camera)
+    end
+    self.constraint:set_bounds(bounds, duration)
+  end
+  self.current_bounds = bounds
+end
+
+--- Advances selected bounds; automatic mode selects them from the target's XY location.
+---@param x number Requested camera X.
+---@param y number Requested camera Y.
 ---@param context CameraBoundsResolveContext Camera geometry and elapsed time.
 ---@return number x Resolved camera X.
 ---@return number y Resolved camera Y.
 function MapBoundsConstraint:resolve(x, y, context)
   assert(context ~= nil and context.camera ~= nil, "map camera bounds require context.camera")
-  self.tracker:refresh()
-  local map = self.tracker:get_map()
-  local bounds = self.configuration:get_bounds(map and map.id) or self.fallback
-
-  if bounds ~= self.current_bounds then
-    if bounds ~= nil then
-      local duration = self.configuration.duration
-      if self.current_bounds == nil and duration > 0 then
-        include_current_view(self, bounds, context.camera)
-      end
-      self.constraint:set_bounds(bounds, duration)
-    end
-    self.current_bounds = bounds
+  if not self.manual then
+    self.tracker:refresh()
+    self:select_map(self.tracker:get_map(), self.configuration.duration, context.camera)
   end
-
-  if bounds == nil then return x, y end
+  if self.current_bounds == nil then return x, y end
   return self.constraint:resolve(x, y, context)
 end
 

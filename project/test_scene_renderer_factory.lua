@@ -199,6 +199,21 @@ function TestSceneRendererFactory.create(options)
   -- Camera and projection behavior comes from validated project data.
   renderer_options.render_configuration = render_configuration
   renderer_options.world_topology = options.runtime.world:get_topology()
+
+  if render_configuration:get_world_camera_transition() ~= nil
+      and render_configuration:get_render_mode() == "orthographic" then
+    local activity = options.project_runtime:get_system("map_activity")
+    local location = options.project_runtime:get_system("player_map_location")
+    local bounds = render_configuration:get_world_camera_map_bounds()
+    assert(bounds ~= nil and location ~= nil and location:get_selection() ~= nil
+      and bounds.layout == location:get_selection().layout,
+      "camera transitions require bounds and activity from the same layout")
+    assert(activity ~= nil and type(activity.retain) == "function",
+      "camera transitions require map retention")
+    renderer_options.suspend_simulation = function() return options.project_runtime:suspend() end
+    renderer_options.retain_camera_map = function(id) return activity:retain(id) end
+  end
+
   renderer_options.world_camera_target = world_camera_target
   renderer_options.projected_camera_target = projected_camera_target
 

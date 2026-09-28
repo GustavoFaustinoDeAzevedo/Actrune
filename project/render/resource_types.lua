@@ -14,6 +14,7 @@ function ProjectRenderResourceTypes.register(register)
     TestSceneRenderConfigurationFactory.create,
     {
       fields = {
+        { name = "world_camera_transition",             type = "resource_reference", resource_type = "camera_transition",        optional = true },
         { name = "world_camera_map_bounds",             type = "resource_reference", resource_type = "map_camera_bounds",        optional = true },
         { name = "loop_visual_padding",                 type = "number",             default = 1024,                             min = 0 },
         { name = "world_camera_min_x",                  type = "number",             optional = true },

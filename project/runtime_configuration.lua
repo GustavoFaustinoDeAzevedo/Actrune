@@ -175,6 +175,7 @@ function RuntimeConfiguration.register(register, on_map_changed, on_event_maps_c
     local selection, retention, probe
     local records, observers, required, states = {}, {}, {}, {}
     local active_count = 0
+    local held = {}
 
     --- Includes a spatial actor's current map and its direct neighbors.
     local function include_map(map)
@@ -191,6 +192,7 @@ function RuntimeConfiguration.register(register, on_map_changed, on_event_maps_c
       for id in pairs(required) do required[id] = nil end
       for _, map in ipairs(selection:get_maps()) do required[map.id] = true end
       for _, map in ipairs(retention:get_maps()) do required[map.id] = true end
+      for id in pairs(held) do include_map(selection.layout:get_map(id)) end
 
       for _, observer in ipairs(observers) do
         if observer.entity:is_active() then
@@ -263,6 +265,24 @@ function RuntimeConfiguration.register(register, on_map_changed, on_event_maps_c
       ---@param context table Loaded project and its runtime.
       after_update = function(self, dt, context)
         refresh()
+      end,
+
+      --- Keeps a map and its neighbors active until this caller releases them.
+      ---@param self table Map activity adapter.
+      ---@param id string Known map identifier.
+      ---@return fun() release Idempotent release of this requirement.
+      retain = function(self, id)
+        assert(selection ~= nil and selection.layout:get_map(id) ~= nil,
+          "cannot retain unknown map: " .. tostring(id))
+        held[id] = (held[id] or 0) + 1
+        refresh()
+        local released = false
+        return function()
+          if released then return end
+          released = true
+          held[id] = held[id] > 1 and held[id] - 1 or nil
+          refresh()
+        end
       end,
 
       --- Returns applied activity; nil means an unknown map or no location binding.

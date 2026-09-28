@@ -26,6 +26,7 @@ function ProjectRuntime.new(options)
   self.systems = {}
   self.systems_by_name = {}
   self.renderer = nil
+  self.suspensions = 0
 
   self:_add_entities()
   self:_bind_input()
@@ -96,32 +97,47 @@ function ProjectRuntime:get_system_provider(name)
   return self.system_registry:get_provider(name)
 end
 
---- Runs systems, optional before_events preparation, events, after_update observers and rendering updates.
---- The after_update phase follows registry order and observes completed simulation updates.
----@param dt number Elapsed simulation time in seconds.
+--- Suspends simulation from the next update while preserving rendering and event state.
+--- Each caller owns one idempotent release; overlapping suspensions are independent.
+---@return fun() release Releases only this suspension.
+function ProjectRuntime:suspend()
+  self.suspensions = self.suspensions + 1
+  local released = false
+  return function()
+    if released then return end
+    released = true
+    self.suspensions = self.suspensions - 1
+  end
+end
+
+--- Reports whether simulation is currently suspended.
+---@return boolean suspended Whether at least one suspension remains.
+function ProjectRuntime:is_suspended()
+  return self.suspensions > 0
+end
+
+--- Advances simulation when enabled and always advances presentation.
+---@param dt number Elapsed frame time in seconds.
 function ProjectRuntime:update(dt)
-  local context = self:_create_context()
-
-  for _, entry in ipairs(self.systems) do
-    local system = entry.system
-    if type(system.update) == "function" then system:update(dt, context) end
+  local simulation_dt = self:is_suspended() and 0 or dt
+  if not self:is_suspended() then
+    local context = self:_create_context()
+    for _, entry in ipairs(self.systems) do
+      if type(entry.system.update) == "function" then entry.system:update(dt, context) end
+    end
+    for _, entry in ipairs(self.systems) do
+      if type(entry.system.before_events) == "function" then entry.system:before_events(dt, context) end
+    end
+    self.runtime:update(dt)
+    for _, entry in ipairs(self.systems) do
+      if type(entry.system.after_update) == "function" then entry.system:after_update(dt, context) end
+    end
+  else
+    -- Consume transient input while preserving held keys and releases.
+    self.runtime.input:end_frame()
   end
-
-  -- Prepare dependencies discovered by controls before running event commands.
-  for _, entry in ipairs(self.systems) do
-    local system = entry.system
-    if type(system.before_events) == "function" then system:before_events(dt, context) end
-  end
-
-  self.runtime:update(dt)
-
-  for _, entry in ipairs(self.systems) do
-    local system = entry.system
-    if type(system.after_update) == "function" then system:after_update(dt, context) end
-  end
-
   if self.renderer ~= nil and type(self.renderer.update) == "function" then
-    self.renderer:update(dt)
+    self.renderer:update(dt, simulation_dt)
   end
 end
 
