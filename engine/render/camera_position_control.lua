@@ -73,9 +73,12 @@ function CameraPositionControl:update(dt, context)
   self.camera:set_position(x, y)
 end
 
---- Applies the complete target and constraints immediately, bypassing position smoothing.
+--- Resolves the complete target and samples constraints without moving the camera.
+--- Bypasses position smoothing; automatic constraints may synchronize their destination.
 ---@param context? any Additional context forwarded to policies and constraints.
-function CameraPositionControl:snap(context)
+---@return number x Constrained target X.
+---@return number y Constrained target Y.
+function CameraPositionControl:resolve_target(context)
   local resolve_context = { camera = self.camera, dt = 0, context = context }
   local x, y = self.policy:resolve(resolve_context)
   if self.topology ~= nil then
@@ -85,9 +88,16 @@ function CameraPositionControl:snap(context)
   for _, constraint in ipairs(self.constraints) do
     x, y = constraint:resolve(x, y, resolve_context)
   end
-  assert(type(x) == "number" and type(y) == "number",
-    "camera position control must resolve numeric coordinates")
-  self.camera:set_position(x, y)
+  assert(type(x) == "number" and x > -math.huge and x < math.huge
+    and type(y) == "number" and y > -math.huge and y < math.huge,
+    "camera position control must resolve finite coordinates")
+  return x, y
+end
+
+--- Applies the constrained target immediately, bypassing position smoothing.
+---@param context? any Additional context forwarded to policies and constraints.
+function CameraPositionControl:snap(context)
+  self.camera:set_position(self:resolve_target(context))
 end
 
 return CameraPositionControl

@@ -2,6 +2,7 @@
 
 ---@class EntityEvent
 ---@field id string Identifier used to store the event on an entity.
+---@field pages? EventPage[] Optional pages exposed by page-based events.
 
 ---@class EntityOptions
 ---@field id string Unique entity identifier.

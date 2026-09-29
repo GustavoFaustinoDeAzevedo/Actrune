@@ -2,6 +2,14 @@ local project_definition = {
   resources = {
 
     camera_transition = {
+      sliding = {
+        pause_simulation = true,
+        controller = {
+          type = "slide",
+          duration = 0.45,
+          curve = { type = "smoothstep" }
+        }
+      },
       main = {
         pause_simulation = true,
         controller = {
