@@ -1,59 +1,56 @@
 # Actrune roadmap
 
-## 0.6.0 — Map-aware orthographic camera framing
+## 0.6.0 — Map-aware camera framing and transitions
 
-Status: planned.
+Status: implementation available; zero-duration fade correction and release acceptance pending.
 
 ### Goal
 
-Allow projects to configure orthographic camera bounds per map and transition between them while preserving the existing camera, entities, and gameplay state.
+Configure orthographic camera framing and map transition presentation through project data while preserving existing cameras, entities, and gameplay state.
 
-### Behavior
+### Implemented
 
-- Projects may associate each map with a camera bounds rectangle.
-- Multiple maps may share the same bounds for uninterrupted camera tracking.
-- Camera bounds remain independent from map membership and movement boundaries.
-- Bounds selection follows the configured camera target.
-- A configurable transition duration controls changes between bounds; zero applies them immediately.
-- Initial framing is applied before the first rendered frame.
-- Missing map settings and positions outside the layout use the existing global bounds, or unrestricted tracking when no global bounds exist.
-- Viewport size, zoom, and rotation remain part of bounds calculation.
-- Regions smaller than the viewport retain the existing centering behavior.
-- Periodic axes retain unrestricted tracking along those axes.
-- Entity elevation continues to affect the camera's visual target.
+- Per-map camera bounds with shared rectangles and global fallback.
+- Immediate initial framing and configurable automatic bounds interpolation.
+- Bounds calculation accounting for viewport size, zoom, rotation, and small regions.
+- Unrestricted tracking along periodic axes and continued entity elevation tracking.
+- Reusable camera cuts with fade and camera slides with selectable curves.
+- A generic transition runner with cancellation and cleanup.
+- Optional suspension of runtime systems and event execution while presentation continues.
+- Independent suspension ownership and temporary map activity requirements.
+- Directional preset selection with a configurable default.
+- Validation of map references, preset references, and layout compatibility.
+- Independent controller state for each camera.
+- An integrated three-map demonstration.
 
-### Delivery 1 — Runtime bounds transitions
+### Behavior contracts
 
-- Extend the existing camera bounds implementation to support changes without recreating the camera.
-- Add immediate and timed transitions with documented behavior when interrupted.
-- Keep camera calculations independent from map identifiers and runtime services.
-- Validate initialization, transition completion, interruption, and small-region behavior.
+- Camera bounds do not define map membership or movement boundaries.
+- The configured camera target determines the observed map.
+- Missing map bounds use global bounds, or unrestricted tracking when none exist.
+- Equal bounds avoid redundant bounds interpolation. A configured map transition may still execute between those maps.
+- Automatic bounds duration, slide duration, and fade durations are separate settings.
+- Built-in transition controllers select destination bounds directly and control their own presentation timing.
+- Simulation suspension begins on the next simulation update after acquisition.
+- Suspended event runners retain their state; simulation-driven animations pause while graphics remain drawable.
+- A preset is selected once per transition and remains selected until that execution and any recovery finish.
+- Cancellation releases temporary requirements and aligns framing with the current target on the next update.
+- Cancellation does not undo an already applied destination.
 
-### Delivery 2 — Declarative map configuration
+### Remaining work
 
-- Add project resources associating map identifiers with camera bounds.
-- Validate map references and numeric settings during project loading.
-- Connect the configured camera target's map location to bounds selection.
-- Resolve reusable configuration during loading and avoid rebuilding it every frame.
-- Preserve global bounds as the fallback.
+- [ ] Complete a zero-duration fade in the same update without an extra covered frame or suspended simulation update.
+- [ ] Visually verify east_hall to south_hall with slide and the return path with fade.
+- [ ] Verify shared framing, initial framing, and fallback behavior in the demonstration.
+- [ ] Verify paused and free transitions, input handling, and preserved event state.
+- [ ] Verify elevation, horizontal looping, viewport changes, zoom, and rotation.
+- [ ] Confirm that the existing perspective rendering mode still works.
+- [ ] Complete acceptance before updating the engine version and publishing the release notes.
 
-### Delivery 3 — Integrated demonstration and release
+### Validation status
 
-- Configure the existing three-map scene with shared and distinct camera bounds.
-- Demonstrate travel in both directions and reversal during a transition.
-- Verify elevation, periodic tracking, viewport changes, and preserved entity state.
-- Confirm that the existing projected rendering mode still works.
-- Update the changelog and engine version after acceptance.
-
-### Completion criteria
-
-- Camera framing changes through project data without renderer edits.
-- Maps sharing bounds do not restart a camera transition.
-- Timed transitions reach the selected bounds and can be interrupted without an immediate camera position jump.
-- Returning to a map preserves the existing entities and their state.
-- Initial framing and fallback behavior are deterministic.
-- Automated checks and visual verification of the demonstration pass.
+Previous isolated checks covered transition integration and Lua diagnostics. They are not a committed regression suite and do not replace visual acceptance.
 
 ### Scope boundary
 
-This milestone adds regional framing to the orthographic camera. Perspective-specific regional constraints, map streaming, disk persistence, and new movement mechanics remain separate milestones.
+This milestone covers orthographic camera framing and transition presentation. Perspective-specific transitions, map streaming, disk persistence, portal definitions, and new movement mechanics remain separate work.

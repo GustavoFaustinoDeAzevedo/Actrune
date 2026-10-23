@@ -1,5 +1,36 @@
 # Actrune changelog
 
+## Unreleased
+
+### Added
+
+- Declarative orthographic camera bounds per map, with shared framing and global fallback.
+- Immediate and timed bounds changes without recreating the camera.
+- A generic transition runner with destination application, cancellation, and cleanup.
+- Reusable camera transition presets with configurable simulation suspension.
+- Camera cuts with a screen fade and camera slides with configurable duration.
+- Extensible transition controllers, screen effects, and interpolation curves.
+- Directional map connections selecting different presets for each travel direction.
+- Temporary map activity requirements preserving origin and destination visuals during transitions.
+- LuaCATS documentation for camera bounds, transition execution, and routing.
+
+### Changed
+
+- Simulation can pause while scene drawing and transition presentation continue.
+- Simulation suspension preserves entity state and event execution state.
+- Independent suspension owners release only their own pause.
+- Transient input is consumed during suspension instead of replaying after resume.
+- The demonstration uses a slide from east_hall to south_hall and a fade on the return path.
+
+### Current limitations
+
+- Camera transition integration currently targets orthographic rendering.
+- Connections select presentation for detected map changes; they do not create exits or transfer entities.
+- Map changes remain based on sampled positions.
+- Retaining transition endpoints does not guarantee activity across every intermediate map of a distant slide.
+- Zero-duration fade phases currently finish on separate updates and may render one fully covered frame.
+- Visual acceptance and the 0.6.0 release remain pending.
+
 ## 0.5.0 — 2026-09-16
 
 ### Added
