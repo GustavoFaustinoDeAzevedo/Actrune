@@ -4,7 +4,6 @@ local project_definition = {
     map_camera_transition_routes = {
       main = {
         layout = "main",
-        default = "main",
         connections = {
           east_hall = { south_hall = "sliding" },
           south_hall = { east_hall = "fading" }

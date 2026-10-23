@@ -2,7 +2,7 @@
 
 ## 0.6.0 — Map-aware camera framing and transitions
 
-Status: implementation available; zero-duration fade correction and release acceptance pending.
+Status: implementation available; visual acceptance and release pending.
 
 ### Goal
 
@@ -39,7 +39,6 @@ Configure orthographic camera framing and map transition presentation through pr
 
 ### Remaining work
 
-- [ ] Complete a zero-duration fade in the same update without an extra covered frame or suspended simulation update.
 - [ ] Visually verify east_hall to south_hall with slide and the return path with fade.
 - [ ] Verify shared framing, initial framing, and fallback behavior in the demonstration.
 - [ ] Verify paused and free transitions, input handling, and preserved event state.

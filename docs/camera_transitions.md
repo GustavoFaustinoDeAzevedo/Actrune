@@ -50,7 +50,9 @@ The `cut` controller covers the screen, applies the destination framing, and rev
 
 The `slide` controller moves the camera toward the destination framing. It does not draw a screen overlay. Built-in curves are `linear` and `smoothstep`.
 
-The current `main` preset explicitly sets both fade durations to zero. Zero-duration fade phases currently finish on separate updates, so this preset may still produce one covered frame and one suspended simulation update. Correcting this behavior is pending before 0.6.0.
+The current `main` preset explicitly sets both fade durations to zero. It applies the destination and completes in the same controller update without drawing an overlay. The transition releases its own suspension before the next simulation update.
+
+A zero cover duration applies the destination immediately while preserving any positive reveal duration. A zero reveal duration completes the transition in the update that finishes covering, without an additional covered frame.
 
 When fade durations are omitted, the registered defaults are 0.12 seconds for covering and 0.18 seconds for revealing.
 
@@ -61,7 +63,6 @@ This entry belongs inside `project_definition.resources.map_camera_transition_ro
 ```lua
 main = {
   layout = "main",
-  default = "main",
   connections = {
     east_hall = { south_hall = "sliding" },
     south_hall = { east_hall = "fading" }
@@ -73,8 +74,14 @@ Each connection is directional:
 
 - `east_hall` to `south_hall` uses `sliding`.
 - `south_hall` to `east_hall` uses `fading`.
-- Any unlisted pair uses `default`.
-- Entering or leaving the layout also uses `default`.
+- Unlisted crossings preserve ordinary camera following when `default` is omitted.
+- The optional `default` selects a preset for unlisted crossings, including entering or leaving the layout.
+
+Without a selected preset, the camera keeps its current position and advances normal following during the crossing frame. No transition controller, overlay, or simulation suspension is created.
+
+Destination bounds still apply through `map_camera_bounds.duration`. Equal bounds preserve continuous following; different bounds may change framing according to their configuration.
+
+A zero-duration cut still snaps the camera to its constrained target. Use an unconfigured crossing without a default preset when continuous following is desired.
 
 Connections reference existing map IDs and preset names. References are resolved during project loading.
 
@@ -121,7 +128,7 @@ Each suspension has an independent release function. Completing or cancelling a 
 
 ## Timing and framing
 
-`map_camera_bounds.duration` controls automatic interpolation between bounds when no transition controller owns their selection.
+`map_camera_bounds.duration` controls ordinary changes between map bounds, including routed crossings without a selected preset.
 
 `slide.controller.duration` controls camera travel.
 

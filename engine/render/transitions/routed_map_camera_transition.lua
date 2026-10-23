@@ -16,7 +16,7 @@ end
 
 --- Creates an independent route dispatcher using a resolved preset selector.
 ---@param options CameraTransitionContext Camera and narrow runtime capabilities.
----@param select_preset fun(previous: MapRegion?, current: MapRegion?): CameraTransitionPreset Directional lookup.
+---@param select_preset fun(previous: MapRegion?, current: MapRegion?): CameraTransitionPreset? Nil keeps ordinary following.
 ---@return RoutedMapCameraTransition controller Independent route state.
 function RoutedMapCameraTransition.new(options, select_preset)
   assert(type(select_preset) == "function", "camera routes require preset selection")
@@ -30,7 +30,7 @@ function RoutedMapCameraTransition.new(options, select_preset)
   }, RoutedMapCameraTransition)
 end
 
---- Keeps one selected controller until completion, cancellation recovery or failure recovery.
+--- Keeps selected executions active; unconfigured crossings preserve ordinary following.
 --- Movement during an execution is sampled again after that execution has settled.
 ---@param dt number Presentation time in seconds.
 ---@param simulation_dt? number Simulation time; zero while suspended.
@@ -49,6 +49,14 @@ function RoutedMapCameraTransition:update(dt, simulation_dt)
   end
 
   local preset = self.select_preset(self.presented_map, current)
+  if preset == nil then
+    local options = self.options
+    options.bounds:select_map(current, options.bounds.configuration.duration, options.control.camera)
+    options.control:update(simulation_dt or dt)
+    self.presented_map = current
+    return
+  end
+
   local controller = preset:create(self.options)
   assert(type(controller) == "table", "camera preset must create a controller")
   for _, method in ipairs({ "start", "update", "draw", "cancel", "is_busy", "get_presented_map" }) do

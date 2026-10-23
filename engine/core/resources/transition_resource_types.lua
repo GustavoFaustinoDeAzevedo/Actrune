@@ -78,7 +78,8 @@ function TransitionResourceTypes.register(register, catalog)
 
   register:register_resource_type("map_camera_transition_routes", function(definition, context)
     local layout = context.resolve_resource("map_layout", definition.layout)
-    local fallback = context.resolve_resource("camera_transition", definition.default)
+    local fallback = definition.default ~= nil
+        and context.resolve_resource("camera_transition", definition.default) or nil
     local connections = definition.connections or {}
     local resolved = {}
     assert(type(connections) == "table", "camera connections must be a table")
@@ -99,10 +100,10 @@ function TransitionResourceTypes.register(register, catalog)
       end
     end
 
-    --- Selects exact directed connections; absent endpoints use the default preset.
+    --- Selects directed presets; nil preserves ordinary camera following.
     ---@param previous? MapRegion Last presented map.
     ---@param current? MapRegion Sampled destination.
-    ---@return CameraTransitionPreset preset Shared resolved preset.
+    ---@return CameraTransitionPreset? preset Shared preset, or nil for ordinary following.
     local function select_preset(previous, current)
       local row = previous and resolved[previous.id]
       return row and current and row[current.id] or fallback
@@ -122,7 +123,7 @@ function TransitionResourceTypes.register(register, catalog)
   end, {
     fields = {
       { name = "layout",      type = "resource_reference", resource_type = "map_layout",        required = true },
-      { name = "default",     type = "resource_reference", resource_type = "camera_transition", required = true },
+      { name = "default",     type = "resource_reference", resource_type = "camera_transition", optional = true },
       { name = "connections", type = "property_map",       optional = true }
     }
   })

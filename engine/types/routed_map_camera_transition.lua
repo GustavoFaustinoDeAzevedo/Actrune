@@ -21,6 +21,6 @@
 ---@class RoutedMapCameraTransitionFields
 ---@field options CameraTransitionContext Read-only composition capabilities.
 ---@field tracker MapLocationTracker Independent location observer.
----@field select_preset fun(previous: MapRegion?, current: MapRegion?): CameraTransitionPreset Resolved lookup.
+---@field select_preset fun(previous: MapRegion?, current: MapRegion?): CameraTransitionPreset? Resolved lookup; nil keeps ordinary following.
 ---@field presented_map MapRegion? Last destination of a settled execution.
 ---@field active RoutedCameraController? Controller retained until it settles.

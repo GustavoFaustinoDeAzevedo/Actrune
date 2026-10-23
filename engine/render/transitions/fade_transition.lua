@@ -23,7 +23,8 @@ function FadeTransition.new(options)
   }, FadeTransition)
 end
 
---- Requests destination application only after covering the screen.
+--- Applies the covered destination and skips a zero-duration reveal.
+--- Zero cover and reveal complete on the first update, including dt = 0.
 ---@param dt number Finite non-negative elapsed seconds, validated by TransitionRunner.
 ---@param applied boolean Whether destination application succeeded.
 ---@return TransitionStep step Next execution instruction.
@@ -34,7 +35,10 @@ function FadeTransition:update(dt, applied)
   self.elapsed = self.elapsed + dt
   if not applied then
     self.alpha = self.cover_duration == 0 and 1 or math.min(self.elapsed / self.cover_duration, 1)
-    return self.alpha == 1 and "apply" or "running"
+    if self.alpha < 1 then return "running" end
+    if self.reveal_duration > 0 then return "apply" end
+    self.alpha = 0
+    return "done"
   end
   self.alpha = self.reveal_duration == 0 and 0 or math.max(1 - self.elapsed / self.reveal_duration, 0)
   return self.alpha == 0 and "done" or "running"
