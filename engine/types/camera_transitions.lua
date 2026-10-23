@@ -20,7 +20,7 @@
 ---@class MapCameraTransitionOptions: MapCameraTransitionDependencies
 ---@field apply_position fun(control: CameraPositionControl, effect: TransitionEffect?) Applies the selected style; nil effect requests immediate recovery.
 
----@class MapCameraTransitionFields
+---@class MapCameraTransitionFields: RoutedCameraController
 ---@field control CameraPositionControl Camera position owner.
 ---@field bounds MapBoundsConstraint Constraint belonging to the same camera.
 ---@field create_effect fun(): TransitionEffect Creates an exclusive effect instance.
@@ -28,7 +28,7 @@
 ---@field retain_map fun(id: string): fun() Acquires a map requirement.
 ---@field acquire? fun(): fun() Optional capability acquisition.
 ---@field tracker MapLocationTracker Independent location observer.
----@field presented_map table? Map selected by successful destination application.
+---@field presented_map MapRegion? Map selected by successful destination application.
 ---@field runner TransitionRunner? Most recent execution.
 ---@field releases (fun())[] Temporary capabilities owned by the current execution.
 ---@field held table<string, boolean> Maps retained by this execution.

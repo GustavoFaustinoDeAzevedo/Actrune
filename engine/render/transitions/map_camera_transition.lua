@@ -70,25 +70,28 @@ function MapCameraTransition.new(options)
   }, MapCameraTransition)
 end
 
---- Starts at a sampled map change and lets the effect control application and completion.
---- Free simulation coalesces movement to the latest map when destination application occurs.
----@param dt number Presentation time in seconds.
----@param simulation_dt? number Simulation time; zero while suspended.
-function MapCameraTransition:update(dt, simulation_dt)
+--- Reports active execution or pending recovery after cancellation or failure.
+---@return boolean busy Whether another transition must wait.
+function MapCameraTransition:is_busy()
+  return self.recover or self.runner ~= nil and self.runner:get_status() == "running"
+end
+
+--- Returns the map selected by the last successful destination application.
+---@return MapRegion? map Selected map, or nil outside the layout.
+function MapCameraTransition:get_presented_map()
+  return self.presented_map
+end
+
+--- Starts from an explicit source without resetting the current camera position.
+---@param previous? MapRegion Source from this controller's layout.
+---@return boolean started Whether the sampled destination differs from the source.
+function MapCameraTransition:start(previous)
+  assert(not self:is_busy(), "camera transition is already busy")
+  assert(previous == nil or self.tracker.layout:get_map(previous.id) == previous,
+    "camera transition source must belong to its layout")
   self.tracker:refresh()
-  if self.recover then
-    apply(self)
-    self.recover = false
-    return
-  end
-  if self.runner ~= nil and self.runner:get_status() == "running" then
-    self.runner:update(dt)
-    return
-  end
-  if self.tracker:get_map() == self.presented_map then
-    self.control:update(simulation_dt or dt)
-    return
-  end
+  self.presented_map = previous
+  if self.tracker:get_map() == previous then return false end
 
   local effect = self.create_effect()
   self.runner = TransitionRunner.new({
@@ -112,6 +115,28 @@ function MapCameraTransition:update(dt, simulation_dt)
   })
   self.runner:start()
   self.runner:update(0)
+  return true
+end
+
+--- Advances an execution, recovers framing, or observes the next map change.
+---@param dt number Presentation time in seconds.
+---@param simulation_dt? number Simulation time; zero while suspended.
+function MapCameraTransition:update(dt, simulation_dt)
+  self.tracker:refresh()
+  if self.recover then
+    apply(self)
+    self.recover = false
+    return
+  end
+  if self.runner ~= nil and self.runner:get_status() == "running" then
+    self.runner:update(dt)
+    return
+  end
+  if self.tracker:get_map() == self.presented_map then
+    self.control:update(simulation_dt or dt)
+    return
+  end
+  self:start(self.presented_map)
 end
 
 --- Draws only the active effect; world drawing remains owned by the renderer.

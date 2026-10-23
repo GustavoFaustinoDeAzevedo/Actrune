@@ -2,6 +2,7 @@ local FadeTransition = require("engine.render.transitions.fade_transition")
 local MapCameraCut = require("engine.render.transitions.map_camera_cut")
 local MapCameraTransition = require("engine.render.transitions.map_camera_transition")
 local CameraSlideTransition = require("engine.render.transitions.camera_slide_transition")
+local RoutedMapCameraTransition = require("engine.render.transitions.routed_map_camera_transition")
 
 local TransitionResourceTypes = {}
 
@@ -72,6 +73,57 @@ function TransitionResourceTypes.register(register, catalog)
     fields = {
       { name = "duration", type = "number",           default = 0.45, min = 0 },
       { name = "curve",    type = "transition_curve", optional = true }
+    }
+  })
+
+  register:register_resource_type("map_camera_transition_routes", function(definition, context)
+    local layout = context.resolve_resource("map_layout", definition.layout)
+    local fallback = context.resolve_resource("camera_transition", definition.default)
+    local connections = definition.connections or {}
+    local resolved = {}
+    assert(type(connections) == "table", "camera connections must be a table")
+
+    for source, destinations in pairs(connections) do
+      assert(type(source) == "string" and layout:get_map(source) ~= nil,
+        "camera connection references unknown source: " .. tostring(source))
+      assert(type(destinations) == "table", "camera destinations must be a table: " .. source)
+      local row = {}
+      resolved[source] = row
+      for destination, name in pairs(destinations) do
+        assert(type(destination) == "string" and layout:get_map(destination) ~= nil,
+          "camera connection references unknown destination: " .. tostring(destination))
+        assert(source ~= destination, "camera connection requires different maps: " .. source)
+        assert(type(name) == "string" and name ~= "",
+          "camera connection requires a preset: " .. source .. " -> " .. destination)
+        row[destination] = context.resolve_resource("camera_transition", name)
+      end
+    end
+
+    --- Selects exact directed connections; absent endpoints use the default preset.
+    ---@param previous? MapRegion Last presented map.
+    ---@param current? MapRegion Sampled destination.
+    ---@return CameraTransitionPreset preset Shared resolved preset.
+    local function select_preset(previous, current)
+      local row = previous and resolved[previous.id]
+      return row and current and row[current.id] or fallback
+    end
+
+    return {
+      --- Creates independent routing state for one camera using the configured layout.
+      ---@param self table Shared resolved route configuration.
+      ---@param options CameraTransitionContext Camera and narrow runtime capabilities.
+      ---@return RoutedMapCameraTransition controller New routing controller.
+      create = function(self, options)
+        assert(options.bounds.configuration.layout == layout,
+          "camera routes and bounds must use the same layout")
+        return RoutedMapCameraTransition.new(options, select_preset)
+      end
+    }
+  end, {
+    fields = {
+      { name = "layout",      type = "resource_reference", resource_type = "map_layout",        required = true },
+      { name = "default",     type = "resource_reference", resource_type = "camera_transition", required = true },
+      { name = "connections", type = "property_map",       optional = true }
     }
   })
 

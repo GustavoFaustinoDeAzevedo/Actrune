@@ -1,7 +1,25 @@
 local project_definition = {
   resources = {
 
+    map_camera_transition_routes = {
+      main = {
+        layout = "main",
+        default = "main",
+        connections = {
+          east_hall = { south_hall = "sliding" },
+          south_hall = { east_hall = "fading" }
+        }
+      }
+    },
+
     camera_transition = {
+      fading = {
+        pause_simulation = true,
+        controller = {
+          type = "cut",
+          effect = { type = "fade", cover_duration = 0.12, reveal_duration = 0.18 }
+        }
+      },
       sliding = {
         pause_simulation = true,
         controller = {
@@ -71,6 +89,7 @@ local project_definition = {
         world_camera_target_entity = "player",
         world_camera_map_bounds = "main",
         world_camera_transition = "main",
+        world_camera_transition_routes = "main",
         world_camera_elevation_component = "elevation",
 
         -- Fixed view bounds for the orthographic scene.
