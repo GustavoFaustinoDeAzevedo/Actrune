@@ -1,6 +1,6 @@
 # Actrune changelog
 
-## Unreleased
+## 0.6.0 — 2026-10-27
 
 ### Added
 
@@ -25,6 +25,7 @@
 
 ### Fixed
 
+- Preserved camera smoothing during continuous map crossings instead of snapping to the target, including horizontal loops.
 - Fades with zero reveal duration now complete as soon as covering finishes, avoiding an extra covered frame and suspended simulation update.
 
 ### Current limitations
@@ -33,7 +34,6 @@
 - Connections select presentation for detected map changes; they do not create exits or transfer entities.
 - Map changes remain based on sampled positions.
 - Retaining transition endpoints does not guarantee activity across every intermediate map of a distant slide.
-- Visual acceptance and the 0.6.0 release remain pending.
 
 ## 0.5.0 — 2026-09-16
 
