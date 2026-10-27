@@ -6,8 +6,8 @@ local EventScheduler = require("engine.events.event_scheduler")
 local Actrune = {}
 Actrune.__index = Actrune
 
--- This version marks spatial elevation and continuous maps with preserved runtime state.
-Actrune.VERSION = "0.5.0"
+-- This version adds map-aware camera framing and configurable transitions.
+Actrune.VERSION = "0.6.0"
 
 -- Creates a new Actrune runtime with its world, input manager, and event scheduler.
 function Actrune.new()

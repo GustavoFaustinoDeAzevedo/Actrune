@@ -2,7 +2,7 @@
 
 ## 0.6.0 — Map-aware camera framing and transitions
 
-Status: implementation available; visual acceptance and release pending.
+Status: completed on 2026-10-27.
 
 ### Goal
 
@@ -10,6 +10,7 @@ Configure orthographic camera framing and map transition presentation through pr
 
 ### Implemented
 
+- Continuous camera following on unconfigured routes without snapping or simulation suspension.
 - Per-map camera bounds with shared rectangles and global fallback.
 - Immediate initial framing and configurable automatic bounds interpolation.
 - Bounds calculation accounting for viewport size, zoom, rotation, and small regions.
@@ -37,18 +38,21 @@ Configure orthographic camera framing and map transition presentation through pr
 - Cancellation releases temporary requirements and aligns framing with the current target on the next update.
 - Cancellation does not undo an already applied destination.
 
-### Remaining work
+### Acceptance
 
-- [ ] Visually verify east_hall to south_hall with slide and the return path with fade.
-- [ ] Verify shared framing, initial framing, and fallback behavior in the demonstration.
-- [ ] Verify paused and free transitions, input handling, and preserved event state.
-- [ ] Verify elevation, horizontal looping, viewport changes, zoom, and rotation.
-- [ ] Confirm that the existing perspective rendering mode still works.
-- [ ] Complete acceptance before updating the engine version and publishing the release notes.
+The project developer confirmed that the demonstration was working correctly after the continuous camera following correction.
+
+The accepted demonstration includes continuous map travel, directional slide and fade presets, simulation suspension, and preserved entity state.
 
 ### Validation status
 
-Previous isolated checks covered transition integration and Lua diagnostics. They are not a committed regression suite and do not replace visual acceptance.
+Isolated integration checks covered transition timing, simulation suspension, directional preset selection, cancellation recovery, and continuous following across map boundaries and horizontal loops.
+
+Continuous following was compared frame by frame against the camera behavior from commit 4aaf7a68cb471200a4ebd57e53e8cb07eeb02343.
+
+Lua Language Server checked 232 Lua files without errors or warnings.
+
+Automated checks used graphics test doubles. Visual acceptance was supplied by the project developer; automated desktop visual verification was not completed. The isolated checks are not a committed regression suite.
 
 ### Scope boundary
 
